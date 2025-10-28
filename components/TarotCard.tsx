@@ -35,7 +35,7 @@ export default function TarotCard({
           alt={isRevealed ? `${cardName} - ${englishName}` : '塔罗牌背面'}
           width={200}
           height={350}
-          className="w-full h-auto rounded-lg shadow-lg border border-white/20"
+          className="w-full h-auto max-w-full rounded-lg shadow-lg border border-white/20"
           priority={false}
         />
         

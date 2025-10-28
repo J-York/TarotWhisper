@@ -53,7 +53,7 @@ export default function FlipCard({
 
   return (
     <div 
-      className={`relative ${className}`}
+      className={`relative overflow-hidden ${className}`}
       style={{ perspective: '1000px' }}
       onClick={handleClick}
     >

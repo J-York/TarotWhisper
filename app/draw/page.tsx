@@ -212,35 +212,35 @@ export default function DrawPage() {
 
           {/* Drawn Cards */}
           {drawnCards.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white text-center mb-6">已抽取的牌</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {drawnCards.map((drawnCard, index) => (
-                  <div key={index} className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-                    <div className="text-center mb-3">
-                      <div className="text-purple-300 text-sm font-medium mb-1">
-                        位置 {drawnCard.position.id}: {drawnCard.position.name}
-                      </div>
-                      <div className="text-gray-400 text-xs">
-                        {drawnCard.position.description}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-center mb-4">
-                      <FlipCard
-                        cardId={drawnCard.card.id}
-                        cardName={drawnCard.card.name}
-                        englishName={drawnCard.card.englishName}
-                        isReversed={drawnCard.isReversed}
-                        autoFlip={true}
-                        flipDelay={500 + index * 300} // 错开翻牌时间
-                        className="w-full max-w-[200px]"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+           <div className="mb-8">
+             <h2 className="text-2xl font-bold text-white text-center mb-6">已抽取的牌</h2>
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {drawnCards.map((drawnCard, index) => (
+                 <div key={index} className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 overflow-hidden">
+                   <div className="text-center mb-3">
+                     <div className="text-purple-300 text-sm font-medium mb-1">
+                       位置 {drawnCard.position.id}: {drawnCard.position.name}
+                     </div>
+                     <div className="text-gray-400 text-xs">
+                       {drawnCard.position.description}
+                     </div>
+                   </div>
+
+                   <div className="flex justify-center mb-4 overflow-hidden">
+                     <FlipCard
+                       cardId={drawnCard.card.id}
+                       cardName={drawnCard.card.name}
+                       englishName={drawnCard.card.englishName}
+                       isReversed={drawnCard.isReversed}
+                       autoFlip={true}
+                       flipDelay={500 + index * 300} // 错开翻牌时间
+                       className="w-full max-w-[200px]"
+                     />
+                   </div>
+                 </div>
+               ))}
+             </div>
+           </div>
           )}
 
           {/* Complete Button */}
