@@ -25,65 +25,56 @@ export default function FlipCard({
   flipDelay = 1000
 }: FlipCardProps) {
   const [isFlipped, setIsFlipped] = useState(false)
-  const [showAnimation, setShowAnimation] = useState(false)
 
+  // 自动翻牌
   useEffect(() => {
-    if (autoFlip) {
-      const timer = setTimeout(() => {
-        setShowAnimation(true)
-        setTimeout(() => {
-          setIsFlipped(true)
-          onFlipComplete?.()
-        }, 300) // 翻牌动画持续时间的一半
-      }, flipDelay)
+    if (!autoFlip) return
+    const timer = setTimeout(() => {
+      setIsFlipped(true)
+    }, flipDelay)
+    return () => clearTimeout(timer)
+  }, [autoFlip, flipDelay])
 
-      return () => clearTimeout(timer)
-    }
-  }, [autoFlip, flipDelay, onFlipComplete])
+  // 翻牌完成回调（在动画结束后触发）
+  useEffect(() => {
+    if (!isFlipped) return
+    const timer = setTimeout(() => onFlipComplete?.(), 700)
+    return () => clearTimeout(timer)
+  }, [isFlipped, onFlipComplete])
 
   const handleClick = () => {
     if (!autoFlip && !isFlipped) {
-      setShowAnimation(true)
-      setTimeout(() => {
-        setIsFlipped(true)
-        onFlipComplete?.()
-      }, 300)
+      setIsFlipped(true)
     }
   }
 
   return (
-    <div 
+    <div
       className={`relative overflow-hidden ${className}`}
-      style={{ perspective: '1000px' }}
+      style={{ perspective: '1000px', aspectRatio: '200/350' }}
       onClick={handleClick}
     >
-      <div 
+      <div
         className={`relative w-full h-full transition-transform duration-700 ${
           !autoFlip && !isFlipped ? 'cursor-pointer hover:scale-105' : ''
         }`}
         style={{
           transformStyle: 'preserve-3d',
-          transform: showAnimation ? (isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)') : 'rotateY(0deg)'
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
         }}
       >
         {/* 牌背面 */}
-        <div 
-          className={`absolute inset-0 ${isFlipped ? 'invisible' : 'visible'}`}
+        <div
+          className="absolute inset-0"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          <TarotCard
-            showCardBack={true}
-            className="w-full h-full"
-          />
+          <TarotCard showCardBack={true} className="w-full h-full" />
         </div>
-        
+
         {/* 牌正面 */}
-        <div 
-          className={`absolute inset-0 ${isFlipped ? 'visible' : 'invisible'}`}
-          style={{ 
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)'
-          }}
+        <div
+          className="absolute inset-0"
+          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
           <TarotCard
             cardId={cardId}
@@ -95,7 +86,7 @@ export default function FlipCard({
           />
         </div>
       </div>
-      
+
       {/* 翻牌提示 */}
       {!autoFlip && !isFlipped && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
