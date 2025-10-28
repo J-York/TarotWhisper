@@ -234,7 +234,7 @@ export default function DrawPage() {
                         isReversed={drawnCard.isReversed}
                         autoFlip={true}
                         flipDelay={500 + index * 300} // 错开翻牌时间
-                        className="w-32"
+                        className="w-full max-w-[200px]"
                       />
                     </div>
                   </div>
