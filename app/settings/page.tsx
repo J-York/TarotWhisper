@@ -10,10 +10,13 @@ export default function SettingsPage() {
   const [model, setModel] = useState(() => getDefaultLlmModel())
   const [isLoading, setSaveLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [isFetchingModels, setFetchingModels] = useState(false)
   const router = useRouter()
   const defaultLlmUsable = isDefaultLlmUsable()
   const trimmedBaseUrl = baseUrl.trim()
   const trimmedApiKey = apiKey.trim()
+  const normalizedBaseUrl = trimmedBaseUrl.replace(/\/+$/, '')
   const hasCustomConfig = Boolean(trimmedBaseUrl && trimmedApiKey)
   const showDefaultActiveNotice = defaultLlmUsable && !hasCustomConfig
 
@@ -22,29 +25,36 @@ export default function SettingsPage() {
     const savedBaseUrl = localStorage.getItem('tarot_api_base_url')
     const savedApiKey = localStorage.getItem('tarot_api_key')
     const savedModel = localStorage.getItem('tarot_api_model')
-    
+
     if (savedBaseUrl) setBaseUrl(savedBaseUrl)
     if (savedApiKey) setApiKey(savedApiKey)
     if (savedModel) setModel(savedModel)
   }, [])
 
+  useEffect(() => {
+    setAvailableModels([])
+  }, [trimmedBaseUrl, trimmedApiKey])
+
   const handleSave = async () => {
-    if (!baseUrl.trim() || !apiKey.trim()) {
+    if (!trimmedBaseUrl || !trimmedApiKey) {
       setMessage('请填写完整的 API 配置信息')
       return
     }
+
+    const trimmedModel = model.trim()
 
     setSaveLoading(true)
     setMessage('')
 
     try {
       // 保存到 localStorage
-      localStorage.setItem('tarot_api_base_url', baseUrl.trim())
-      localStorage.setItem('tarot_api_key', apiKey.trim())
-      localStorage.setItem('tarot_api_model', model.trim())
-      
+      localStorage.setItem('tarot_api_base_url', trimmedBaseUrl)
+      localStorage.setItem('tarot_api_key', trimmedApiKey)
+      localStorage.setItem('tarot_api_model', trimmedModel)
+
+      setModel(trimmedModel)
       setMessage('设置已保存成功！')
-      
+
       // 2秒后跳转到主页
       setTimeout(() => {
         router.push('/')
@@ -57,7 +67,7 @@ export default function SettingsPage() {
   }
 
   const handleTestConnection = async () => {
-    if (!baseUrl.trim() || !apiKey.trim()) {
+    if (!trimmedBaseUrl || !trimmedApiKey) {
       setMessage('请先填写完整的 API 配置信息')
       return
     }
@@ -66,10 +76,10 @@ export default function SettingsPage() {
     setMessage('正在测试连接...')
 
     try {
-      const response = await fetch(`${baseUrl.trim()}/models`, {
+      const response = await fetch(`${normalizedBaseUrl}/models`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiKey.trim()}`,
+          'Authorization': `Bearer ${trimmedApiKey}`,
           'Content-Type': 'application/json'
         }
       })
@@ -83,6 +93,56 @@ export default function SettingsPage() {
       setMessage('❌ 连接测试失败，请检查网络和配置')
     } finally {
       setSaveLoading(false)
+    }
+  }
+
+  const handleFetchModels = async () => {
+    if (!trimmedBaseUrl || !trimmedApiKey) {
+      setMessage('请先填写完整的 API 配置信息')
+      return
+    }
+
+    setFetchingModels(true)
+    setMessage('正在获取模型列表...')
+
+    try {
+      const response = await fetch(`${normalizedBaseUrl}/models`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${trimmedApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          data?: Array<{ id?: string | null; name?: string | null }>
+        }
+
+        const modelIds = Array.isArray(payload.data)
+          ? payload.data
+              .map((item) => item?.id ?? item?.name ?? '')
+              .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          : []
+
+        const uniqueModels = Array.from(new Set(modelIds)).sort((a, b) => a.localeCompare(b))
+
+        if (uniqueModels.length > 0) {
+          setAvailableModels(uniqueModels)
+          setMessage(`✅ 成功获取 ${uniqueModels.length} 个可用模型`)
+        } else {
+          setAvailableModels([])
+          setMessage('⚠️ 未找到可用模型')
+        }
+      } else {
+        setAvailableModels([])
+        setMessage('❌ 获取模型列表失败，请检查配置')
+      }
+    } catch {
+      setAvailableModels([])
+      setMessage('❌ 获取模型列表失败，请检查网络和配置')
+    } finally {
+      setFetchingModels(false)
     }
   }
 
@@ -170,17 +230,45 @@ export default function SettingsPage() {
                   <label htmlFor="model" className="mb-3 block text-xs font-semibold uppercase tracking-[0.35em] text-purple-200/80">
                     模型名称
                   </label>
-                  <input
-                    type="text"
-                    id="model"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="gpt-4o-mini"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-sm text-slate-100 shadow-[0_15px_45px_rgba(24,24,45,0.35)] backdrop-blur focus:border-purple-400/60 focus:outline-none focus:ring-2 focus:ring-purple-500/60 placeholder:text-slate-400"
-                  />
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <input
+                      type="text"
+                      id="model"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      placeholder="gpt-4o-mini"
+                      className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-sm text-slate-100 shadow-[0_15px_45px_rgba(24,24,45,0.35)] backdrop-blur focus:border-purple-400/60 focus:outline-none focus:ring-2 focus:ring-purple-500/60 placeholder:text-slate-400 sm:flex-1"
+                    />
+                    <button
+                      onClick={handleFetchModels}
+                      disabled={isFetchingModels || isLoading}
+                      className="inline-flex w-full items-center justify-center rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 shadow-[0_15px_45px_rgba(24,24,45,0.35)] backdrop-blur transition-all hover:border-white/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    >
+                      {isFetchingModels ? '获取中...' : '获取模型列表'}
+                    </button>
+                  </div>
                   <p className="mt-2 text-xs text-slate-300/70">
                     要使用的模型名称，如 gpt-4o-mini, gpt-4, claude-3-sonnet 等
                   </p>
+                  {availableModels.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-purple-200/70">
+                        可用模型
+                      </span>
+                      <select
+                        value={availableModels.includes(model) ? model : ''}
+                        onChange={(e) => setModel(e.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-sm text-slate-100 shadow-[0_15px_45px_rgba(24,24,45,0.35)] backdrop-blur focus:border-purple-400/60 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+                      >
+                        <option value="">请选择模型</option>
+                        {availableModels.map((modelId) => (
+                          <option key={modelId} value={modelId}>
+                            {modelId}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {message && (
