@@ -47,6 +47,13 @@ export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [isFetchingModels, setIsFetchingModels] = useState(false)
+  const [modelMessage, setModelMessage] = useState('')
+  const [selectedModel, setSelectedModel] = useState('')
+  const [hasCustomApiConfig, setHasCustomApiConfig] = useState(false)
+  const [customApiBaseUrl, setCustomApiBaseUrl] = useState<string | null>(null)
+  const [customApiKey, setCustomApiKey] = useState<string | null>(null)
   const router = useRouter()
   const analysisContainerRef = useRef<HTMLDivElement>(null)
 
@@ -71,6 +78,18 @@ export default function AnalysisPage() {
     }
     setSpread(selectedSpread)
 
+    // 检查用户是否配置了自己的API
+    const localBaseUrl = localStorage.getItem('tarot_api_base_url')?.trim() || null
+    const localApiKey = localStorage.getItem('tarot_api_key')?.trim() || null
+    const localModel = localStorage.getItem('tarot_api_model')?.trim() || ''
+    const hasLocalConfig = Boolean(localBaseUrl && localApiKey)
+    setHasCustomApiConfig(hasLocalConfig)
+    setCustomApiBaseUrl(localBaseUrl)
+    setCustomApiKey(localApiKey)
+    if (localModel) {
+      setSelectedModel(localModel)
+    }
+
     try {
       const cards = JSON.parse(savedDrawnCards) as DrawnCard[]
       setDrawnCards(cards)
@@ -83,12 +102,19 @@ export default function AnalysisPage() {
     }
   }, [router])
 
-  const performAnalysis = async (question: string, spread: Spread, cards: DrawnCard[]) => {
+  const performAnalysis = async (
+    question: string,
+    spread: Spread,
+    cards: DrawnCard[],
+    overrideModel?: string
+  ): Promise<boolean> => {
+    setAnalysis('')
     setIsLoading(true)
     setError('')
 
+    let success = false
+
     try {
-      // 从 localStorage 获取 API 配置
       const localBaseUrl = localStorage.getItem('tarot_api_base_url')?.trim() || null
       const localApiKey = localStorage.getItem('tarot_api_key')?.trim() || null
       const localModel = localStorage.getItem('tarot_api_model')?.trim() || null
@@ -97,15 +123,29 @@ export default function AnalysisPage() {
       const defaultConfig = getDefaultLlmConfig()
       const useDefaultConfig = !hasLocalConfig && isDefaultLlmUsable()
 
+      setHasCustomApiConfig(hasLocalConfig)
+      setCustomApiBaseUrl(localBaseUrl)
+      setCustomApiKey(localApiKey)
+
+      const trimmedOverrideModel = overrideModel?.trim() || ''
+      const overrideCandidate = trimmedOverrideModel.length > 0 ? trimmedOverrideModel : null
+
       if (!hasLocalConfig && !useDefaultConfig) {
         setError('API 配置缺失，请前往设置页面配置')
-        return
+        return false
       }
 
-      const model =
+      const effectiveModel =
+        overrideCandidate ??
         (hasLocalConfig ? localModel : null) ??
         (useDefaultConfig ? defaultConfig.model : null) ??
         'gpt-4o-mini'
+
+      if (hasLocalConfig && effectiveModel) {
+        localStorage.setItem('tarot_api_model', effectiveModel)
+      }
+
+      setSelectedModel(effectiveModel)
 
       // 构建系统提示词
       const systemPrompt = `你是一位专业的塔罗占卜师，具备深厚的神秘学知识和丰富的解读经验。
@@ -154,7 +194,7 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
 请依据以上信息，以中文给出准确而深入的整合解读：既要有整体的故事脉络，也要有每张牌在对应位置的具体含义与建议。请如实反映每张牌的含义，包括负面信息和挑战，并提供平衡的视角和建设性的建议。最后请提醒：塔罗解读仅供参考，最终决策权在我手中。`
 
       const requestBody = {
-        model,
+        model: effectiveModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -165,8 +205,8 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
       let response: Response
 
       if (hasLocalConfig) {
-        // 用户使用自己的配置，直接从客户端请求
-        response = await fetch(`${localBaseUrl}/chat/completions`, {
+        const normalizedBaseUrl = (localBaseUrl ?? '').replace(/\/+$/, '')
+        response = await fetch(`${normalizedBaseUrl}/chat/completions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -175,7 +215,6 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
           body: JSON.stringify(requestBody)
         })
       } else {
-        // 使用默认配置，通过服务器代理
         response = await fetch('/api/chat', {
           method: 'POST',
           headers: {
@@ -189,7 +228,6 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
         throw new Error(`API 请求失败: ${response.status} ${response.statusText}`)
       }
 
-      // 处理流式响应
       const reader = response.body?.getReader()
       if (!reader) {
         throw new Error('无法读取响应流')
@@ -216,8 +254,7 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
               if (content) {
                 analysisText += content
                 setAnalysis(analysisText)
-                
-                // 自动滚动到底部
+
                 setTimeout(() => {
                   if (analysisContainerRef.current) {
                     analysisContainerRef.current.scrollTop = analysisContainerRef.current.scrollHeight
@@ -225,14 +262,15 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
                 }, 10)
               }
             } catch {
-              // 忽略解析错误
             }
           }
         }
       }
 
-      // 分析完成后保存到历史记录
-      if (analysisText) {
+      const hasContent = analysisText.trim().length > 0
+
+      if (hasContent) {
+        success = true
         try {
           historyManager.saveReading(
             question,
@@ -249,8 +287,105 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
     } catch (error) {
       console.error('分析失败:', error)
       setError(error instanceof Error ? error.message : '分析过程中出现未知错误')
+      success = false
     } finally {
       setIsLoading(false)
+    }
+
+    return success
+  }
+
+  const handleFetchModels = async () => {
+    if (!hasCustomApiConfig || !customApiBaseUrl || !customApiKey) {
+      setModelMessage('请先在设置页面配置API')
+      return
+    }
+
+    setIsFetchingModels(true)
+    setModelMessage(availableModels.length > 0 ? '正在刷新模型列表...' : '正在获取模型列表...')
+
+    try {
+      const normalizedBaseUrl = customApiBaseUrl.replace(/\/+$/, '')
+      const response = await fetch(`${normalizedBaseUrl}/models`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${customApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          data?: Array<{ id?: string | null; name?: string | null }>
+        }
+
+        const modelIds = Array.isArray(payload.data)
+          ? payload.data
+              .map((item) => item?.id ?? item?.name ?? '')
+              .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          : []
+
+        const uniqueModels = Array.from(new Set(modelIds)).sort((a, b) => a.localeCompare(b))
+
+        if (uniqueModels.length > 0) {
+          setAvailableModels(uniqueModels)
+          setSelectedModel((prev) => {
+            const trimmedPrev = prev.trim()
+            if (trimmedPrev && uniqueModels.includes(trimmedPrev)) {
+              return trimmedPrev
+            }
+            return uniqueModels[0] ?? ''
+          })
+          setModelMessage(`✅ 成功获取 ${uniqueModels.length} 个可用模型`)
+        } else {
+          setAvailableModels([])
+          setSelectedModel('')
+          setModelMessage('⚠️ 未找到可用模型')
+        }
+      } else {
+        setAvailableModels([])
+        setSelectedModel('')
+        setModelMessage('❌ 获取模型列表失败，请检查配置')
+      }
+    } catch {
+      setAvailableModels([])
+      setSelectedModel('')
+      setModelMessage('❌ 获取模型列表失败，请检查网络和配置')
+    } finally {
+      setIsFetchingModels(false)
+    }
+  }
+
+  const handleReinterpret = async () => {
+    if (isLoading) {
+      return
+    }
+
+    if (!hasCustomApiConfig || !customApiBaseUrl || !customApiKey) {
+      setModelMessage('请先在设置页面配置API')
+      return
+    }
+
+    const trimmedSelection = selectedModel.trim()
+    if (!trimmedSelection) {
+      setModelMessage('请先选择一个模型')
+      return
+    }
+
+    if (!spread || drawnCards.length === 0) {
+      setModelMessage('无法重新解读：缺少卡牌数据')
+      return
+    }
+
+    setSelectedModel(trimmedSelection)
+    setModelMessage(`🔁 正在使用 ${trimmedSelection} 重新解读...`)
+
+    const success = await performAnalysis(question, spread, drawnCards, trimmedSelection)
+
+    if (success) {
+      setModelMessage(`✅ 已使用 ${trimmedSelection} 完成重新解读`)
+    } else {
+      setModelMessage('❌ 重新解读失败，请检查模型配置或稍后重试')
     }
   }
 
@@ -491,6 +626,99 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
                   </div>
                 )}
               </div>
+
+              {/* Reinterpret Section - Only show if analysis exists and user has custom API config */}
+              {analysis && hasCustomApiConfig && (
+                <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-5 shadow-[0_18px_45px_rgba(124,58,237,0.25)]">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-lg">🔄</span>
+                    <h3 className="text-sm font-semibold text-purple-100">
+                      不满意当前解读？尝试其他模型重新解读
+                    </h3>
+                  </div>
+                  <p className="mb-4 text-xs text-purple-200/70">
+                    从远端拉取可用的模型列表，选择一个您喜欢的模型进行再一次解读
+                  </p>
+
+                  {modelMessage && (
+                    <div
+                      className={`mb-4 rounded-xl border p-3 text-xs ${
+                        modelMessage.includes('成功') || modelMessage.includes('✅')
+                          ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+                          : modelMessage.includes('❌') || modelMessage.includes('失败')
+                          ? 'border-red-400/40 bg-red-500/10 text-red-200'
+                          : 'border-sky-400/40 bg-sky-500/10 text-sky-200'
+                      }`}
+                    >
+                      {modelMessage}
+                    </div>
+                  )}
+
+                  {selectedModel && (
+                    <div className="mb-2 text-xs text-purple-200/70">
+                      当前使用模型：<span className="font-semibold text-purple-100">{selectedModel}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleFetchModels}
+                      disabled={isFetchingModels || isLoading}
+                      className="w-full rounded-full border border-purple-300/40 bg-purple-500/20 px-5 py-2.5 text-sm font-medium text-purple-100 transition-all hover:border-purple-300/60 hover:bg-purple-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isFetchingModels
+                        ? '获取中...'
+                        : availableModels.length > 0
+                        ? '🔁 重新拉取模型列表'
+                        : '📋 拉取模型列表'}
+                    </button>
+
+                    {availableModels.length > 0 && (
+                      <>
+                        <div>
+                          <label htmlFor="modelSelect" className="mb-2 block text-xs font-medium text-purple-200/80">
+                            选择模型
+                          </label>
+                          <select
+                            id="modelSelect"
+                            value={selectedModel}
+                            onChange={(e) => setSelectedModel(e.target.value)}
+                            disabled={isLoading}
+                            className="w-full rounded-xl border border-purple-300/30 bg-black/30 px-4 py-2.5 text-sm text-slate-100 shadow-inner backdrop-blur focus:border-purple-400/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <option value="">请选择模型</option>
+                            {availableModels.map((modelId) => (
+                              <option key={modelId} value={modelId}>
+                                {modelId}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleReinterpret}
+                            disabled={!selectedModel || isLoading}
+                            className="flex-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_15px_40px_rgba(168,85,247,0.35)] transition-all hover:scale-[1.02] disabled:scale-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isLoading ? '解读中...' : '✨ 重新解读'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAvailableModels([])
+                              setModelMessage('')
+                            }}
+                            disabled={isLoading}
+                            className="rounded-full border border-purple-300/40 bg-purple-500/10 px-5 py-2.5 text-sm font-medium text-purple-200 transition-all hover:border-purple-300/60 hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            隐藏列表
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
