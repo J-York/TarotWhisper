@@ -52,22 +52,21 @@ export default function FlipCard({
   }
 
   return (
-    <div 
+    <div
       className={`group relative ${className}`}
       style={{ perspective: '1000px' }}
       onClick={handleClick}
     >
-      <div 
-        className={`relative w-full h-full transition-all duration-700 ${
-          !autoFlip && !isFlipped ? 'cursor-pointer hover:scale-105' : ''
-        }`}
+      <div
+        className={`relative w-full h-full transition-all duration-700 ${!autoFlip && !isFlipped ? 'cursor-pointer hover:scale-105' : ''
+          }`}
         style={{
           transformStyle: 'preserve-3d',
           transform: showAnimation ? (isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)') : 'rotateY(0deg)'
         }}
       >
         {/* 牌背面 */}
-        <div 
+        <div
           className={`absolute inset-0 ${isFlipped ? 'invisible' : 'visible'}`}
           style={{ backfaceVisibility: 'hidden' }}
         >
@@ -76,11 +75,11 @@ export default function FlipCard({
             className="w-full h-full"
           />
         </div>
-        
+
         {/* 牌正面 */}
-        <div 
+        <div
           className={`absolute inset-0 ${isFlipped ? 'visible' : 'invisible'}`}
-          style={{ 
+          style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)'
           }}
@@ -95,20 +94,20 @@ export default function FlipCard({
           />
         </div>
       </div>
-      
+
       {/* 翻牌提示 - 改进版 */}
       {!autoFlip && !isFlipped && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-purple-600/90 text-white text-[10px] px-3 py-1.5 rounded-full opacity-0 transition-opacity group-hover:opacity-100 font-medium shadow-[0_8px_25px_rgba(124,58,237,0.5)] backdrop-blur">
-            点击翻牌
+          <div className="bg-black/60 backdrop-blur-md border border-primary/30 text-white text-[10px] px-3 py-1.5 rounded-full opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-110 font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(124,58,237,0.4)]">
+            Click to Flip
           </div>
         </div>
       )}
-      
+
       {/* 翻牌时的光效 */}
       {showAnimation && (
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/30 to-transparent animate-shimmer" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
         </div>
       )}
     </div>

@@ -23,16 +23,18 @@ export default function TarotCard({
   showCardBack = false
 }: TarotCardProps) {
   const imageUrl = showCardBack || !isRevealed ? CARD_BACK_IMAGE : getCardImage(cardId ?? '')
-  
+
   return (
-    <div 
-      className={`group relative transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.06]' : ''} ${className}`}
+    <div
+      className={`group relative transition-all duration-500 ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''} ${className}`}
       onClick={onClick}
     >
-      <div className={`relative ${isReversed && isRevealed ? 'transform rotate-180' : ''}`}>
-        {/* 固定尺寸的图片容器 */}
-        <div className="relative w-full aspect-[2/3.5] overflow-hidden rounded-xl shadow-[0_10px_35px_rgba(0,0,0,0.5)] border border-white/20 bg-gray-800 transition-shadow duration-300 group-hover:shadow-[0_15px_45px_rgba(124,58,237,0.4)]">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 via-transparent to-purple-500/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
+      <div className={`relative transition-transform duration-700 ${isReversed && isRevealed ? 'rotate-180' : ''}`}>
+        {/* Card Container */}
+        <div className="relative w-full aspect-[2/3.5] overflow-hidden rounded-xl shadow-lg border border-white/10 bg-black/40 transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(124,58,237,0.3)] group-hover:border-primary/30">
+          {/* Shine Effect */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none z-10" />
+
           <Image
             src={imageUrl}
             alt={isRevealed ? `${cardName} - ${englishName}` : '塔罗牌背面'}
@@ -42,28 +44,28 @@ export default function TarotCard({
             sizes="(max-width: 768px) 150px, 200px"
           />
         </div>
-        
-        {/* 逆位指示器 */}
+
+        {/* Reversed Indicator */}
         {isReversed && isRevealed && (
-          <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-180 z-20 font-semibold shadow-[0_5px_20px_rgba(245,158,11,0.4)]">
-            逆位
+          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm border border-amber-500/30 text-amber-400 text-[10px] px-2 py-0.5 rounded rotate-180 z-20 font-bold uppercase tracking-wider shadow-sm">
+            Reversed
           </div>
         )}
-        
-        {/* 正位指示器 */}
+
+        {/* Upright Indicator (Optional, usually not needed but kept for symmetry if desired) */}
         {!isReversed && isRevealed && (
-          <div className="absolute top-2 right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] px-2.5 py-1 rounded-full z-20 font-semibold shadow-[0_5px_20px_rgba(16,185,129,0.4)]">
-            正位
+          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm border border-emerald-500/30 text-emerald-400 text-[10px] px-2 py-0.5 rounded z-20 font-bold uppercase tracking-wider shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            Upright
           </div>
         )}
       </div>
-      
-      {/* 卡牌信息 */}
+
+      {/* Card Info - Only shown when revealed and names provided */}
       {isRevealed && cardName && (
         <div className="mt-3 text-center">
-          <div className="text-white font-semibold text-sm mb-0.5">{cardName}</div>
+          <div className="text-white font-bold text-sm mb-0.5 tracking-wide">{cardName}</div>
           {englishName && (
-            <div className="text-purple-200/70 text-xs">{englishName}</div>
+            <div className="text-slate-400 text-xs font-medium">{englishName}</div>
           )}
         </div>
       )}

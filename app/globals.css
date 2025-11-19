@@ -1,196 +1,158 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --mystic-purple: #8b5cf6;
-  --mystic-gold: #fbbf24;
-  --mystic-blue: #3b82f6;
+  /* Premium Mystical Palette */
+  --background: #030014;
+  --foreground: #e2e8f0;
+  
+  /* Primary - Deep Violet */
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  
+  /* Secondary - Mystic Pink/Purple */
+  --secondary: #c026d3;
+  --secondary-foreground: #ffffff;
+  
+  /* Accent - Starlight Gold */
+  --accent: #fbbf24;
+  --accent-foreground: #1e1b4b;
+  
+  /* Surface Colors */
+  --card: rgba(255, 255, 255, 0.03);
+  --card-hover: rgba(255, 255, 255, 0.07);
+  --card-border: rgba(255, 255, 255, 0.1);
+  
+  /* Status */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-card-border: var(--card-border);
+  
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-cinzel);
-  --font-serif: var(--font-playfair);
-}
-
-/* Mystical Animations */
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
+  
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 4s ease-in-out infinite;
+  --animate-shimmer: shimmer 3s linear infinite;
+  --animate-spin-slow: spin 12s linear infinite;
+  --animate-fade-in: fadeIn 0.8s ease-out forwards;
+  --animate-slide-up: slideUp 0.8s ease-out forwards;
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
-  50% {
-    transform: translateY(-20px);
+  
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(124, 58, 237, 0.3); }
+    50% { opacity: 0.8; box-shadow: 0 0 40px rgba(124, 58, 237, 0.6); }
   }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
+  
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
-  100% {
-    background-position: 1000px 0;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
-}
-
-@keyframes glow {
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-  50% {
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.8),
-      0 0 60px rgba(139, 92, 246, 0.4);
-  }
-}
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0;
-    transform: scale(0);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes rotate-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes mystical-gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Utility classes */
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  background-size: 2000px 100%;
-  animation: shimmer 3s infinite;
-}
-
-.animate-glow {
-  animation: glow 3s ease-in-out infinite;
-}
-
-.animate-twinkle {
-  animation: twinkle 3s ease-in-out infinite;
-}
-
-.animate-rotate-slow {
-  animation: rotate-slow 60s linear infinite;
-}
-
-.animate-mystical-gradient {
-  background-size: 200% 200%;
-  animation: mystical-gradient 8s ease infinite;
-}
-
-/* Mystical effects */
-.mystical-glow {
-  box-shadow: 0 0 30px rgba(139, 92, 246, 0.3),
-    0 0 60px rgba(139, 92, 246, 0.1);
-}
-
-.mystical-text-glow {
-  text-shadow: 0 0 10px rgba(139, 92, 246, 0.5),
-    0 0 20px rgba(139, 92, 246, 0.3), 0 0 30px rgba(139, 92, 246, 0.2);
-}
-
-.gold-glow {
-  text-shadow: 0 0 10px rgba(251, 191, 36, 0.6),
-    0 0 20px rgba(251, 191, 36, 0.4);
-}
-
-/* Stars background */
-.stars-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.stars-bg::before,
-.stars-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-.stars-bg::before {
-  background-image: radial-gradient(2px 2px at 20% 30%, white, transparent),
-    radial-gradient(2px 2px at 60% 70%, white, transparent),
-    radial-gradient(1px 1px at 50% 50%, white, transparent),
-    radial-gradient(1px 1px at 80% 10%, white, transparent),
-    radial-gradient(2px 2px at 90% 60%, white, transparent),
-    radial-gradient(1px 1px at 33% 85%, white, transparent),
-    radial-gradient(1px 1px at 15% 10%, white, transparent);
-  background-size: 200% 200%;
-  background-position: 0% 0%;
-  opacity: 0.5;
-  animation: mystical-gradient 20s ease infinite;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  position: relative;
+  font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
-/* Scrollbar styling */
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+}
+
+.glass-button {
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-button:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08));
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* Text Gradients */
+.text-gradient-gold {
+  background: linear-gradient(to right, #fbfb24, #f59e0b);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-mystic {
+  background: linear-gradient(to right, #e879f9, #8b5cf6, #3b82f6);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
+  background: #0a0a0a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #8b5cf6, #6d28d9);
-  border-radius: 5px;
+  background: #333;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #a78bfa, #8b5cf6);
+  background: #444;
+}
+
+/* Background Stars Effect */
+.stars-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  background-image: 
+    radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+    radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+    radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+  background-size: 550px 550px, 350px 350px, 250px 250px;
+  background-position: 0 0, 40px 60px, 130px 270px;
+  opacity: 0.4;
 }
