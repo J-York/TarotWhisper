@@ -64,64 +64,64 @@
     },
     {
       "id": "four_card_spread",
-      "name": "四牌阵",
-      "englishName": "Four-Card Insight Spread",
-      "description": "从背景、动力、阻碍与突破四个角度拆解问题，帮助快速看清现状并找到可行的推进路径",
+      "name": "四牌阵（直指核心牌阵）",
+      "englishName": "Four-Card Core Insight Spread",
+      "description": "简单高效的塔罗排阵，适合快速分析问题并提供实用指导。强调从问题核心到行动建议的逻辑流程，适用于工作、学习或日常困境的诊断与决策支持。",
       "cardCount": 4,
       "positions": [
         {
           "id": 1,
-          "name": "背景根源",
-          "description": "事件的起因、旧有模式或影响当前局面的底层因素"
+          "name": "核心问题",
+          "description": "当前状况或问题的本质，揭示事件的核心所在"
         },
         {
           "id": 2,
-          "name": "可用力量",
-          "description": "你目前拥有的资源、优势或能够被激发的潜能"
+          "name": "影响因素",
+          "description": "外部或内部干扰，包括机遇或障碍等关键影响"
         },
         {
           "id": 3,
-          "name": "阻碍与盲点",
-          "description": "需要被正视的挑战、外界限制或自身尚未觉察的盲点"
+          "name": "行动建议",
+          "description": "如何应对或调整策略的具体指导"
         },
         {
           "id": 4,
-          "name": "突破指引",
-          "description": "如何整合前三张牌的信息来采取行动、实现突破或重新校准方向"
+          "name": "可能结果",
+          "description": "基于当前路径的预期结局或发展趋势"
         }
       ]
     },
     {
       "id": "five_card_spread",
-      "name": "五牌阵",
-      "englishName": "Five-Card Strategic Spread",
-      "description": "用于重要抉择或阶段性总结，透过五个关键位置评估局势、资源、挑战与最优策略",
+      "name": "五牌阵（关系/选择牌阵）",
+      "englishName": "Five-Card Relationship & Choice Spread",
+      "description": "四牌阵的扩展版，提供更多维度，特别适合涉及选择或关系的场景。可灵活调整布局，平衡深度与简便，适合对情感、合作或方案比较做全面评估。",
       "cardCount": 5,
       "positions": [
         {
           "id": 1,
-          "name": "现状核心",
-          "description": "当下正在发生的情况、问题的核心焦点"
+          "name": "过去影响",
+          "description": "事件的根源或历史背景，为当前局势奠定基调"
         },
         {
           "id": 2,
-          "name": "支持力量",
-          "description": "可依赖的助力、环境中对你有利的人事物"
+          "name": "当前状况",
+          "description": "现在的情形与主要动力，展现当下的张力与机会"
         },
         {
           "id": 3,
-          "name": "挑战/风险",
-          "description": "潜在的阻碍、需要规避的风险或可能失控的部分"
+          "name": "隐藏因素",
+          "description": "尚未察觉的机遇或挑战，需要特别留意的潜在变量"
         },
         {
           "id": 4,
-          "name": "策略建议",
-          "description": "可采取的方案、调整方向或值得坚持的核心原则"
+          "name": "行动指导",
+          "description": "建议采取的步骤或整合策略，为决策提供方向"
         },
         {
           "id": 5,
-          "name": "结果与启示",
-          "description": "综合前四张牌的指引后可能达成的结果与最终领悟"
+          "name": "未来展望",
+          "description": "可能的发展方向或结果，帮助评估下一阶段的走向"
         }
       ]
     },

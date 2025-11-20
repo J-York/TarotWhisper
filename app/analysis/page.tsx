@@ -40,6 +40,17 @@ interface Spread {
   }>
 }
 
+const spreadPromptGuidance: Record<string, { system?: string; user?: string }> = {
+  four_card_spread: {
+    system: `当牌阵为“四牌阵（直指核心牌阵）”时，请以快速问题诊断与决策支持为核心，依照“核心问题→影响因素→行动建议→可能结果”的线性逻辑展开。强调它适合工作、学习或日常困境的因果分析，在有限时间内给出务实、可执行的指引，并提醒求问者结合个人直觉避免机械解读。`,
+    user: `这是一个强调从问题核心到行动结果的直线流程，适合快速梳理工作、学习或生活决策。请结合四个位置逐步呈现：核心问题的本质、关键影响因素、可执行的行动建议以及可能结果。`,
+  },
+  five_card_spread: {
+    system: `当牌阵为“五牌阵（关系/选择牌阵）”时，请以多角度评估关系或方案选择，依照“过去影响→当前状况→隐藏因素→行动指导→未来展望”的顺序组织内容。比较不同角色或选项的优势与风险，兼顾情感温度与策略分析，帮助求问者看见潜在路径。`,
+    user: `此牌阵适合关系修复、团队合作或二选一决策。请说明过去如何影响现在、当前的动力与张力、潜在变量、建议行动以及未来可能走向，并帮助我权衡不同路径的利弊。`,
+  },
+}
+
 export default function AnalysisPage() {
   const [question, setQuestion] = useState('')
   const [spread, setSpread] = useState<Spread | null>(null)
@@ -147,8 +158,11 @@ export default function AnalysisPage() {
 
       setSelectedModel(effectiveModel)
 
+      // 获取针对特定牌阵的提示词引导
+      const spreadGuidance = spreadPromptGuidance[spread.id]
+
       // 构建系统提示词
-      const systemPrompt = `你是一位专业的塔罗占卜师，具备深厚的神秘学知识和丰富的解读经验。
+      let systemPrompt = `你是一位专业的塔罗占卜师，具备深厚的神秘学知识和丰富的解读经验。
 请基于用户的问题、所选牌阵、以及抽到的每一张牌（位置、牌名与正/逆位）进行准确而深入的整合解读。
 
 解读原则（非常重要）：
@@ -173,6 +187,11 @@ export default function AnalysisPage() {
 - 实用建议与行动指导
 - 专业总结（强调塔罗为参考工具，决策权在个人）`
 
+      // 如果有针对特定牌阵的系统引导，追加到系统提示词
+      if (spreadGuidance?.system) {
+        systemPrompt += `\n\n【牌阵特定指导】\n${spreadGuidance.system}`
+      }
+
       // 构建用户提示词
       const cardsData = cards.map(drawnCard => ({
         position_name: drawnCard.position.name,
@@ -180,7 +199,7 @@ export default function AnalysisPage() {
         orientation: drawnCard.isReversed ? '逆位' : '正位'
       }))
 
-      const userPrompt = `请为我进行专业的塔罗解读 🔮
+      let userPrompt = `请为我进行专业的塔罗解读 🔮
 
 [我的问题]
 ${question}
@@ -192,6 +211,11 @@ ${spread.name}
 ${JSON.stringify({ cards: cardsData }, null, 2)}
 
 请依据以上信息，以中文给出准确而深入的整合解读：既要有整体的故事脉络，也要有每张牌在对应位置的具体含义与建议。请如实反映每张牌的含义，包括负面信息和挑战，并提供平衡的视角和建设性的建议。最后请提醒：塔罗解读仅供参考，最终决策权在我手中。`
+
+      // 如果有针对特定牌阵的用户提示词引导，追加到用户提示词
+      if (spreadGuidance?.user) {
+        userPrompt += `\n\n【牌阵说明】\n${spreadGuidance.user}`
+      }
 
       const requestBody = {
         model: effectiveModel,
