@@ -63,6 +63,69 @@
       ]
     },
     {
+      "id": "four_card_spread",
+      "name": "四牌阵",
+      "englishName": "Four-Card Insight Spread",
+      "description": "从背景、动力、阻碍与突破四个角度拆解问题，帮助快速看清现状并找到可行的推进路径",
+      "cardCount": 4,
+      "positions": [
+        {
+          "id": 1,
+          "name": "背景根源",
+          "description": "事件的起因、旧有模式或影响当前局面的底层因素"
+        },
+        {
+          "id": 2,
+          "name": "可用力量",
+          "description": "你目前拥有的资源、优势或能够被激发的潜能"
+        },
+        {
+          "id": 3,
+          "name": "阻碍与盲点",
+          "description": "需要被正视的挑战、外界限制或自身尚未觉察的盲点"
+        },
+        {
+          "id": 4,
+          "name": "突破指引",
+          "description": "如何整合前三张牌的信息来采取行动、实现突破或重新校准方向"
+        }
+      ]
+    },
+    {
+      "id": "five_card_spread",
+      "name": "五牌阵",
+      "englishName": "Five-Card Strategic Spread",
+      "description": "用于重要抉择或阶段性总结，透过五个关键位置评估局势、资源、挑战与最优策略",
+      "cardCount": 5,
+      "positions": [
+        {
+          "id": 1,
+          "name": "现状核心",
+          "description": "当下正在发生的情况、问题的核心焦点"
+        },
+        {
+          "id": 2,
+          "name": "支持力量",
+          "description": "可依赖的助力、环境中对你有利的人事物"
+        },
+        {
+          "id": 3,
+          "name": "挑战/风险",
+          "description": "潜在的阻碍、需要规避的风险或可能失控的部分"
+        },
+        {
+          "id": 4,
+          "name": "策略建议",
+          "description": "可采取的方案、调整方向或值得坚持的核心原则"
+        },
+        {
+          "id": 5,
+          "name": "结果与启示",
+          "description": "综合前四张牌的指引后可能达成的结果与最终领悟"
+        }
+      ]
+    },
+    {
       "id": "celtic_cross",
       "name": "凯尔特十字",
       "englishName": "Celtic Cross",
