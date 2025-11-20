@@ -64,7 +64,7 @@
     },
     {
       "id": "four_card_spread",
-      "name": "四排阵",
+      "name": "四牌阵",
       "englishName": "Four-Card Insight Spread",
       "description": "从背景、动力、阻碍与突破四个角度拆解问题，帮助快速看清现状并找到可行的推进路径",
       "cardCount": 4,
