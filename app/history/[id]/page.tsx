@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import { historyManager, type ReadingHistory } from '@/utils/historyManager'
+import TarotChat, { ChatMessage } from '@/components/TarotChat'
+import { constructTarotPrompts } from '@/utils/prompts'
+import { getDefaultLlmConfig, isDefaultLlmUsable } from '@/utils/llmConfig'
 
 const cx = (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' ')
@@ -78,12 +81,50 @@ export default function HistoryDetailPage() {
     const params = useParams()
     const [reading, setReading] = useState<ReadingHistory | null>(null)
     const [loading, setLoading] = useState(true)
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+    const [apiConfig, setApiConfig] = useState<{baseUrl: string | null, apiKey: string | null, model: string}>({ baseUrl: null, apiKey: null, model: '' })
 
     useEffect(() => {
         if (params.id && typeof params.id === 'string') {
             const foundReading = historyManager.getReadingById(params.id)
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setReading(foundReading)
+            
+            if (foundReading) {
+               // Construct Chat History
+               const { systemPrompt, userPrompt } = constructTarotPrompts(
+                  foundReading.question,
+                  foundReading.spreadName,
+                  foundReading.spreadId,
+                  foundReading.drawnCards
+               )
+               setChatHistory([
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                  { role: 'assistant', content: foundReading.analysis }
+               ])
+
+               // Load API Config
+               const localBaseUrl = localStorage.getItem('tarot_api_base_url')?.trim() || null
+               const localApiKey = localStorage.getItem('tarot_api_key')?.trim() || null
+               const localModel = localStorage.getItem('tarot_api_model')?.trim() || ''
+               
+               const hasLocalConfig = Boolean(localBaseUrl && localApiKey)
+               const defaultConfig = getDefaultLlmConfig()
+               const useDefaultConfig = !hasLocalConfig && isDefaultLlmUsable()
+
+               const effectiveModel =
+                 (hasLocalConfig ? localModel : null) ??
+                 (useDefaultConfig ? defaultConfig.model : null) ??
+                 'gpt-4o-mini'
+               
+               setApiConfig({
+                  baseUrl: localBaseUrl,
+                  apiKey: localApiKey,
+                  model: effectiveModel
+               })
+            }
+
             setLoading(false)
         }
     }, [params.id])
@@ -239,6 +280,12 @@ export default function HistoryDetailPage() {
                                 </ReactMarkdown>
                             </div>
                         </div>
+
+                         {/* Chat Section */}
+                         <TarotChat 
+                            initialHistory={chatHistory} 
+                            apiConfig={apiConfig}
+                         />
                     </div>
                 </div>
             </div>

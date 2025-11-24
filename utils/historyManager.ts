@@ -1,4 +1,4 @@
-interface TarotCard {
+export interface TarotCard {
   id: string | number
   name: string
   englishName: string
@@ -7,7 +7,7 @@ interface TarotCard {
   reversedKeywords: string[]
 }
 
-interface DrawnCard {
+export interface DrawnCard {
   card: TarotCard
   isReversed: boolean
   position: {
