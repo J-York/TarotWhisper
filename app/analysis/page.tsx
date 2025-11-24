@@ -5,27 +5,10 @@ import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import spreadsData from '../../data/spreads.json'
 import TarotCard from '../../components/TarotCard'
+import TarotChat, { ChatMessage } from '../../components/TarotChat'
 import { getDefaultLlmConfig, isDefaultLlmUsable } from '@/utils/llmConfig'
-import { historyManager } from '@/utils/historyManager'
-
-interface TarotCard {
-  id: string | number
-  name: string
-  englishName: string
-  suit: string
-  uprightKeywords: string[]
-  reversedKeywords: string[]
-}
-
-interface DrawnCard {
-  card: TarotCard
-  isReversed: boolean
-  position: {
-    id: number
-    name: string
-    description: string
-  }
-}
+import { historyManager, type DrawnCard } from '@/utils/historyManager'
+import { constructTarotPrompts } from '@/utils/prompts'
 
 interface Spread {
   id: string
@@ -38,17 +21,6 @@ interface Spread {
     name: string
     description: string
   }>
-}
-
-const spreadPromptGuidance: Record<string, { system?: string; user?: string }> = {
-  four_card_spread: {
-    system: `当牌阵为“四牌阵（直指核心牌阵）”时，请以快速问题诊断与决策支持为核心，依照“核心问题→影响因素→行动建议→可能结果”的线性逻辑展开。强调它适合工作、学习或日常困境的因果分析，在有限时间内给出务实、可执行的指引，并提醒求问者结合个人直觉避免机械解读。`,
-    user: `这是一个强调从问题核心到行动结果的直线流程，适合快速梳理工作、学习或生活决策。请结合四个位置逐步呈现：核心问题的本质、关键影响因素、可执行的行动建议以及可能结果。`,
-  },
-  five_card_spread: {
-    system: `当牌阵为“五牌阵（关系/选择牌阵）”时，请以多角度评估关系或方案选择，依照“过去影响→当前状况→隐藏因素→行动指导→未来展望”的顺序组织内容。比较不同角色或选项的优势与风险，兼顾情感温度与策略分析，帮助求问者看见潜在路径。`,
-    user: `此牌阵适合关系修复、团队合作或二选一决策。请说明过去如何影响现在、当前的动力与张力、潜在变量、建议行动以及未来可能走向，并帮助我权衡不同路径的利弊。`,
-  },
 }
 
 export default function AnalysisPage() {
@@ -65,6 +37,9 @@ export default function AnalysisPage() {
   const [hasCustomApiConfig, setHasCustomApiConfig] = useState(false)
   const [customApiBaseUrl, setCustomApiBaseUrl] = useState<string | null>(null)
   const [customApiKey, setCustomApiKey] = useState<string | null>(null)
+  
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+
   const router = useRouter()
   const analysisContainerRef = useRef<HTMLDivElement>(null)
 
@@ -122,6 +97,7 @@ export default function AnalysisPage() {
     setAnalysis('')
     setIsLoading(true)
     setError('')
+    setChatHistory([]) // Reset chat history on new analysis
 
     let success = false
 
@@ -158,64 +134,13 @@ export default function AnalysisPage() {
 
       setSelectedModel(effectiveModel)
 
-      // 获取针对特定牌阵的提示词引导
-      const spreadGuidance = spreadPromptGuidance[spread.id]
-
-      // 构建系统提示词
-      let systemPrompt = `你是一位专业的塔罗占卜师，具备深厚的神秘学知识和丰富的解读经验。
-请基于用户的问题、所选牌阵、以及抽到的每一张牌（位置、牌名与正/逆位）进行准确而深入的整合解读。
-
-解读原则（非常重要）：
-- 保持客观中立，如实反映每张牌的含义，无论是正面还是负面信息。
-- 对于逆位牌或负面牌义，不要刻意美化或回避，而要诚实地指出潜在的挑战、阻碍或警示。
-- 适量使用符合情境的表情符号（如 ✨🌙🔮🌟），但保持专业度，避免过度使用。
-- 提供平衡的视角：既要指出困难和挑战，也要给出建设性的应对建议。
-- 明确塔罗解读仅供参考，最终的决定权在求问者手中。
-
-解读方法：
-1. 综合叙事：将所有牌连成一个完整的故事，展现它们之间的关联与发展脉络。
-2. 位置语境：严格按照每张牌在牌阵中的位置来解释其特定含义。
-3. 正逆位准确性：准确区分正位与逆位的不同含义，逆位时要如实反映其阻滞、内化或负面的特质。
-4. 平衡表述：使用"这表明…/这揭示…/这警示…"等客观表述，避免过度乐观或悲观。
-5. 专业边界：不提供医疗、法律或具体投资建议；涉及相关领域时，建议咨询专业人士。
-6. 结构清晰：使用明确的小标题和条列，便于理解。
-
-输出结构：
-- 整体能量分析与核心主题
-- 逐张牌的位置解读（明确标注牌名与正/逆位）
-- 牌组间的互动关系与发展趋势
-- 实用建议与行动指导
-- 专业总结（强调塔罗为参考工具，决策权在个人）`
-
-      // 如果有针对特定牌阵的系统引导，追加到系统提示词
-      if (spreadGuidance?.system) {
-        systemPrompt += `\n\n【牌阵特定指导】\n${spreadGuidance.system}`
-      }
-
-      // 构建用户提示词
-      const cardsData = cards.map(drawnCard => ({
-        position_name: drawnCard.position.name,
-        card_name: drawnCard.card.name,
-        orientation: drawnCard.isReversed ? '逆位' : '正位'
-      }))
-
-      let userPrompt = `请为我进行专业的塔罗解读 🔮
-
-[我的问题]
-${question}
-
-[我选择的牌阵]
-${spread.name}
-
-[我抽到的牌]
-${JSON.stringify({ cards: cardsData }, null, 2)}
-
-请依据以上信息，以中文给出准确而深入的整合解读：既要有整体的故事脉络，也要有每张牌在对应位置的具体含义与建议。请如实反映每张牌的含义，包括负面信息和挑战，并提供平衡的视角和建设性的建议。最后请提醒：塔罗解读仅供参考，最终决策权在我手中。`
-
-      // 如果有针对特定牌阵的用户提示词引导，追加到用户提示词
-      if (spreadGuidance?.user) {
-        userPrompt += `\n\n【牌阵说明】\n${spreadGuidance.user}`
-      }
+      // 使用工具函数构建提示词
+      const { systemPrompt, userPrompt } = constructTarotPrompts(
+        question,
+        spread.name,
+        spread.id,
+        cards
+      )
 
       const requestBody = {
         model: effectiveModel,
@@ -295,6 +220,12 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
 
       if (hasContent) {
         success = true
+        setChatHistory([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+          { role: 'assistant', content: analysisText }
+        ])
+
         try {
           historyManager.saveReading(
             question,
@@ -645,92 +576,104 @@ ${JSON.stringify({ cards: cardsData }, null, 2)}
                     等待分析开始...
                   </div>
                 )}
-              </div>
 
-              {/* Reinterpret Section */}
-              {analysis && hasCustomApiConfig && (
-                <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-6">
-                  <div className="mb-4 flex items-center gap-3">
-                    <span className="text-xl">🔄</span>
-                    <div>
-                      <h3 className="text-sm font-bold text-white">
-                        重新解读
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        尝试使用其他模型获取不同的视角
-                      </p>
+                {/* Chat Section */}
+                {analysis && (
+                   <TarotChat 
+                      initialHistory={chatHistory} 
+                      apiConfig={{
+                         baseUrl: customApiBaseUrl,
+                         apiKey: customApiKey,
+                         model: selectedModel
+                      }}
+                   />
+                )}
+                
+                {/* Reinterpret Section */}
+                {analysis && hasCustomApiConfig && (
+                  <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-6">
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className="text-xl">🔄</span>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">
+                          重新解读
+                        </h3>
+                        <p className="text-xs text-slate-400">
+                          尝试使用其他模型获取不同的视角
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  {modelMessage && (
-                    <div
-                      className={`mb-4 rounded-xl border p-3 text-xs font-medium ${modelMessage.includes('成功') || modelMessage.includes('✅')
-                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                          : modelMessage.includes('❌') || modelMessage.includes('失败')
-                            ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                            : 'border-sky-500/30 bg-sky-500/10 text-sky-400'
-                        }`}
-                    >
-                      {modelMessage}
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <button
-                      onClick={handleFetchModels}
-                      disabled={isFetchingModels || isLoading}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 hover:bg-white/10 transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isFetchingModels
-                        ? '获取中...'
-                        : availableModels.length > 0
-                          ? '🔁 刷新模型列表'
-                          : '📋 获取模型列表'}
-                    </button>
-
-                    {availableModels.length > 0 && (
-                      <div className="space-y-4 animate-fade-in">
-                        <div>
-                          <select
-                            id="modelSelect"
-                            value={selectedModel}
-                            onChange={(e) => setSelectedModel(e.target.value)}
-                            disabled={isLoading}
-                            className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-sm text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 appearance-none cursor-pointer"
-                          >
-                            <option value="">请选择模型</option>
-                            {availableModels.map((modelId) => (
-                              <option key={modelId} value={modelId} className="bg-slate-900">
-                                {modelId}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex gap-3">
-                          <button
-                            onClick={handleReinterpret}
-                            disabled={!selectedModel || isLoading}
-                            className="flex-1 rounded-xl bg-primary hover:bg-primary/90 px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-50"
-                          >
-                            {isLoading ? '解读中...' : '✨ 开始解读'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setAvailableModels([])
-                              setModelMessage('')
-                            }}
-                            disabled={isLoading}
-                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-400 hover:text-white transition-all disabled:opacity-50"
-                          >
-                            隐藏
-                          </button>
-                        </div>
+                    {modelMessage && (
+                      <div
+                        className={`mb-4 rounded-xl border p-3 text-xs font-medium ${modelMessage.includes('成功') || modelMessage.includes('✅')
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                            : modelMessage.includes('❌') || modelMessage.includes('失败')
+                              ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                              : 'border-sky-500/30 bg-sky-500/10 text-sky-400'
+                          }`}
+                      >
+                        {modelMessage}
                       </div>
                     )}
+
+                    <div className="space-y-4">
+                      <button
+                        onClick={handleFetchModels}
+                        disabled={isFetchingModels || isLoading}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 hover:bg-white/10 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isFetchingModels
+                          ? '获取中...'
+                          : availableModels.length > 0
+                            ? '🔁 刷新模型列表'
+                            : '📋 获取模型列表'}
+                      </button>
+
+                      {availableModels.length > 0 && (
+                        <div className="space-y-4 animate-fade-in">
+                          <div>
+                            <select
+                              id="modelSelect"
+                              value={selectedModel}
+                              onChange={(e) => setSelectedModel(e.target.value)}
+                              disabled={isLoading}
+                              className="w-full rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-sm text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 appearance-none cursor-pointer"
+                            >
+                              <option value="">请选择模型</option>
+                              {availableModels.map((modelId) => (
+                                <option key={modelId} value={modelId} className="bg-slate-900">
+                                  {modelId}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={handleReinterpret}
+                              disabled={!selectedModel || isLoading}
+                              className="flex-1 rounded-xl bg-primary hover:bg-primary/90 px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-50"
+                            >
+                              {isLoading ? '解读中...' : '✨ 开始解读'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setAvailableModels([])
+                                setModelMessage('')
+                              }}
+                              disabled={isLoading}
+                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-400 hover:text-white transition-all disabled:opacity-50"
+                            >
+                              隐藏
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
