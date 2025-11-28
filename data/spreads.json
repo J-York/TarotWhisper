@@ -4,7 +4,7 @@
       "id": "single_card",
       "name": "单张牌",
       "englishName": "One-Card Draw",
-      "description": "用于快速获得当日指引或对一个简单问题的核心洞察",
+      "description": "用于快速获得当日指引，或对简单问题进行核心洞察",
       "cardCount": 1,
       "positions": [
         {
@@ -18,7 +18,7 @@
       "id": "three_card_time",
       "name": "三张牌（时间流）",
       "englishName": "Three-Card Spread (Past-Present-Future)",
-      "description": "最常用的牌阵之一，展现问题的时间发展脉络",
+      "description": "最常用的基础牌阵，清晰展现问题的时间发展脉络",
       "cardCount": 3,
       "positions": [
         {
@@ -42,7 +42,7 @@
       "id": "three_card_mind_body_spirit",
       "name": "三张牌（身心灵）",
       "englishName": "Three-Card Spread (Mind-Body-Spirit)",
-      "description": "从身心灵三个层面全面分析问题",
+      "description": "从身、心、灵三个层面全面分析，探索内在状态与平衡",
       "cardCount": 3,
       "positions": [
         {
@@ -66,7 +66,7 @@
       "id": "four_card_spread",
       "name": "四牌阵（直指核心牌阵）",
       "englishName": "Four-Card Core Insight Spread",
-      "description": "简单高效的塔罗排阵，适合快速分析问题并提供实用指导。强调从问题核心到行动建议的逻辑流程，适用于工作、学习或日常困境的诊断与决策支持。",
+      "description": "简单高效，从核心问题推导至行动建议，适合日常决策",
       "cardCount": 4,
       "positions": [
         {
@@ -95,7 +95,7 @@
       "id": "five_card_spread",
       "name": "五牌阵（关系/选择牌阵）",
       "englishName": "Five-Card Relationship & Choice Spread",
-      "description": "四牌阵的扩展版，提供更多维度，特别适合涉及选择或关系的场景。可灵活调整布局，平衡深度与简便，适合对情感、合作或方案比较做全面评估。",
+      "description": "四牌阵进阶版，多维度视角，特别适合复杂选择或人际关系",
       "cardCount": 5,
       "positions": [
         {
@@ -129,7 +129,7 @@
       "id": "celtic_cross",
       "name": "凯尔特十字",
       "englishName": "Celtic Cross",
-      "description": "经典且深入的牌阵，提供对问题的全景式分析",
+      "description": "最经典的深度牌阵，全方位剖析问题背景、现状与未来",
       "cardCount": 10,
       "positions": [
         {
