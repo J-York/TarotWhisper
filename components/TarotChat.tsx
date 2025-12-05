@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 export interface ChatMessage {
@@ -21,20 +21,12 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
   const [history, setHistory] = useState<ChatMessage[]>(initialHistory)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
      if (initialHistory.length > 0) {
         setHistory(initialHistory)
      }
   }, [initialHistory])
-
-  const scrollToBottom = () => {
-    // Small delay to ensure DOM update
-    setTimeout(() => {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,7 +37,6 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
     setHistory(newHistory)
     setInput('')
     setIsLoading(true)
-    scrollToBottom()
 
     try {
       const requestBody = {
@@ -106,7 +97,6 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
                   updated[updated.length - 1] = { role: 'assistant', content: assistantMsgContent }
                   return updated
                 })
-                scrollToBottom()
               }
             } catch {}
           }
@@ -117,7 +107,6 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
       setHistory(prev => [...prev, { role: 'assistant', content: '⚠️ 连接断开，请重试。' }])
     } finally {
       setIsLoading(false)
-      scrollToBottom()
     }
   }
 
@@ -130,21 +119,21 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
          <span>💬</span> 塔罗师对话
        </h3>
        
-       <div className="space-y-6 mb-6">
+       <div className="space-y-6 mb-6 max-h-[400px] overflow-y-auto">
           {followUpMessages.map((msg, idx) => (
              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                   msg.role === 'user' 
+                   msg.role === 'user'
                    ? 'bg-primary text-white rounded-br-none'
                    : 'bg-white/10 text-slate-200 rounded-bl-none'
                 }`}>
                    <div className="prose prose-invert prose-sm max-w-none">
-                     <ReactMarkdown>{msg.content}</ReactMarkdown>
+                     <ReactMarkdown>{msg.content || '...'}</ReactMarkdown>
                    </div>
                 </div>
              </div>
           ))}
-          {isLoading && (
+          {isLoading && (followUpMessages.length === 0 || followUpMessages[followUpMessages.length - 1]?.content !== '') && (
              <div className="flex justify-start">
                 <div className="bg-white/10 rounded-2xl rounded-bl-none px-4 py-3">
                    <div className="flex gap-1">
@@ -155,7 +144,6 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
                 </div>
              </div>
           )}
-          <div ref={chatEndRef} />
        </div>
 
        <form onSubmit={handleSubmit} className="relative">

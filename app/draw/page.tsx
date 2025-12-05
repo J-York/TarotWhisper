@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import tarotCardsData from '../../data/tarot-cards.json'
 import spreadsData from '../../data/spreads.json'
-import SpreadLayout from '../../components/SpreadLayout'
+import FanDeck from '../../components/FanDeck'
+import FlyingCard from '../../components/FlyingCard'
+import FlipCard from '../../components/FlipCard'
 
 interface TarotCard {
   id: string | number
@@ -38,15 +40,24 @@ interface Spread {
   }>
 }
 
+interface FlyingCardData {
+  card: TarotCard
+  isReversed: boolean
+  positionId: number
+  startPosition: { x: number; y: number }
+  endPosition: { x: number; y: number }
+}
+
 export default function DrawPage() {
   const [question, setQuestion] = useState('')
   const [spread, setSpread] = useState<Spread | null>(null)
-  const [, setAllCards] = useState<TarotCard[]>([])
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([])
-  const [currentCardIndex, setCurrentCardIndex] = useState(0)
-  const [isDrawing, setIsDrawing] = useState(false)
   const [shuffledDeck, setShuffledDeck] = useState<TarotCard[]>([])
-  const [drawingPositionId, setDrawingPositionId] = useState<number | null>(null)
+  const [selectedCardIndices, setSelectedCardIndices] = useState<number[]>([])
+  const [currentPositionIndex, setCurrentPositionIndex] = useState(0)
+  const [flyingCard, setFlyingCard] = useState<FlyingCardData | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const positionRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const router = useRouter()
 
   useEffect(() => {
@@ -59,7 +70,6 @@ export default function DrawPage() {
       return
     }
 
-    // 使用 setTimeout 避免同步 setState
     setTimeout(() => {
       setQuestion(savedQuestion)
 
@@ -100,8 +110,6 @@ export default function DrawPage() {
         })
       })
 
-      setAllCards(cards)
-
       // 洗牌 - Fisher-Yates 算法
       const shuffled = [...cards]
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -112,49 +120,236 @@ export default function DrawPage() {
     }, 0)
   }, [router])
 
-  const drawCardAtPosition = (positionId: number) => {
-    if (!spread || isDrawing || currentCardIndex >= spread.cardCount) return
-
-    // 检查该位置是否已经抽过牌
-    const alreadyDrawn = drawnCards.some(card => card.position.id === positionId)
-    if (alreadyDrawn) return
-
-    setIsDrawing(true)
-    setDrawingPositionId(positionId)
-
-    // 模拟抽牌动画延迟
-    setTimeout(() => {
-      const card = shuffledDeck[currentCardIndex]
-      const isReversed = Math.random() < 0.5 // 50% 概率逆位
-      const position = spread.positions.find(p => p.id === positionId)!
-
-      const drawnCard: DrawnCard = {
-        card,
-        isReversed,
-        position
+  // 获取位置元素的中心坐标
+  const getPositionCenter = useCallback((positionId: number) => {
+    const element = positionRefs.current.get(positionId)
+    if (element) {
+      const rect = element.getBoundingClientRect()
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
       }
+    }
+    return { x: window.innerWidth / 2, y: 200 }
+  }, [])
 
-      setDrawnCards(prev => [...prev, drawnCard])
-      setCurrentCardIndex(prev => prev + 1)
-      setIsDrawing(false)
-      setDrawingPositionId(null)
-    }, 1000)
-  }
+  // 处理从扇形牌堆选牌
+  const handleCardSelect = useCallback((cardIndex: number) => {
+    if (!spread || isAnimating || currentPositionIndex >= spread.cardCount) return
+
+    setIsAnimating(true)
+    setSelectedCardIndices(prev => [...prev, cardIndex])
+
+    const card = shuffledDeck[cardIndex]
+    const isReversed = Math.random() < 0.5
+    const currentPosition = spread.positions[currentPositionIndex]
+
+    // 计算起始位置（扇形牌堆的大致中心）
+    const startPosition = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight - 200
+    }
+
+    // 计算目标位置
+    const endPosition = getPositionCenter(currentPosition.id)
+
+    // 设置飞行中的牌
+    setFlyingCard({
+      card,
+      isReversed,
+      positionId: currentPosition.id,
+      startPosition,
+      endPosition
+    })
+  }, [spread, isAnimating, currentPositionIndex, shuffledDeck, getPositionCenter])
+
+  // 飞行动画完成后的处理
+  const handleFlyingComplete = useCallback(() => {
+    if (!flyingCard || !spread) return
+
+    const position = spread.positions.find(p => p.id === flyingCard.positionId)!
+    
+    const drawnCard: DrawnCard = {
+      card: flyingCard.card,
+      isReversed: flyingCard.isReversed,
+      position
+    }
+
+    setDrawnCards(prev => [...prev, drawnCard])
+    setCurrentPositionIndex(prev => prev + 1)
+    setFlyingCard(null)
+    setIsAnimating(false)
+  }, [flyingCard, spread])
 
   // 获取指定位置的已抽牌
   const getCardAtPosition = (positionId: number): DrawnCard | null => {
     return drawnCards.find(card => card.position.id === positionId) || null
   }
 
-  // 检查位置是否可以抽牌
-  const canDrawAtPosition = (positionId: number): boolean => {
-    return !getCardAtPosition(positionId) && !isDrawing
-  }
-
   const handleAnalyze = () => {
-    // 保存抽牌结果到 sessionStorage
     sessionStorage.setItem('tarot_drawn_cards', JSON.stringify(drawnCards))
     router.push('/analysis')
+  }
+
+  // 渲染牌阵位置
+  const renderPosition = (position: { id: number; name: string; description: string }, className: string = '') => {
+    const drawnCard = getCardAtPosition(position.id)
+    const isNextPosition = currentPositionIndex < (spread?.cardCount || 0) && 
+                          spread?.positions[currentPositionIndex]?.id === position.id
+
+    return (
+      <div
+        key={position.id}
+        className={`group relative flex flex-col items-center pt-14 ${className}`}
+      >
+        {/* Position Label */}
+        <div className="absolute top-0 left-1/2 z-10 -translate-x-1/2">
+          <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(124,58,237,0.3)] backdrop-blur whitespace-nowrap transition-all ${
+            isNextPosition 
+              ? 'border-primary bg-primary/30 text-white animate-pulse' 
+              : 'border-primary/30 bg-black/60 text-primary-foreground'
+          }`}>
+            <span className="text-[10px]">✦</span>
+            <span>{position.name}</span>
+            {isNextPosition && <span className="ml-1">← 下一张</span>}
+          </div>
+        </div>
+
+        {/* Card Slot - 固定尺寸避免抖动 */}
+        <div
+          ref={(el) => {
+            if (el) positionRefs.current.set(position.id, el)
+          }}
+          className={`relative flex w-32 items-center justify-center rounded-xl border ${
+            isNextPosition
+              ? 'border-primary border-2 bg-primary/20 shadow-[0_0_40px_rgba(124,58,237,0.5)] animate-pulse-glow'
+              : drawnCard
+              ? 'border-white/20 bg-black/20'
+              : 'border-dashed border-white/10 bg-black/20'
+          }`}
+          style={{
+            aspectRatio: '2/3.5',
+            // 只对边框和阴影应用过渡，不对所有属性
+            transition: 'border-color 0.3s, box-shadow 0.3s, background-color 0.3s'
+          }}
+        >
+          {/* 内容容器 - 绝对定位避免布局变化 */}
+          <div className="absolute inset-0">
+            {drawnCard ? (
+              <FlipCard
+                cardId={drawnCard.card.id}
+                cardName=""
+                englishName=""
+                isReversed={drawnCard.isReversed}
+                autoFlip={true}
+                flipDelay={100}
+                className="w-full h-full"
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm z-10 px-2">
+                {isNextPosition ? (
+                  <span className="text-primary font-bold">等待选牌...</span>
+                ) : (
+                  <span className="text-slate-500 text-xs uppercase tracking-widest">
+                    {currentPositionIndex > spread!.positions.findIndex(p => p.id === position.id) ? '已跳过' : '等待中'}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card Name (After Drawn) */}
+        {drawnCard && (
+          <div className="mt-4 w-36 text-center animate-fade-in">
+            <div className="text-sm font-bold text-white mb-0.5">
+              {drawnCard.card.name}
+            </div>
+            <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+              {drawnCard.card.englishName}
+            </div>
+            {drawnCard.isReversed && (
+              <div className="text-[10px] text-amber-400 mt-1">逆位</div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // 渲染牌阵布局
+  const renderSpreadLayout = () => {
+    if (!spread) return null
+
+    switch (spread.id) {
+      case 'single_card':
+        return (
+          <div className="flex justify-center items-center min-h-[300px]">
+            {renderPosition(spread.positions[0])}
+          </div>
+        )
+
+      case 'three_card_time':
+      case 'three_card_mind_body_spirit':
+        return (
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 min-h-[300px]">
+            {spread.positions.map((position, index) =>
+              renderPosition(position, index === 1 ? 'md:-mt-12' : '')
+            )}
+          </div>
+        )
+
+      case 'celtic_cross':
+        return (
+          <div className="min-h-[700px] max-w-6xl mx-auto px-4 py-8 overflow-x-auto">
+            <div className="min-w-[700px] grid grid-cols-7 gap-6 max-w-5xl mx-auto">
+              {/* Center Cross & Surrounding */}
+              <div className="col-span-5 grid grid-cols-5 grid-rows-3 gap-4">
+                {/* Top: Possible Future */}
+                <div className="col-start-3 row-start-1 flex justify-center">
+                  {renderPosition(spread.positions[4])}
+                </div>
+
+                {/* Middle Row */}
+                <div className="col-start-2 row-start-2 flex justify-center items-center">
+                  {renderPosition(spread.positions[3])}
+                </div>
+                <div className="col-start-3 row-start-2 flex justify-center items-center relative">
+                  <div className="absolute z-0">
+                    {renderPosition(spread.positions[0])}
+                  </div>
+                  <div className="absolute z-10 rotate-90 opacity-90">
+                    {renderPosition(spread.positions[1])}
+                  </div>
+                </div>
+                <div className="col-start-4 row-start-2 flex justify-center items-center">
+                  {renderPosition(spread.positions[5])}
+                </div>
+
+                {/* Bottom: Foundation */}
+                <div className="col-start-3 row-start-3 flex justify-center">
+                  {renderPosition(spread.positions[2])}
+                </div>
+              </div>
+
+              {/* Right Staff */}
+              <div className="col-span-2 flex flex-col justify-center gap-4 pl-6 border-l border-white/5">
+                {renderPosition(spread.positions[9])}
+                {renderPosition(spread.positions[8])}
+                {renderPosition(spread.positions[7])}
+                {renderPosition(spread.positions[6])}
+              </div>
+            </div>
+          </div>
+        )
+
+      default:
+        return (
+          <div className="flex flex-wrap justify-center gap-8 min-h-[300px]">
+            {spread.positions.map((position) => renderPosition(position))}
+          </div>
+        )
+    }
   }
 
   if (!spread) {
@@ -185,37 +380,37 @@ export default function DrawPage() {
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[128px] animate-pulse-glow" />
       <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[128px] animate-pulse-glow delay-1000" />
 
-      <div className="relative z-10 container mx-auto px-4 py-8">
+      <div className="relative z-10 container mx-auto px-4 py-6">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-10 space-y-6 animate-slide-up">
+          <div className="text-center mb-6 space-y-4 animate-slide-up">
             <div className="inline-flex items-center justify-center gap-3">
-              <span className="text-4xl animate-float">🔮</span>
-              <h1 className="text-4xl md:text-5xl font-bold font-display tracking-tight">
+              <span className="text-3xl animate-float">🔮</span>
+              <h1 className="text-3xl md:text-4xl font-bold font-display tracking-tight">
                 <span className="text-gradient-mystic">神秘抽牌</span>
               </h1>
             </div>
 
-            <div className="glass-panel rounded-2xl px-8 py-6 max-w-3xl mx-auto">
-              <div className="space-y-3">
-                <p className="text-slate-200 text-base">
-                  <span className="text-primary font-bold uppercase tracking-wider text-xs mr-2">Question</span>
+            <div className="glass-panel rounded-2xl px-6 py-4 max-w-2xl mx-auto">
+              <div className="space-y-2">
+                <p className="text-slate-200 text-sm">
+                  <span className="text-primary font-bold uppercase tracking-wider text-xs mr-2">问题</span>
                   {question}
                 </p>
                 <div className="h-px w-full bg-white/5" />
-                <p className="text-slate-300 text-sm">
-                  <span className="text-secondary font-bold uppercase tracking-wider text-xs mr-2">Spread</span>
-                  {spread.name} <span className="text-slate-500">({spread.cardCount} cards)</span>
+                <p className="text-slate-300 text-xs">
+                  <span className="text-secondary font-bold uppercase tracking-wider text-xs mr-2">牌阵</span>
+                  {spread.name} <span className="text-slate-500">({spread.cardCount} 张牌)</span>
                 </p>
               </div>
             </div>
           </div>
 
           {/* Progress */}
-          <div className="mb-12 max-w-2xl mx-auto animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            <div className="flex justify-between items-end mb-3 px-2">
-              <span className="text-primary/80 text-xs font-bold uppercase tracking-widest">Progress</span>
-              <div className="text-white text-xl font-bold font-display">
+          <div className="mb-6 max-w-xl mx-auto animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            <div className="flex justify-between items-end mb-2 px-2">
+              <span className="text-primary/80 text-xs font-bold uppercase tracking-widest">进度</span>
+              <div className="text-white text-lg font-bold font-display">
                 {drawnCards.length} <span className="text-slate-500 text-sm font-normal">/ {spread.cardCount}</span>
               </div>
             </div>
@@ -229,36 +424,38 @@ export default function DrawPage() {
             </div>
           </div>
 
-          {/* 抽牌指引 */}
+          {/* 牌阵布局 */}
+          <div className="mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            {renderSpreadLayout()}
+          </div>
+
+          {/* 扇形牌堆 - 只在未完成时显示 */}
           {!isComplete && (
-            <div className="text-center mb-12 animate-fade-in">
-              <div className="inline-flex flex-col gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-10 py-6 shadow-[0_0_40px_rgba(124,58,237,0.2)] backdrop-blur-sm">
-                <div className="text-xl font-bold text-white font-display">
-                  {isDrawing ? '✨ 正在抽牌...' : '💫 点击下方位置进行抽牌'}
+            <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+              <div className="text-center mb-4">
+                <div className="inline-flex flex-col gap-1 rounded-2xl border border-primary/30 bg-primary/10 px-8 py-4 shadow-[0_0_40px_rgba(124,58,237,0.2)] backdrop-blur-sm">
+                  <div className="text-lg font-bold text-white font-display">
+                    {isAnimating ? '✨ 牌正在飞向牌阵...' : '💫 从下方牌堆中选择一张牌'}
+                  </div>
+                  <p className="text-primary-foreground/80 text-xs">
+                    将鼠标悬停在牌上感应，点击选择你心仪的那一张
+                  </p>
                 </div>
-                <p className="text-primary-foreground/80 text-sm">
-                  请按照牌阵布局，点击相应位置抽取塔罗牌
-                </p>
               </div>
+              
+              <FanDeck
+                totalCards={shuffledDeck.length}
+                selectedCards={selectedCardIndices}
+                onCardSelect={handleCardSelect}
+                disabled={isAnimating}
+                className="mt-4"
+              />
             </div>
           )}
 
-          {/* 牌阵布局 */}
-          <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            <SpreadLayout
-              spreadId={spread.id}
-              positions={spread.positions}
-              drawnCards={drawnCards}
-              onPositionClick={drawCardAtPosition}
-              canDrawAtPosition={canDrawAtPosition}
-              isDrawing={isDrawing}
-              drawingPositionId={drawingPositionId}
-            />
-          </div>
-
           {/* Complete Button */}
           {isComplete && (
-            <div className="text-center animate-float">
+            <div className="text-center animate-float mt-8">
               <button
                 onClick={handleAnalyze}
                 className="group relative px-12 py-4 rounded-full bg-gradient-to-r from-primary via-purple-500 to-secondary text-white font-bold text-lg tracking-wide shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:shadow-[0_0_50px_rgba(124,58,237,0.7)] hover:scale-105 transition-all duration-300"
@@ -272,7 +469,7 @@ export default function DrawPage() {
           )}
 
           {/* Back Button */}
-          <div className="text-center mt-16">
+          <div className="text-center mt-12">
             <button
               onClick={() => router.push('/')}
               className="px-6 py-2 rounded-full glass-button text-sm font-medium text-slate-400 hover:text-white flex items-center gap-2 mx-auto"
@@ -282,6 +479,19 @@ export default function DrawPage() {
           </div>
         </div>
       </div>
+
+      {/* Flying Card Animation */}
+      {flyingCard && (
+        <FlyingCard
+          cardId={flyingCard.card.id}
+          cardName={flyingCard.card.name}
+          englishName={flyingCard.card.englishName}
+          isReversed={flyingCard.isReversed}
+          startPosition={flyingCard.startPosition}
+          endPosition={flyingCard.endPosition}
+          onAnimationComplete={handleFlyingComplete}
+        />
+      )}
     </div>
   )
 }
