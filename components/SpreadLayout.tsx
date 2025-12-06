@@ -1,20 +1,5 @@
 import FlipCard from './FlipCard'
-
-interface Position {
-  id: number
-  name: string
-  description: string
-}
-
-interface DrawnCard {
-  card: {
-    id: string | number
-    name: string
-    englishName: string
-  }
-  isReversed: boolean
-  position: Position
-}
+import type { Position, DrawnCard } from '@/types/tarot'
 
 interface SpreadLayoutProps {
   spreadId: string

@@ -1,31 +1,6 @@
-export interface TarotCard {
-  id: string | number
-  name: string
-  englishName: string
-  suit: string
-  uprightKeywords: string[]
-  reversedKeywords: string[]
-}
+import type { TarotCard, DrawnCard, ReadingHistory } from '@/types/tarot'
 
-export interface DrawnCard {
-  card: TarotCard
-  isReversed: boolean
-  position: {
-    id: number
-    name: string
-    description: string
-  }
-}
-
-export interface ReadingHistory {
-  id: string
-  timestamp: number
-  question: string
-  spreadName: string
-  spreadId: string
-  drawnCards: DrawnCard[]
-  analysis: string
-}
+export type { TarotCard, DrawnCard, ReadingHistory }
 
 const HISTORY_STORAGE_KEY = 'tarot_reading_history'
 const MAX_HISTORY_ITEMS = 50

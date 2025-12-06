@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { historyManager, type ReadingHistory } from '@/utils/historyManager'
+import { historyManager } from '@/utils/historyManager'
+import { useToast } from '@/components/Toast'
+import type { ReadingHistory } from '@/types/tarot'
 
 export default function HistoryPage() {
   const router = useRouter()
+  const { showToast } = useToast()
   const [history, setHistory] = useState<ReadingHistory[]>(() => {
     if (typeof window !== 'undefined') {
       return historyManager.getAllHistory()
@@ -15,7 +18,6 @@ export default function HistoryPage() {
 
   useEffect(() => {
     // Hydration fix: ensure we have the latest data after mount
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHistory(historyManager.getAllHistory())
   }, [])
 
@@ -43,9 +45,10 @@ export default function HistoryPage() {
     try {
       historyManager.clearAllHistory()
       setHistory([])
+      showToast('历史记录已清空', 'success')
     } catch (error) {
       console.error('清空历史记录失败:', error)
-      alert('清空失败，请稍后重试。')
+      showToast('清空失败，请稍后重试', 'error')
     }
   }
 

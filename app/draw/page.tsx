@@ -7,37 +7,11 @@ import spreadsData from '../../data/spreads.json'
 import FanDeck from '../../components/FanDeck'
 import FlyingCard from '../../components/FlyingCard'
 import FlipCard from '../../components/FlipCard'
+import type { TarotCard, DrawnCard, Spread } from '@/types/tarot'
 
-interface TarotCard {
-  id: string | number
-  name: string
-  englishName: string
-  suit: string
-  uprightKeywords: string[]
-  reversedKeywords: string[]
-}
-
-interface DrawnCard {
-  card: TarotCard
+// 扩展 TarotCard 类型，包含预先决定的正逆位
+interface ShuffledCard extends TarotCard {
   isReversed: boolean
-  position: {
-    id: number
-    name: string
-    description: string
-  }
-}
-
-interface Spread {
-  id: string
-  name: string
-  englishName: string
-  description: string
-  cardCount: number
-  positions: Array<{
-    id: number
-    name: string
-    description: string
-  }>
 }
 
 interface FlyingCardData {
@@ -52,7 +26,7 @@ export default function DrawPage() {
   const [question, setQuestion] = useState('')
   const [spread, setSpread] = useState<Spread | null>(null)
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([])
-  const [shuffledDeck, setShuffledDeck] = useState<TarotCard[]>([])
+  const [shuffledDeck, setShuffledDeck] = useState<ShuffledCard[]>([])
   const [selectedCardIndices, setSelectedCardIndices] = useState<number[]>([])
   const [currentPositionIndex, setCurrentPositionIndex] = useState(0)
   const [flyingCard, setFlyingCard] = useState<FlyingCardData | null>(null)
@@ -80,6 +54,23 @@ export default function DrawPage() {
         return
       }
       setSpread(selectedSpread)
+
+      // 恢复已抽取的牌
+      const savedDrawnCards = sessionStorage.getItem('tarot_drawn_cards')
+      if (savedDrawnCards) {
+        try {
+          const cards = JSON.parse(savedDrawnCards) as DrawnCard[]
+          if (cards.length > 0) {
+            setDrawnCards(cards)
+            setCurrentPositionIndex(cards.length)
+            // 标记已选择的牌的索引（用于在牌堆中隐藏已选的牌）
+            // 注意：由于洗牌是随机的，恢复时无法精确还原已选牌的索引
+            // 但这不影响功能，因为已抽的牌已经显示在牌阵中
+          }
+        } catch (e) {
+          console.error('恢复抽牌数据失败:', e)
+        }
+      }
 
       // 准备所有塔罗牌数据
       const cards: TarotCard[] = []
@@ -110,8 +101,11 @@ export default function DrawPage() {
         })
       })
 
-      // 洗牌 - Fisher-Yates 算法
-      const shuffled = [...cards]
+      // 洗牌 - Fisher-Yates 算法，同时为每张牌预先决定正逆位
+      const shuffled: ShuffledCard[] = cards.map(card => ({
+        ...card,
+        isReversed: Math.random() < 0.5  // 在洗牌时就决定正逆位
+      }))
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
@@ -140,8 +134,9 @@ export default function DrawPage() {
     setIsAnimating(true)
     setSelectedCardIndices(prev => [...prev, cardIndex])
 
-    const card = shuffledDeck[cardIndex]
-    const isReversed = Math.random() < 0.5
+    const shuffledCard = shuffledDeck[cardIndex]
+    // 从洗牌时预先决定的正逆位中获取，而不是此时随机决定
+    const { isReversed, ...card } = shuffledCard
     const currentPosition = spread.positions[currentPositionIndex]
 
     // 计算起始位置（扇形牌堆的大致中心）
@@ -175,11 +170,15 @@ export default function DrawPage() {
       position
     }
 
-    setDrawnCards(prev => [...prev, drawnCard])
+    const newDrawnCards = [...drawnCards, drawnCard]
+    setDrawnCards(newDrawnCards)
     setCurrentPositionIndex(prev => prev + 1)
     setFlyingCard(null)
     setIsAnimating(false)
-  }, [flyingCard, spread])
+    
+    // 实时保存到 sessionStorage，防止页面刷新或跳转后丢失
+    sessionStorage.setItem('tarot_drawn_cards', JSON.stringify(newDrawnCards))
+  }, [flyingCard, spread, drawnCards])
 
   // 获取指定位置的已抽牌
   const getCardAtPosition = (positionId: number): DrawnCard | null => {

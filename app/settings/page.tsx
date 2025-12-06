@@ -55,9 +55,9 @@ export default function SettingsPage() {
       setModel(trimmedModel)
       setMessage('设置已保存成功！')
 
-      // 2秒后跳转到主页
+      // 2秒后返回上一页（保留抽牌状态）
       setTimeout(() => {
-        router.push('/')
+        router.back()
       }, 2000)
     } catch {
       setMessage('保存设置时出现错误，请重试')

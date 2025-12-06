@@ -40,7 +40,16 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # claude code
 .claude/
+
+# IDE
+.idea/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Cache
+.eslintcache

@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import ReactMarkdown, { type Components } from 'react-markdown'
-import { historyManager, type ReadingHistory } from '@/utils/historyManager'
-import TarotChat, { ChatMessage } from '@/components/TarotChat'
+import { historyManager } from '@/utils/historyManager'
+import TarotChat from '@/components/TarotChat'
 import { constructTarotPrompts } from '@/utils/prompts'
 import { getDefaultLlmConfig, isDefaultLlmUsable } from '@/utils/llmConfig'
+import type { ReadingHistory, ChatMessage } from '@/types/tarot'
 
 const cx = (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' ')

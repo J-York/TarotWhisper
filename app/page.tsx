@@ -4,20 +4,15 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import spreadsData from '../data/spreads.json'
 import { isDefaultLlmUsable } from '@/utils/llmConfig'
-
-interface Spread {
-  id: string
-  name: string
-  englishName: string
-  description: string
-  cardCount: number
-}
+import { useToast } from '@/components/Toast'
+import type { Spread } from '@/types/tarot'
 
 export default function Home() {
   const [question, setQuestion] = useState('')
   const [selectedSpread, setSelectedSpread] = useState<string>('')
   const [showApiWarning, setShowApiWarning] = useState(false)
   const router = useRouter()
+  const { showToast } = useToast()
   const defaultLlmUsable = isDefaultLlmUsable()
 
   useEffect(() => {
@@ -34,12 +29,12 @@ export default function Home() {
 
   const handleStartReading = () => {
     if (!question.trim()) {
-      alert('请输入您的问题')
+      showToast('请输入您的问题', 'warning')
       return
     }
 
     if (!selectedSpread) {
-      alert('请选择一个牌阵')
+      showToast('请选择一个牌阵', 'warning')
       return
     }
 
@@ -48,7 +43,7 @@ export default function Home() {
     const hasLocalConfig = Boolean(apiKey && baseUrl)
 
     if (!hasLocalConfig && !defaultLlmUsable) {
-      alert('请先在设置页面配置您的 API')
+      showToast('请先在设置页面配置您的 API', 'warning')
       router.push('/settings')
       return
     }

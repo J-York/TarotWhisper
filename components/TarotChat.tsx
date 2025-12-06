@@ -2,19 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
-}
+import { parseSSEStream } from '@/utils/sseParser'
+import type { ChatMessage, ApiConfig } from '@/types/tarot'
 
 interface TarotChatProps {
   initialHistory: ChatMessage[]
-  apiConfig: {
-    baseUrl: string | null
-    apiKey: string | null
-    model: string
-  }
+  apiConfig: ApiConfig
 }
 
 export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps) {
@@ -71,35 +64,19 @@ export default function TarotChat({ initialHistory, apiConfig }: TarotChatProps)
       const reader = response.body?.getReader()
       if (!reader) throw new Error('No reader')
 
-      const decoder = new TextDecoder()
       let assistantMsgContent = ''
       
       setHistory(prev => [...prev, { role: 'assistant', content: '' }])
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6)
-            if (data === '[DONE]') continue
-            try {
-              const parsed = JSON.parse(data)
-              const content = parsed.choices?.[0]?.delta?.content
-              if (content) {
-                assistantMsgContent += content
-                setHistory(prev => {
-                  const updated = [...prev]
-                  updated[updated.length - 1] = { role: 'assistant', content: assistantMsgContent }
-                  return updated
-                })
-              }
-            } catch {}
-          }
+      for await (const chunk of parseSSEStream(reader)) {
+        const content = chunk.choices?.[0]?.delta?.content
+        if (content) {
+          assistantMsgContent += content
+          setHistory(prev => {
+            const updated = [...prev]
+            updated[updated.length - 1] = { role: 'assistant', content: assistantMsgContent }
+            return updated
+          })
         }
       }
     } catch (error) {
