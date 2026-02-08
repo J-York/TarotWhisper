@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Deep Mystical Palette */
+  --background: #0F0518;
+  --foreground: #E2E8F0;
+  
+  --color-mystic-dark: #0F0518;
+  --color-mystic-purple: #1A0B2E;
+  --color-mystic-gold: #F59E0B;
+  --color-mystic-cyan: #22D3EE;
+  
+  /* Font Variables will be set in layout.tsx */
+  --font-serif-heading: var(--font-cinzel);
 }
 
 @theme inline {
@@ -10,17 +19,126 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-serif: var(--font-cinzel);
+  
+  --color-mystic-dark: var(--color-mystic-dark);
+  --color-mystic-purple: var(--color-mystic-purple);
+  --color-mystic-gold: var(--color-mystic-gold);
+  --color-mystic-cyan: var(--color-mystic-cyan);
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(circle at center top, #2D1B4E 0%, #0F0518 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif-heading), serif;
+  letter-spacing: 0.05em;
+}
+
+/* Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #FDE68A 0%, #D97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px rgba(217, 119, 6, 0.3);
+}
+
+.btn-mystic {
+  background: linear-gradient(to right, #4C1D95, #7C3AED);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fff;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+}
+
+.btn-mystic:hover {
+  background: linear-gradient(to right, #5B21B6, #8B5CF6);
+  box-shadow: 0 0 25px rgba(124, 58, 237, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite;
+}
+
+/* 3D Card Effects */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 5, 24, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.5);
+}
+
+/* Streaming cursor for interpretation */
+.interpretation-content .streaming-cursor {
+  display: inline-block;
+  width: 0.5rem;
+  height: 1.25rem;
+  background-color: rgba(251, 191, 36, 0.8);
+  margin-left: 0.25rem;
+  vertical-align: middle;
+  animation: cursor-blink 1s infinite;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }

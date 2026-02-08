@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:archive.org)",
+      "Bash(node:*)",
+      "Bash(npm install react-markdown)"
+    ]
+  }
+}
