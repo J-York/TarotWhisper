@@ -76,10 +76,18 @@ export function useReading() {
       const decoder = new TextDecoder();
       let buffer = '';
       let fullInterpretation = '';
+      let streamComplete = false;
+      let receivedAnyContent = false;
+      let lastChunkAt = Date.now();
+      const streamIdleTimeoutMs = 8000;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
+        if (Date.now() - lastChunkAt > streamIdleTimeoutMs && receivedAnyContent) {
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -88,12 +96,17 @@ export function useReading() {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
-            if (data === '[DONE]') continue;
+            if (data === '[DONE]') {
+              streamComplete = true;
+              break;
+            }
             try {
               const parsed = JSON.parse(data);
               if (parsed.content) {
                 fullInterpretation += parsed.content;
                 setInterpretation(prev => prev + parsed.content);
+                receivedAnyContent = true;
+                lastChunkAt = Date.now();
               }
               if (parsed.error) {
                 setError(parsed.error);
@@ -101,6 +114,26 @@ export function useReading() {
             } catch {
               // 忽略解析错误
             }
+          }
+        }
+
+        if (streamComplete) break;
+      }
+
+      if (buffer.trim().startsWith('data: ')) {
+        const data = buffer.trim().slice(6);
+        if (data && data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              fullInterpretation += parsed.content;
+              setInterpretation(prev => prev + parsed.content);
+            }
+            if (parsed.error) {
+              setError(parsed.error);
+            }
+          } catch {
+            // 忽略解析错误
           }
         }
       }
@@ -116,6 +149,10 @@ export function useReading() {
           createdAt: new Date(),
         };
         saveReading(reading);
+      }
+
+      if (!fullInterpretation && !error) {
+        setError('未收到有效解读内容，连接可能被网关提前中断');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '解读失败');
