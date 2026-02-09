@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
     }
 
     const contentType = response.headers.get('content-type') || '';
-    const isStreamResponse = contentType.includes('text/event-stream') || contentType.includes('text/plain');
 
     // 如果是非流式 JSON 响应，直接解析并返回
     if (contentType.includes('application/json')) {
@@ -92,13 +91,17 @@ export async function POST(request: NextRequest) {
 
         const decoder = new TextDecoder();
         let buffer = '';
+        let fullResponseBody = '';
+        let hasEmittedContent = false;
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+            fullResponseBody += chunk;
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
@@ -113,6 +116,7 @@ export async function POST(request: NextRequest) {
                 const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content;
                 if (content) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                  hasEmittedContent = true;
                 }
               } catch {
                 // 忽略解析错误
@@ -129,13 +133,29 @@ export async function POST(request: NextRequest) {
                 const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content;
                 if (content) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                  hasEmittedContent = true;
                 }
               } catch {
                 // 忽略解析错误
               }
             }
           }
-        } catch (err) {
+
+          // 如果没有发送任何内容，尝试将整个响应体作为 JSON 解析
+          // 这处理了网关返回完整 JSON 但使用了 text/event-stream content-type 的情况
+          if (!hasEmittedContent && fullResponseBody.trim()) {
+            try {
+              const json = JSON.parse(fullResponseBody.trim());
+              const content = json.choices?.[0]?.message?.content || json.choices?.[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                hasEmittedContent = true;
+              }
+            } catch {
+              // 如果也解析失败，保持静默
+            }
+          }
+        } catch {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: '流读取错误' })}\n\n`));
         } finally {
           reader.releaseLock();
@@ -152,7 +172,7 @@ export async function POST(request: NextRequest) {
         'Connection': 'keep-alive',
       },
     });
-  } catch (error) {
+  } catch {
     return new Response(
       JSON.stringify({ error: '服务器错误' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
