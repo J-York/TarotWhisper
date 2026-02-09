@@ -73,7 +73,9 @@ export async function* streamLLMResponse(
 
         try {
           const json = JSON.parse(trimmed.slice(6)) as LLMStreamResponse;
-          const content = json.choices?.[0]?.delta?.content;
+          // 安全访问choices数组，确保数组不为空
+          const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
+          const content = choice?.delta?.content;
           if (content) {
             yield content;
           }
@@ -111,7 +113,9 @@ export async function callLLM(
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  // 安全访问choices数组，确保数组不为空
+  const choice = data.choices && data.choices.length > 0 ? data.choices[0] : null;
+  return choice?.message?.content || '';
 }
 
 /**

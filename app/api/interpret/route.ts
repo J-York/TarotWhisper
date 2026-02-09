@@ -59,7 +59,9 @@ export async function POST(request: NextRequest) {
     // 如果是非流式 JSON 响应，直接解析并返回
     if (contentType.includes('application/json')) {
       const json = await response.json();
-      const content = json.choices?.[0]?.message?.content || json.choices?.[0]?.delta?.content || '';
+      // 安全访问choices数组，确保数组不为空
+      const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
+      const content = choice?.message?.content || choice?.delta?.content || '';
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         start(controller) {
@@ -110,7 +112,9 @@ export async function POST(request: NextRequest) {
               try {
                 const json = JSON.parse(trimmed.slice(6));
                 // 支持流式格式 (delta.content) 和非流式格式 (message.content)
-                const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content;
+                // 安全访问choices数组，确保数组不为空
+                const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
+                const content = choice?.delta?.content || choice?.message?.content;
                 if (content) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                 }
@@ -126,7 +130,9 @@ export async function POST(request: NextRequest) {
             if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
               try {
                 const json = JSON.parse(trimmed.slice(6));
-                const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content;
+                // 安全访问choices数组，确保数组不为空
+                const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
+                const content = choice?.delta?.content || choice?.message?.content;
                 if (content) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                 }
