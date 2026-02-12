@@ -20,12 +20,16 @@ export function useApiConfig() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as ApiConfig;
-        setConfig(parsed);
+        queueMicrotask(() => {
+          setConfig(parsed);
+        });
       } catch {
         // 使用默认配置
       }
     }
-    setIsLoaded(true);
+    queueMicrotask(() => {
+      setIsLoaded(true);
+    });
   }, []);
 
   const saveConfig = useCallback((newConfig: ApiConfig) => {

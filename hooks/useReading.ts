@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { TarotCard, DrawnCard, Spread, Reading } from '@/lib/tarot/types';
+import { DrawnCard, Spread, Reading } from '@/lib/tarot/types';
 import { allCards } from '@/lib/tarot/cards';
 import { getDefaultSpread } from '@/lib/tarot/spreads';
 import { saveReading } from '@/lib/storage';
@@ -50,11 +50,11 @@ export function useReading() {
     setError(null);
     setPhase('interpret');
 
-    try {
-      const response = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      try {
+        const response = await fetch('/api/interpret', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           question,
@@ -62,11 +62,12 @@ export function useReading() {
           drawnCards,
           apiConfig,
         }),
-      });
+        });
 
-      if (!response.ok) {
-        throw new Error(`请求失败: ${response.status}`);
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`请求失败: ${response.status} - ${errorText}`);
+        }
 
       const reader = response.body?.getReader();
       if (!reader) {
@@ -78,6 +79,7 @@ export function useReading() {
       let fullInterpretation = '';
       let streamComplete = false;
       let receivedAnyContent = false;
+      let receivedAnyError = false;
       let lastChunkAt = Date.now();
       const streamIdleTimeoutMs = 8000;
 
@@ -102,14 +104,26 @@ export function useReading() {
             }
             try {
               const parsed = JSON.parse(data);
-              if (parsed.content) {
-                fullInterpretation += parsed.content;
-                setInterpretation(prev => prev + parsed.content);
+              const deltaContent = parsed.choices?.[0]?.delta?.content;
+              const messageContent = parsed.choices?.[0]?.message?.content;
+              const customContent = parsed.content;
+              const content = deltaContent || messageContent || customContent;
+
+              if (content) {
+                fullInterpretation += content;
+                setInterpretation(prev => prev + content);
                 receivedAnyContent = true;
                 lastChunkAt = Date.now();
               }
+
               if (parsed.error) {
-                setError(parsed.error);
+                const errorMessage = typeof parsed.error === 'string'
+                  ? parsed.error
+                  : parsed.error.message;
+                if (errorMessage) {
+                  setError(errorMessage);
+                  receivedAnyError = true;
+                }
               }
             } catch {
               // 忽略解析错误
@@ -125,12 +139,24 @@ export function useReading() {
         if (data && data !== '[DONE]') {
           try {
             const parsed = JSON.parse(data);
-            if (parsed.content) {
-              fullInterpretation += parsed.content;
-              setInterpretation(prev => prev + parsed.content);
+            const deltaContent = parsed.choices?.[0]?.delta?.content;
+            const messageContent = parsed.choices?.[0]?.message?.content;
+            const customContent = parsed.content;
+            const content = deltaContent || messageContent || customContent;
+
+            if (content) {
+              fullInterpretation += content;
+              setInterpretation(prev => prev + content);
             }
+
             if (parsed.error) {
-              setError(parsed.error);
+              const errorMessage = typeof parsed.error === 'string'
+                ? parsed.error
+                : parsed.error.message;
+              if (errorMessage) {
+                setError(errorMessage);
+                receivedAnyError = true;
+              }
             }
           } catch {
             // 忽略解析错误
@@ -151,7 +177,7 @@ export function useReading() {
         saveReading(reading);
       }
 
-      if (!fullInterpretation && !error) {
+      if (!fullInterpretation && !receivedAnyError) {
         setError('未收到有效解读内容，连接可能被网关提前中断');
       }
     } catch (err) {

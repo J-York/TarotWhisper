@@ -40,8 +40,6 @@ export async function POST(request: NextRequest) {
           { role: 'user', content: prompt }
         ],
         stream: true,
-        temperature: 0.7,
-        max_tokens: 2000,
       }),
     });
 
@@ -53,131 +51,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contentType = response.headers.get('content-type') || '';
-
-    // 如果是非流式 JSON 响应，直接解析并返回
-    if (contentType.includes('application/json')) {
-      const json = await response.json();
-      // 安全访问choices数组，确保数组不为空
-      const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
-      const content = choice?.message?.content || choice?.delta?.content || '';
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        start(controller) {
-          if (content) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-          }
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
-        },
-      });
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no',
-        },
-      });
+    if (!response.body) {
+      return new Response(
+        JSON.stringify({ error: '上游未返回响应流' }),
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
-    // 创建流式响应
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader();
-        if (!reader) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: '无法读取响应' })}\n\n`));
-          controller.close();
-          return;
-        }
-
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullResponseBody = '';
-        let hasEmittedContent = false;
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-            fullResponseBody += chunk;
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || trimmed === 'data: [DONE]') continue;
-              if (!trimmed.startsWith('data: ')) continue;
-
-              try {
-                const json = JSON.parse(trimmed.slice(6));
-                // 支持流式格式 (delta.content) 和非流式格式 (message.content)
-                // 安全访问choices数组，确保数组不为空
-                const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
-                const content = choice?.delta?.content || choice?.message?.content;
-                if (content) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                  hasEmittedContent = true;
-                }
-              } catch {
-                // 忽略解析错误
-              }
-            }
-          }
-
-          // 处理 buffer 中剩余的内容
-          if (buffer.trim()) {
-            const trimmed = buffer.trim();
-            if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
-              try {
-                const json = JSON.parse(trimmed.slice(6));
-                // 安全访问choices数组，确保数组不为空
-                const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
-                const content = choice?.delta?.content || choice?.message?.content;
-                if (content) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                  hasEmittedContent = true;
-                }
-              } catch {
-                // 忽略解析错误
-              }
-            }
-          }
-
-          // 如果没有发送任何内容，尝试将整个响应体作为 JSON 解析
-          // 这处理了网关返回完整 JSON 但使用了 text/event-stream content-type 的情况
-          if (!hasEmittedContent && fullResponseBody.trim()) {
-            try {
-              const json = JSON.parse(fullResponseBody.trim());
-              const content = json.choices?.[0]?.message?.content || json.choices?.[0]?.delta?.content;
-              if (content) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                hasEmittedContent = true;
-              }
-            } catch {
-              // 如果也解析失败，保持静默
-            }
-          }
-        } catch {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: '流读取错误' })}\n\n`));
-        } finally {
-          reader.releaseLock();
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
+    return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
       },
     });
   } catch {

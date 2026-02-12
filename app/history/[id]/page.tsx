@@ -15,12 +15,10 @@ interface PageProps {
 export default function ReadingDetailPage({ params }: PageProps) {
   const [reading, setReading] = useState<Reading | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [id, setId] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
     params.then((resolvedParams) => {
-      setId(resolvedParams.id);
       const loadedReading = getReadingById(resolvedParams.id);
       setReading(loadedReading || null);
       setIsLoaded(true);

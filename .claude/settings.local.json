@@ -9,7 +9,10 @@
       "WebSearch",
       "WebFetch(domain:archive.org)",
       "Bash(node:*)",
-      "Bash(npm install react-markdown)"
+      "Bash(npm install react-markdown)",
+      "Bash(git fetch:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git add:*)"
     ]
   }
 }

@@ -13,8 +13,10 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const loadedReadings = getReadings();
-    setReadings(loadedReadings);
-    setIsLoaded(true);
+    queueMicrotask(() => {
+      setReadings(loadedReadings);
+      setIsLoaded(true);
+    });
   }, []);
 
   const toggleSelect = (id: string): void => {
