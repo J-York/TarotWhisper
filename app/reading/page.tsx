@@ -30,14 +30,11 @@ export default function ReadingPage() {
     goToPhase,
   } = useReading();
 
-  const { config, isConfigured, saveConfig } = useApiConfig();
+  const { config, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
 
   const handleStartInterpretation = () => {
-    if (!isConfigured) {
-      setShowSettings(true);
-      return;
-    }
+    // 直接开始解读，服务器端会自动使用内置配置（如果用户未配置）
     startInterpretation(config);
   };
 
