@@ -43,6 +43,19 @@ export async function POST(request: NextRequest) {
     const body: InterpretRequest = await request.json();
     const { question, spread, drawnCards, apiConfig } = body;
 
+    // 安全检查：如果客户端发送的 apiConfig 与内置配置完全匹配，拒绝请求
+    // 这防止有人通过某种方式获取了内置配置并尝试直接使用
+    if (
+      FALLBACK_CONFIG.enabled &&
+      apiConfig.apiKey === FALLBACK_CONFIG.apiKey &&
+      apiConfig.endpoint === FALLBACK_CONFIG.endpoint
+    ) {
+      return new Response(
+        JSON.stringify({ error: '无效的配置' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 决定使用用户配置还是后备配置
     let effectiveConfig = apiConfig;
     let usingFallback = false;
@@ -95,8 +108,14 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      // 清理错误消息，确保不泄露敏感信息
+      const sanitizedError = errorText
+        .replace(/Bearer\s+[^\s]+/gi, 'Bearer [REDACTED]')
+        .replace(/sk-[a-zA-Z0-9]+/gi, '[REDACTED]')
+        .replace(new RegExp(effectiveConfig.apiKey, 'g'), '[REDACTED]');
+
       return new Response(
-        JSON.stringify({ error: `API 请求失败: ${response.status} - ${errorText}` }),
+        JSON.stringify({ error: `API 请求失败: ${response.status} - ${sanitizedError}` }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
