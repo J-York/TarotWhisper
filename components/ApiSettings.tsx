@@ -16,11 +16,29 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState<string>('');
+  const [fallbackInfo, setFallbackInfo] = useState<{ available: boolean; rateLimit: number } | null>(null);
 
   // 同步父组件的config变化到localConfig
   useEffect(() => {
     setLocalConfig(config);
   }, [config]);
+
+  // 检查内置配置是否可用
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/config')
+        .then(res => res.json())
+        .then(data => {
+          setFallbackInfo({
+            available: data.fallbackAvailable,
+            rateLimit: data.rateLimit,
+          });
+        })
+        .catch(() => {
+          setFallbackInfo(null);
+        });
+    }
+  }, [isOpen]);
 
   const handleFetchModels = async () => {
     if (!localConfig.endpoint || !localConfig.apiKey) {
@@ -75,6 +93,21 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
         </div>
 
         <div className="space-y-6">
+          {/* 内置配置提示 */}
+          {fallbackInfo?.available && (
+            <div className="px-4 py-3 rounded-lg bg-indigo-900/20 border border-indigo-500/30 backdrop-blur-sm">
+              <p className="text-indigo-300 text-sm flex items-start gap-2">
+                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  如果不填写配置，将使用内置 API（每小时限 {fallbackInfo.rateLimit} 次请求）。
+                  配置自己的 API Key 可解除限制。
+                </span>
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-amber-100/80 mb-2 uppercase tracking-wider">
               API 端点

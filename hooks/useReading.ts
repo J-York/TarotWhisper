@@ -69,6 +69,12 @@ export function useReading() {
           throw new Error(`请求失败: ${response.status} - ${errorText}`);
         }
 
+        // 检查是否使用了内置配置
+        const usingFallback = response.headers.get('X-Using-Fallback') === 'true';
+        if (usingFallback) {
+          console.info('使用内置 LLM 配置（有速率限制）。配置自己的 API Key 可解除限制。');
+        }
+
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('无法读取响应');

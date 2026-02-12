@@ -1,13 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ApiSettings } from '@/components/ApiSettings';
 import { useApiConfig } from '@/hooks/useApiConfig';
 
 export default function Home() {
   const { config, isLoaded, isConfigured, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
+  const [fallbackAvailable, setFallbackAvailable] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => setFallbackAvailable(data.fallbackAvailable))
+      .catch(() => setFallbackAvailable(false));
+  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center p-8 overflow-hidden">
@@ -76,7 +84,7 @@ export default function Home() {
         </div>
 
         {/* API 状态提示 */}
-        {isLoaded && !isConfigured && (
+        {isLoaded && !isConfigured && !fallbackAvailable && (
           <div className="mt-8 px-4 py-2 rounded-lg bg-amber-900/20 border border-amber-500/30 backdrop-blur-sm animate-pulse">
             <p className="text-amber-400/90 text-sm flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
