@@ -112,7 +112,14 @@ export function useReading() {
               const parsed = JSON.parse(data);
               const deltaContent = parsed.choices?.[0]?.delta?.content;
               const messageContent = parsed.choices?.[0]?.message?.content;
-              const customContent = parsed.content;
+
+              // Handle Claude native API format where content is an array
+              let customContent = parsed.content;
+              if (Array.isArray(customContent)) {
+                const textBlock = customContent.find((block: any) => block.type === 'text');
+                customContent = textBlock?.text || '';
+              }
+
               const content = deltaContent || messageContent || customContent;
 
               if (content) {
@@ -147,7 +154,14 @@ export function useReading() {
             const parsed = JSON.parse(data);
             const deltaContent = parsed.choices?.[0]?.delta?.content;
             const messageContent = parsed.choices?.[0]?.message?.content;
-            const customContent = parsed.content;
+
+            // Handle Claude native API format where content is an array
+            let customContent = parsed.content;
+            if (Array.isArray(customContent)) {
+              const textBlock = customContent.find((block: any) => block.type === 'text');
+              customContent = textBlock?.text || '';
+            }
+
             const content = deltaContent || messageContent || customContent;
 
             if (content) {
