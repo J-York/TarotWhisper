@@ -8,6 +8,168 @@ import { saveReading } from '@/lib/storage';
 
 export type ReadingPhase = 'question' | 'spread' | 'shuffle' | 'draw' | 'reveal' | 'interpret';
 
+interface ParsedSseChunk {
+  content: string;
+  thinking: string;
+  error: string | null;
+  isDone: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function extractTextValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(extractTextValue).join('');
+  }
+
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  const candidateKeys = ['text', 'content', 'value', 'output_text', 'thinking', 'reasoning'] as const;
+  for (const key of candidateKeys) {
+    const candidate = value[key];
+    const extracted = extractTextValue(candidate);
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  return '';
+}
+
+function isThinkingType(type: unknown): boolean {
+  if (typeof type !== 'string') {
+    return false;
+  }
+
+  const normalized = type.toLowerCase();
+  return normalized.includes('think') || normalized.includes('reason');
+}
+
+function extractContentText(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (isRecord(item) && isThinkingType(item.type)) {
+          return '';
+        }
+        return extractTextValue(item);
+      })
+      .join('');
+  }
+
+  if (isRecord(value) && isThinkingType(value.type)) {
+    return '';
+  }
+
+  return extractTextValue(value);
+}
+
+function extractThinkingText(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (isRecord(item) && !isThinkingType(item.type)) {
+          return '';
+        }
+        return extractTextValue(item);
+      })
+      .join('');
+  }
+
+  if (!isRecord(value)) {
+    return '';
+  }
+
+  if (isThinkingType(value.type)) {
+    return extractTextValue(value);
+  }
+
+  const thinkingKeys = ['reasoning_content', 'reasoning', 'thinking'] as const;
+  for (const key of thinkingKeys) {
+    const extracted = extractThinkingText(value[key]);
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  return '';
+}
+
+function pickFirstNonEmpty(...values: string[]): string {
+  return values.find((value) => value.length > 0) ?? '';
+}
+
+function extractErrorMessage(value: unknown): string | null {
+  if (typeof value === 'string' && value) {
+    return value;
+  }
+
+  if (isRecord(value) && typeof value.message === 'string' && value.message) {
+    return value.message;
+  }
+
+  return null;
+}
+
+function parseSseChunk(data: string): ParsedSseChunk {
+  if (data === '[DONE]') {
+    return { content: '', thinking: '', error: null, isDone: true };
+  }
+
+  try {
+    const parsedUnknown: unknown = JSON.parse(data);
+    if (!isRecord(parsedUnknown)) {
+      return { content: '', thinking: '', error: null, isDone: false };
+    }
+
+    const choices = Array.isArray(parsedUnknown.choices) ? parsedUnknown.choices : [];
+    const firstChoice = choices.length > 0 && isRecord(choices[0]) ? choices[0] : null;
+    const delta = firstChoice && isRecord(firstChoice.delta) ? firstChoice.delta : null;
+    const message = firstChoice && isRecord(firstChoice.message) ? firstChoice.message : null;
+
+    const content = pickFirstNonEmpty(
+      extractContentText(delta?.content),
+      extractContentText(message?.content),
+      extractContentText(parsedUnknown.content)
+    );
+
+    const thinking = pickFirstNonEmpty(
+      extractThinkingText(delta?.reasoning_content),
+      extractThinkingText(delta?.reasoning),
+      extractThinkingText(delta?.thinking),
+      extractThinkingText(message?.reasoning_content),
+      extractThinkingText(message?.reasoning),
+      extractThinkingText(message?.thinking),
+      extractThinkingText(parsedUnknown.reasoning_content),
+      extractThinkingText(parsedUnknown.reasoning),
+      extractThinkingText(parsedUnknown.thinking),
+      extractThinkingText(parsedUnknown.content)
+    );
+
+    const error = extractErrorMessage(parsedUnknown.error);
+
+    return { content, thinking, error, isDone: false };
+  } catch {
+    return { content: '', thinking: '', error: null, isDone: false };
+  }
+}
+
 export function useReading() {
   const [phase, setPhase] = useState<ReadingPhase>('question');
   const [question, setQuestion] = useState('');
@@ -87,7 +249,63 @@ export function useReading() {
       let receivedAnyContent = false;
       let receivedAnyError = false;
       let lastChunkAt = Date.now();
+      let thinkingBlockOpen = false;
       const streamIdleTimeoutMs = 8000;
+
+      const appendChunk = (chunk: string): void => {
+        if (!chunk) {
+          return;
+        }
+
+        fullInterpretation += chunk;
+        setInterpretation((prev) => prev + chunk);
+        receivedAnyContent = true;
+        lastChunkAt = Date.now();
+      };
+
+      const openThinkingBlock = (): void => {
+        if (thinkingBlockOpen) {
+          return;
+        }
+
+        const prefix = fullInterpretation ? '\n\n<think>\n' : '<think>\n';
+        appendChunk(prefix);
+        thinkingBlockOpen = true;
+      };
+
+      const closeThinkingBlock = (): void => {
+        if (!thinkingBlockOpen) {
+          return;
+        }
+
+        appendChunk('\n</think>\n\n');
+        thinkingBlockOpen = false;
+      };
+
+      const processDataLine = (data: string): void => {
+        const parsedChunk = parseSseChunk(data);
+
+        if (parsedChunk.isDone) {
+          streamComplete = true;
+          closeThinkingBlock();
+          return;
+        }
+
+        if (parsedChunk.thinking) {
+          openThinkingBlock();
+          appendChunk(parsedChunk.thinking);
+        }
+
+        if (parsedChunk.content) {
+          closeThinkingBlock();
+          appendChunk(parsedChunk.content);
+        }
+
+        if (parsedChunk.error) {
+          setError(parsedChunk.error);
+          receivedAnyError = true;
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -101,88 +319,37 @@ export function useReading() {
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              streamComplete = true;
-              break;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              const deltaContent = parsed.choices?.[0]?.delta?.content;
-              const messageContent = parsed.choices?.[0]?.message?.content;
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line.startsWith('data: ')) {
+            continue;
+          }
 
-              // Handle Claude native API format where content is an array
-              let customContent = parsed.content;
-              if (Array.isArray(customContent)) {
-                const textBlock = customContent.find((block: any) => block.type === 'text');
-                customContent = textBlock?.text || '';
-              }
-
-              const content = deltaContent || messageContent || customContent;
-
-              if (content) {
-                fullInterpretation += content;
-                setInterpretation(prev => prev + content);
-                receivedAnyContent = true;
-                lastChunkAt = Date.now();
-              }
-
-              if (parsed.error) {
-                const errorMessage = typeof parsed.error === 'string'
-                  ? parsed.error
-                  : parsed.error.message;
-                if (errorMessage) {
-                  setError(errorMessage);
-                  receivedAnyError = true;
-                }
-              }
-            } catch {
-              // 忽略解析错误
-            }
+          processDataLine(line.slice(6));
+          if (streamComplete) {
+            break;
           }
         }
 
-        if (streamComplete) break;
-      }
-
-      if (buffer.trim().startsWith('data: ')) {
-        const data = buffer.trim().slice(6);
-        if (data && data !== '[DONE]') {
-          try {
-            const parsed = JSON.parse(data);
-            const deltaContent = parsed.choices?.[0]?.delta?.content;
-            const messageContent = parsed.choices?.[0]?.message?.content;
-
-            // Handle Claude native API format where content is an array
-            let customContent = parsed.content;
-            if (Array.isArray(customContent)) {
-              const textBlock = customContent.find((block: any) => block.type === 'text');
-              customContent = textBlock?.text || '';
-            }
-
-            const content = deltaContent || messageContent || customContent;
-
-            if (content) {
-              fullInterpretation += content;
-              setInterpretation(prev => prev + content);
-            }
-
-            if (parsed.error) {
-              const errorMessage = typeof parsed.error === 'string'
-                ? parsed.error
-                : parsed.error.message;
-              if (errorMessage) {
-                setError(errorMessage);
-                receivedAnyError = true;
-              }
-            }
-          } catch {
-            // 忽略解析错误
-          }
+        if (streamComplete) {
+          break;
         }
       }
+
+      const trailingLines = buffer.split('\n');
+      for (const rawLine of trailingLines) {
+        const line = rawLine.trim();
+        if (!line.startsWith('data: ')) {
+          continue;
+        }
+
+        processDataLine(line.slice(6));
+        if (streamComplete) {
+          break;
+        }
+      }
+
+      closeThinkingBlock();
 
       // 保存完整的占卜记录到历史
       if (fullInterpretation) {
