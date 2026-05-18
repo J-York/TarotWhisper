@@ -31,7 +31,7 @@ export default function HistoryPage() {
 
   const handleDeleteSelected = (): void => {
     if (selectedIds.size === 0) return;
-    
+
     const confirmed = window.confirm(`确定要删除选中的 ${selectedIds.size} 条记录吗？`);
     if (!confirmed) return;
 
@@ -57,38 +57,32 @@ export default function HistoryPage() {
     const day = String(date.getDate()).padStart(2, '0');
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
-    return `${year}/${month}/${day} ${hour}:${minute}`;
+    return `${year}.${month}.${day} ${hour}:${minute}`;
   };
 
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-purple-200 animate-pulse">加载中...</div>
+        <span className="text-bone-faint text-xs tracking-mystic uppercase anim-whisper">载 入 中</span>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col p-8">
-      {/* 装饰光效 */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] pointer-events-none" />
-
+    <div className="relative min-h-screen flex flex-col px-8 py-10">
       {/* Header */}
-      <header className="relative z-20 max-w-7xl w-full mx-auto mb-8">
+      <header className="relative z-20 max-w-7xl w-full mx-auto mb-14">
         <div className="flex items-center justify-between">
-          <Link 
+          <Link
             href="/"
-            className="text-purple-300/60 hover:text-amber-400 transition-colors flex items-center gap-2 group"
+            className="text-bone-faint hover:text-bone transition-colors flex items-center gap-3 group"
           >
-            <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            返回圣殿
+            <span className="text-sm group-hover:-translate-x-1 transition-transform">←</span>
+            <span className="text-xs tracking-mystic uppercase">返 回</span>
           </Link>
 
           {readings.length > 0 && (
-            <div className="flex gap-3">
+            <div className="flex gap-6 items-center">
               {isSelectionMode ? (
                 <>
                   <button
@@ -96,16 +90,16 @@ export default function HistoryPage() {
                       setIsSelectionMode(false);
                       setSelectedIds(new Set());
                     }}
-                    className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 transition-all"
+                    className="btn-ink-ghost"
                   >
-                    取消
+                    取 消
                   </button>
                   {selectedIds.size > 0 && (
                     <button
                       onClick={handleDeleteSelected}
-                      className="px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all"
+                      className="btn-ink px-6 py-2"
                     >
-                      删除选中 ({selectedIds.size})
+                      删 除 ({selectedIds.size})
                     </button>
                   )}
                 </>
@@ -113,15 +107,15 @@ export default function HistoryPage() {
                 <>
                   <button
                     onClick={() => setIsSelectionMode(true)}
-                    className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-purple-200 transition-all"
+                    className="btn-ink-ghost"
                   >
-                    选择
+                    选 择
                   </button>
                   <button
                     onClick={handleClearAll}
-                    className="px-4 py-2 rounded-lg bg-white/5 hover:bg-red-600/20 border border-white/10 hover:border-red-500/30 text-purple-200 hover:text-red-300 transition-all"
+                    className="btn-ink-ghost"
                   >
-                    清空全部
+                    清 空
                   </button>
                 </>
               )}
@@ -132,29 +126,30 @@ export default function HistoryPage() {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-serif text-gold-gradient mb-2 tracking-wide">
-            占卜历史
+        <div className="text-center mb-16">
+          <span className="text-gold text-xl">✦</span>
+          <h1 className="text-4xl md:text-5xl font-serif text-bone mt-5 mb-3 tracking-wider">
+            占 卜 轨 迹
           </h1>
-          <p className="text-purple-200/60 tracking-[0.2em]">History of Divination</p>
-          <div className="h-px w-32 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mt-6" />
+          <p className="text-bone-faint text-xs tracking-mystic uppercase">Trace of Divination</p>
+          <div className="rule-h-fade w-24 mx-auto mt-5" />
         </div>
 
         {readings.length === 0 ? (
-          <div className="glass-panel rounded-2xl p-16 text-center">
-            <div className="text-6xl mb-6 opacity-30">🌌</div>
-            <h3 className="text-2xl font-serif text-purple-200/70 mb-3">虚空空寂</h3>
-            <p className="text-purple-300/50 mb-8">尚无占卜记录</p>
-            <Link 
+          <div className="ink-panel-quiet p-20 text-center max-w-xl mx-auto">
+            <div className="text-bone-whisper text-3xl mb-8">◇</div>
+            <h3 className="text-xl font-serif text-bone-dim mb-4 tracking-wider">虚 空 空 寂</h3>
+            <p className="text-bone-faint text-sm font-light mb-10">尚无占卜记录</p>
+            <Link
               href="/reading"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium transition-all shadow-lg"
+              className="btn-ink-primary inline-flex items-center gap-3 px-10 py-3"
             >
-              <span>开始占卜</span>
-              <span className="text-amber-300">✦</span>
+              <span>开 始 占 卜</span>
+              <span className="text-xs">✦</span>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--ink-line)] border border-[var(--ink-line)]">
             {readings.map((reading) => {
               const isSelected = selectedIds.has(reading.id);
 
@@ -162,80 +157,68 @@ export default function HistoryPage() {
                 <div
                   key={reading.id}
                   className={`
-                    relative group glass-panel rounded-xl overflow-hidden transition-all duration-300
-                    ${isSelectionMode 
-                      ? 'cursor-pointer' 
-                      : 'hover:bg-white/5 hover:-translate-y-1 hover:shadow-lg'
-                    }
-                    ${isSelected 
-                      ? 'border-amber-500 bg-amber-900/10 shadow-[0_0_20px_rgba(245,158,11,0.2)]' 
-                      : 'border-white/5 hover:border-purple-400/30'
-                    }
+                    relative group transition-colors duration-300
+                    ${isSelectionMode ? 'cursor-pointer' : ''}
+                    ${isSelected ? 'bg-[var(--ink-veil)]' : 'bg-[var(--ink-deep)] hover:bg-[var(--ink-veil)]'}
                   `}
                   onClick={isSelectionMode ? () => toggleSelect(reading.id) : undefined}
                 >
                   {isSelected && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none" />
+                    <span className="absolute top-0 left-0 right-0 h-px bg-[var(--gold-dim)]" />
                   )}
 
-                  {/* Selection Checkbox */}
                   {isSelectionMode && (
-                    <div className="absolute top-4 right-4 z-20">
+                    <div className="absolute top-5 right-5 z-20">
                       <div className={`
-                        w-6 h-6 rounded-full border flex items-center justify-center transition-all
-                        ${isSelected 
-                          ? 'border-amber-500 bg-amber-500 text-black shadow-[0_0_10px_rgba(245,158,11,0.5)]' 
-                          : 'border-white/20 bg-transparent'
+                        w-4 h-4 border flex items-center justify-center transition-all
+                        ${isSelected
+                          ? 'border-[var(--gold)] bg-[var(--gold)]'
+                          : 'border-[var(--bone-whisper)]'
                         }
                       `}>
                         {isSelected && (
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
+                          <span className="text-[var(--ink-deep)] text-xs leading-none">✓</span>
                         )}
                       </div>
                     </div>
                   )}
 
-                  <Link href={`/history/${reading.id}`} className={`block p-6 ${isSelectionMode ? 'pointer-events-none' : ''}`}>
+                  <Link href={`/history/${reading.id}`} className={`block p-7 ${isSelectionMode ? 'pointer-events-none' : ''}`}>
                     {/* Date */}
-                    <div className="text-sm text-purple-300/50 mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                    <div className="text-[10px] text-bone-whisper mb-5 tracking-quiet uppercase">
                       {formatDate(reading.createdAt)}
                     </div>
 
                     {/* Question */}
-                    <h3 className={`font-serif text-lg mb-3 transition-colors line-clamp-2 ${isSelected ? 'text-amber-400' : 'text-purple-100 group-hover:text-amber-200'}`}>
-                      {reading.question || '未记录问题'}
+                    <h3 className={`font-serif text-lg mb-5 transition-colors line-clamp-2 tracking-wide ${isSelected ? 'text-gold' : 'text-bone group-hover:text-gold-dim'}`}>
+                      {reading.question || '未 记 录 问 题'}
                     </h3>
 
-                    {/* Spread Info */}
-                    <div className="flex items-center gap-2 mb-4 text-sm text-purple-200/70">
-                      <span className="text-amber-400/70">⊹</span>
+                    {/* Spread */}
+                    <div className="flex items-center gap-3 mb-6 text-xs text-bone-faint tracking-quiet">
+                      <span className="text-gold-dim">◇</span>
                       <span>{reading.spread.nameCn}</span>
-                      <span className="text-purple-400/40">·</span>
-                      <span>{reading.drawnCards.length} 张牌</span>
+                      <span className="w-2 h-px bg-[var(--ink-line)]" />
+                      <span>{reading.drawnCards.length} 张</span>
                     </div>
 
-                    {/* Cards Preview */}
-                    <div className="flex gap-1 mb-4">
-                      {reading.drawnCards.slice(0, 5).map((drawn, idx) => (
+                    {/* Cards preview */}
+                    <div className="flex gap-1.5 mb-5">
+                      {reading.drawnCards.slice(0, 8).map((_, idx) => (
                         <div
                           key={idx}
-                          className="w-2 h-8 rounded-sm bg-gradient-to-b from-amber-500/30 to-purple-500/30"
+                          className="w-1 h-6 bg-[var(--bone-whisper)]"
                         />
                       ))}
-                      {reading.drawnCards.length > 5 && (
-                        <div className="text-purple-400/50 text-xs self-end">+{reading.drawnCards.length - 5}</div>
+                      {reading.drawnCards.length > 8 && (
+                        <div className="text-bone-whisper text-[10px] self-end ml-1">+{reading.drawnCards.length - 8}</div>
                       )}
                     </div>
 
-                    {/* Interpretation Preview */}
+                    {/* Interpretation preview */}
                     {reading.interpretation && (
-                      <p className="text-sm text-purple-200/50 line-clamp-2 font-light">
-                        {reading.interpretation.substring(0, 80)}...
+                      <p className="text-xs text-bone-faint line-clamp-2 font-light leading-relaxed">
+                        {reading.interpretation.substring(0, 100).replace(/[#*_`>\-]/g, '')}...
                       </p>
                     )}
                   </Link>

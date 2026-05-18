@@ -19,13 +19,12 @@ export function CardDeck({ onShuffle, isShuffling = false }: CardDeckProps) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-10">
       <div className="relative w-32 h-48">
-        {/* 牌堆效果 */}
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className={`absolute w-28 h-44 rounded-lg bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900 border-2 border-amber-500/50 shadow-lg transition-all duration-300 ${
+            className={`absolute w-28 h-44 bg-[var(--ink-void)] border border-[var(--ink-line)] transition-all duration-300 ${
               shuffleAnimation ? 'animate-shuffle' : ''
             }`}
             style={{
@@ -35,9 +34,9 @@ export function CardDeck({ onShuffle, isShuffling = false }: CardDeckProps) {
               animationDelay: shuffleAnimation ? `${i * 0.1}s` : '0s',
             }}
           >
-            <div className="absolute inset-2 border border-amber-500/30 rounded-md" />
+            <div className="absolute inset-1.5 border border-[var(--bone-whisper)]" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-amber-500/60 text-3xl">✦</span>
+              <span className="text-gold-dim text-xl">✦</span>
             </div>
           </div>
         ))}
@@ -46,9 +45,9 @@ export function CardDeck({ onShuffle, isShuffling = false }: CardDeckProps) {
       <button
         onClick={handleShuffle}
         disabled={isShuffling || shuffleAnimation}
-        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-600 disabled:to-gray-600 text-white font-medium rounded-full shadow-lg shadow-purple-500/25 transition-all duration-300 hover:shadow-purple-500/40 disabled:shadow-none"
+        className="btn-ink-primary px-10 py-3"
       >
-        {shuffleAnimation ? '洗牌中...' : '洗牌并抽牌'}
+        {shuffleAnimation ? '洗 牌 中' : '洗 牌 并 抽 取'}
       </button>
 
       <style jsx>{`
@@ -57,13 +56,13 @@ export function CardDeck({ onShuffle, isShuffling = false }: CardDeckProps) {
             transform: translateX(0) rotate(0deg);
           }
           25% {
-            transform: translateX(-30px) rotate(-5deg);
+            transform: translateX(-22px) rotate(-3deg);
           }
           50% {
-            transform: translateX(30px) rotate(5deg);
+            transform: translateX(22px) rotate(3deg);
           }
           75% {
-            transform: translateX(-15px) rotate(-3deg);
+            transform: translateX(-10px) rotate(-2deg);
           }
         }
         .animate-shuffle {

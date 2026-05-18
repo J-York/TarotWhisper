@@ -1,16 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  /* Deep Mystical Palette */
-  --background: #0F0518;
-  --foreground: #E2E8F0;
-  
-  --color-mystic-dark: #0F0518;
-  --color-mystic-purple: #1A0B2E;
-  --color-mystic-gold: #F59E0B;
-  --color-mystic-cyan: #22D3EE;
-  
-  /* Font Variables will be set in layout.tsx */
+  /* Ink palette — 暗夜墨色 */
+  --ink-void: #07070B;
+  --ink-deep: #0A0A0F;
+  --ink-veil: #12121A;
+  --ink-line: rgba(232, 228, 216, 0.08);
+  --ink-line-soft: rgba(232, 228, 216, 0.04);
+
+  --bone: #E8E4D8;
+  --bone-dim: rgba(232, 228, 216, 0.6);
+  --bone-faint: rgba(232, 228, 216, 0.35);
+  --bone-whisper: rgba(232, 228, 216, 0.18);
+
+  --gold: #C9A961;
+  --gold-dim: rgba(201, 169, 97, 0.55);
+  --gold-faint: rgba(201, 169, 97, 0.25);
+
+  --background: var(--ink-deep);
+  --foreground: var(--bone);
+
   --font-serif-heading: var(--font-cinzel);
 }
 
@@ -20,122 +29,201 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-cinzel);
-  
-  --color-mystic-dark: var(--color-mystic-dark);
-  --color-mystic-purple: var(--color-mystic-purple);
-  --color-mystic-gold: var(--color-mystic-gold);
-  --color-mystic-cyan: var(--color-mystic-cyan);
+
+  --color-ink-void: var(--ink-void);
+  --color-ink-deep: var(--ink-deep);
+  --color-ink-veil: var(--ink-veil);
+  --color-bone: var(--bone);
+  --color-gold: var(--gold);
+}
+
+html, body {
+  background: var(--ink-deep);
+  color: var(--bone);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  min-height: 100vh;
 }
 
 body {
-  background: radial-gradient(circle at center top, #2D1B4E 0%, #0F0518 100%);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
-  min-height: 100vh;
   overflow-x: hidden;
 }
 
-/* Headings */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-serif-heading), serif;
-  letter-spacing: 0.05em;
+  font-weight: 400;
+  letter-spacing: 0.08em;
 }
 
-/* Utilities */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+/* ─── Surfaces ─── */
+.ink-panel {
+  background: var(--ink-veil);
+  border: 1px solid var(--ink-line);
 }
 
-.text-gold-gradient {
-  background: linear-gradient(135deg, #FDE68A 0%, #D97706 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 20px rgba(217, 119, 6, 0.3);
+.ink-panel-quiet {
+  background: transparent;
+  border: 1px solid var(--ink-line);
 }
 
-.btn-mystic {
-  background: linear-gradient(to right, #4C1D95, #7C3AED);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fff;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+/* ─── Lines ─── */
+.rule-h {
+  height: 1px;
+  background: var(--ink-line);
 }
 
-.btn-mystic:hover {
-  background: linear-gradient(to right, #5B21B6, #8B5CF6);
-  box-shadow: 0 0 25px rgba(124, 58, 237, 0.5);
-  transform: translateY(-1px);
+.rule-h-fade {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--bone-whisper), transparent);
 }
 
-/* Animations */
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+.rule-v {
+  width: 1px;
+  background: var(--ink-line);
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+/* ─── Buttons ─── */
+.btn-ink {
+  background: transparent;
+  border: 1px solid var(--bone-whisper);
+  color: var(--bone);
+  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 400;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
-  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); }
+.btn-ink:hover:not(:disabled) {
+  border-color: var(--gold-dim);
+  color: var(--gold);
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 3s infinite;
+.btn-ink:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
-/* 3D Card Effects */
-.perspective-1000 {
-  perspective: 1000px;
+.btn-ink-primary {
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 400;
 }
 
-.transform-style-3d {
-  transform-style: preserve-3d;
+.btn-ink-primary:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: rgba(201, 169, 97, 0.06);
 }
 
-.backface-hidden {
-  backface-visibility: hidden;
+.btn-ink-primary:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
 }
 
-.rotate-y-180 {
-  transform: rotateY(180deg);
+.btn-ink-ghost {
+  background: transparent;
+  border: none;
+  color: var(--bone-faint);
+  transition: color 200ms ease;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+.btn-ink-ghost:hover:not(:disabled) {
+  color: var(--bone);
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(15, 5, 24, 0.5);
+/* ─── Text utilities ─── */
+.text-bone { color: var(--bone); }
+.text-bone-dim { color: var(--bone-dim); }
+.text-bone-faint { color: var(--bone-faint); }
+.text-bone-whisper { color: var(--bone-whisper); }
+.text-gold { color: var(--gold); }
+.text-gold-dim { color: var(--gold-dim); }
+
+.tracking-mystic { letter-spacing: 0.3em; }
+.tracking-quiet { letter-spacing: 0.2em; }
+
+/* ─── Inputs ─── */
+.input-ink {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink-line);
+  color: var(--bone);
+  padding: 0.75rem 0;
+  transition: border-color 200ms ease;
+  width: 100%;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.3);
-  border-radius: 3px;
+.input-ink:focus {
+  outline: none;
+  border-bottom-color: var(--gold-dim);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.5);
+.input-ink::placeholder {
+  color: var(--bone-whisper);
 }
 
-/* Streaming cursor for interpretation */
+/* ─── Animations ─── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes whisper {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.anim-fade-in { animation: fade-in 700ms ease forwards; }
+.anim-fade-in-up { animation: fade-in-up 700ms ease forwards; }
+.anim-drift { animation: drift 8s ease-in-out infinite; }
+.anim-whisper { animation: whisper 3s ease-in-out infinite; }
+
+/* ─── 3D Card ─── */
+.perspective-1000 { perspective: 1000px; }
+.transform-style-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+.rotate-y-180 { transform: rotateY(180deg); }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ink-line); }
+::-webkit-scrollbar-thumb:hover { background: var(--bone-whisper); }
+
+/* ─── Selection ─── */
+::selection {
+  background: var(--gold-faint);
+  color: var(--bone);
+}
+
+/* ─── Interpretation streaming cursor ─── */
 .interpretation-content .streaming-cursor {
   display: inline-block;
-  width: 0.5rem;
-  height: 1.25rem;
-  background-color: rgba(251, 191, 36, 0.8);
+  width: 0.4rem;
+  height: 1rem;
+  background-color: var(--gold);
   margin-left: 0.25rem;
   vertical-align: middle;
-  animation: cursor-blink 1s infinite;
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+  animation: cursor-blink 1.2s infinite;
 }
 
 @keyframes cursor-blink {

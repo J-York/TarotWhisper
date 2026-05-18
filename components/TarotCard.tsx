@@ -20,14 +20,12 @@ export function TarotCardComponent({
 }: TarotCardProps) {
   const [imageError, setImageError] = useState(false);
 
-  // Increased sizes for a more substantial feel
   const sizeClasses = {
-    sm: 'w-24 h-40',   // Previously w-20 h-32
-    md: 'w-48 h-80',   // Previously w-28 h-44
-    lg: 'w-64 h-96',   // Previously w-36 h-56
+    sm: 'w-24 h-40',
+    md: 'w-48 h-80',
+    lg: 'w-64 h-96',
   };
 
-  // Card face needs rotateY(180deg) for 3D flip, plus rotate(180deg) for reversed cards
   const cardFaceTransform = isReversed && isRevealed
     ? 'rotateY(180deg) rotate(180deg)'
     : 'rotateY(180deg)';
@@ -38,38 +36,38 @@ export function TarotCardComponent({
       onClick={onClick}
     >
       <div
-        className={`relative w-full h-full transition-transform duration-700 transform-style-3d shadow-2xl ${
+        className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${
           isRevealed ? 'rotate-y-180' : ''
-        } group-hover:scale-105 transition-all ease-out`}
+        }`}
       >
-        {/* Card Back - Mystical Design */}
-        <div className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden border-2 border-amber-900/50">
-          <div className="w-full h-full bg-[#1a0b2e] relative overflow-hidden flex items-center justify-center">
-             {/* Intricate Border Pattern */}
-            <div className="absolute inset-2 border border-amber-500/40 rounded-lg opacity-80" />
-            <div className="absolute inset-3 border border-amber-500/20 rounded-lg" />
-            
-            {/* Geometric Background Pattern */}
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500 via-transparent to-transparent" />
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 mix-blend-overlay" />
-            
-            {/* Central Symbol */}
-            <div className="relative z-10 flex flex-col items-center justify-center transform group-hover:scale-110 transition-transform duration-500">
-              <div className="text-5xl text-amber-500/80 filter drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
-                ✦
-              </div>
-              <div className="mt-2 w-16 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+        {/* Card back — minimal ink */}
+        <div className="absolute w-full h-full backface-hidden overflow-hidden border border-[var(--ink-line)] bg-[var(--ink-void)]">
+          <div className="w-full h-full relative flex items-center justify-center">
+            {/* inner frame */}
+            <div className="absolute inset-2 border border-[var(--bone-whisper)]" />
+
+            {/* central glyph */}
+            <div className="relative flex flex-col items-center gap-3 transition-transform duration-500 group-hover:scale-105">
+              <span className="text-gold-dim text-2xl">✦</span>
+              <span className="h-px w-10 bg-[var(--ink-line)]" />
+              <span className="text-bone-whisper text-xs tracking-mystic uppercase">Tarot</span>
             </div>
 
-            {/* Corner Accents */}
-            <div className="absolute top-4 left-4 text-amber-500/30 text-xl">✨</div>
-            <div className="absolute bottom-4 right-4 text-amber-500/30 text-xl">✨</div>
+            {/* corner ticks */}
+            <span className="absolute top-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
+            <span className="absolute top-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
+            <span className="absolute top-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
+            <span className="absolute top-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
+            <span className="absolute bottom-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
+            <span className="absolute bottom-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
+            <span className="absolute bottom-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
+            <span className="absolute bottom-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
           </div>
         </div>
 
-        {/* Card Face */}
+        {/* Card face */}
         <div
-          className="absolute w-full h-full backface-hidden rounded-xl overflow-hidden border-2 border-amber-500/30 bg-[#0f0518]"
+          className="absolute w-full h-full backface-hidden overflow-hidden border border-[var(--ink-line)] bg-[var(--ink-void)]"
           style={{ transform: cardFaceTransform }}
         >
           {!imageError ? (
@@ -80,24 +78,23 @@ export function TarotCardComponent({
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
               />
-              {/* Overlay for depth */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-0 w-full p-4 text-center">
-                 <h3 className="text-amber-100 font-serif text-lg tracking-wider drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                   {card.nameCn}
-                 </h3>
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 w-full p-3 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <h3 className="text-bone font-serif text-base tracking-wider">
+                  {card.nameCn}
+                </h3>
               </div>
             </div>
           ) : (
-            // Fallback Design
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-[#2D1B4E] to-[#0F0518] text-center border-4 border-double border-amber-500/20">
-              <div className="text-4xl mb-4 text-amber-400 drop-shadow-lg">
-                {card.type === 'major' ? '★' : getSuitSymbol(card.suit)}
+            <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
+              <div className="text-gold-dim text-2xl mb-4">
+                {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
               </div>
-              <div className="font-serif text-xl font-bold text-amber-100 mb-1 tracking-widest uppercase border-b border-amber-500/30 pb-2">
+              <div className="w-12 h-px bg-[var(--ink-line)] mb-4" />
+              <div className="font-serif text-base text-bone mb-2 tracking-widest">
                 {card.nameCn}
               </div>
-              <div className="text-sm text-amber-300/60 font-light tracking-widest uppercase mt-2">
+              <div className="text-bone-faint text-xs tracking-quiet uppercase">
                 {card.name}
               </div>
             </div>
@@ -105,21 +102,11 @@ export function TarotCardComponent({
         </div>
       </div>
 
-      {/* Reversed Label - Floating */}
       {isRevealed && isReversed && (
-        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-red-500/30 shadow-lg animate-in fade-in zoom-in duration-300">
-           <span className="text-sm text-red-400 font-medium tracking-wide flex items-center gap-1">
-             <span className="inline-block transform rotate-180">⇧</span> 逆位
-           </span>
-        </div>
-      )}
-
-       {/* Upright Label - Floating (Optional, for symmetry if desired, currently only reversed shown per request logic usually) */}
-       {isRevealed && !isReversed && (
-        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-500/30 shadow-lg animate-in fade-in zoom-in duration-300 opacity-0 group-hover:opacity-100 transition-opacity">
-           <span className="text-sm text-emerald-400 font-medium tracking-wide flex items-center gap-1">
-             <span>⇧</span> 正位
-           </span>
+        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 anim-fade-in">
+          <span className="text-xs tracking-mystic text-gold-dim uppercase">
+            逆 位
+          </span>
         </div>
       )}
     </div>
@@ -128,10 +115,10 @@ export function TarotCardComponent({
 
 function getSuitSymbol(suit?: string): string {
   switch (suit) {
-    case 'wands': return '🪄';
-    case 'cups': return '🏆';
-    case 'swords': return '⚔️';
-    case 'pentacles': return '⭐';
+    case 'wands': return '✦';
+    case 'cups': return '◇';
+    case 'swords': return '✧';
+    case 'pentacles': return '⊹';
     default: return '✦';
   }
 }

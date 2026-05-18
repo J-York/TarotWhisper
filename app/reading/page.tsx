@@ -34,36 +34,35 @@ export default function ReadingPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   const handleStartInterpretation = () => {
-    // 直接开始解读，服务器端会自动使用内置配置（如果用户未配置）
     startInterpretation(config);
   };
 
   const steps = [
-    { id: 'question', label: '提问' },
-    { id: 'spread', label: '牌阵' },
-    { id: 'shuffle', label: '洗牌' },
-    { id: 'draw', label: '揭示' },
-    { id: 'interpret', label: '洞察' }
+    { id: 'question', label: '提 问' },
+    { id: 'spread', label: '牌 阵' },
+    { id: 'shuffle', label: '洗 牌' },
+    { id: 'draw', label: '揭 示' },
+    { id: 'interpret', label: '洞 察' }
   ];
 
-  const currentStepIndex = steps.findIndex(s => s.id === phase) !== -1 
+  const currentStepIndex = steps.findIndex(s => s.id === phase) !== -1
     ? steps.findIndex(s => s.id === phase)
     : (phase === 'reveal' ? 3 : 0);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#1A0B2E] via-[#0F0518] to-[#0F0518] bg-fixed">
-      {/* 顶部导航 - Sanctuary Header */}
-      <header className="fixed top-0 w-full z-50 flex items-center justify-between px-8 py-6 bg-gradient-to-b from-[#0F0518] to-transparent pointer-events-none">
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="fixed top-0 w-full z-50 flex items-center justify-between px-8 py-6 bg-gradient-to-b from-[var(--ink-deep)] via-[var(--ink-deep)]/80 to-transparent pointer-events-none">
         <Link
           href="/"
-          className="pointer-events-auto flex items-center gap-3 text-purple-300/60 hover:text-amber-200 transition-colors group"
+          className="pointer-events-auto flex items-center gap-3 text-bone-faint hover:text-bone transition-colors group"
         >
-          <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
-          <span className="text-base tracking-[0.2em] font-light uppercase">离开圣殿</span>
+          <span className="text-sm group-hover:-translate-x-1 transition-transform">←</span>
+          <span className="text-xs tracking-mystic uppercase">离 开</span>
         </Link>
 
-        {/* Constellation Progress Bar */}
-        <div className="hidden md:flex items-center gap-8 pointer-events-auto">
+        {/* Step indicator */}
+        <div className="hidden md:flex items-center gap-6 pointer-events-auto">
           {steps.map((step, index) => {
             const isActive = index === currentStepIndex;
             const isCompleted = index < currentStepIndex;
@@ -71,84 +70,75 @@ export default function ReadingPage() {
             return (
               <div key={step.id} className="flex items-center gap-3">
                 <div className={`
-                  w-2.5 h-2.5 rounded-full transition-all duration-500 relative
-                  ${isActive ? 'bg-amber-400 scale-150 shadow-[0_0_10px_rgba(251,191,36,0.8)]' :
-                    isCompleted ? 'bg-amber-500/50' : 'bg-purple-900/50'}
-                `}>
-                  {isActive && <div className="absolute inset-0 rounded-full animate-ping bg-amber-400/50" />}
-                </div>
+                  w-1.5 h-1.5 rounded-full transition-all duration-500
+                  ${isActive ? 'bg-[var(--gold)] scale-150' :
+                    isCompleted ? 'bg-[var(--gold-dim)]' : 'bg-[var(--bone-whisper)]'}
+                `} />
                 <span className={`
-                  text-sm tracking-widest uppercase transition-colors duration-300
-                  ${isActive ? 'text-amber-100 font-medium' :
-                    isCompleted ? 'text-purple-300/50' : 'text-purple-900/30'}
+                  text-[10px] tracking-mystic uppercase transition-colors duration-300
+                  ${isActive ? 'text-gold' :
+                    isCompleted ? 'text-bone-faint' : 'text-bone-whisper'}
                 `}>
                   {step.label}
                 </span>
                 {index < steps.length - 1 && (
-                  <div className={`h-[1px] w-8 transition-colors duration-500 ${isCompleted ? 'bg-amber-500/20' : 'bg-purple-900/20'}`} />
+                  <div className={`h-px w-6 transition-colors duration-500 ${isCompleted ? 'bg-[var(--gold-dim)]' : 'bg-[var(--ink-line)]'}`} />
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-6 pointer-events-auto">
           <Link
             href="/history"
-            className="pointer-events-auto p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md"
-            title="历史记录"
+            className="text-xs tracking-mystic text-bone-faint hover:text-bone uppercase transition-colors"
           >
-            <svg className="w-6 h-6 text-purple-300 hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            轨 迹
           </Link>
-
           <button
             onClick={() => setShowSettings(true)}
-            className="pointer-events-auto p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors backdrop-blur-md"
-            title="API 设置"
+            className="text-xs tracking-mystic text-bone-faint hover:text-bone uppercase transition-colors"
           >
-            <svg className="w-6 h-6 text-purple-300 hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            配 置
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 min-h-screen">
-        
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pt-28 pb-12 min-h-screen">
+
         {/* Phase: Question */}
         {phase === 'question' && (
-          <div className="w-full max-w-2xl animate-in fade-in zoom-in duration-500">
-            <div className="text-center mb-10">
-              <h2 className="text-4xl md:text-5xl font-serif text-amber-100 mb-4 drop-shadow-lg">
-                你寻求什么？
+          <div className="w-full max-w-2xl anim-fade-in-up">
+            <div className="text-center mb-12">
+              <span className="text-gold text-xl">✦</span>
+              <h2 className="text-3xl md:text-4xl font-serif text-bone mt-6 mb-4 tracking-wider">
+                你 寻 求 什 么
               </h2>
-              <p className="text-purple-200/60 text-lg font-light">
-                集中精神，让问题在心中浮现。
+              <div className="rule-h-fade w-24 mx-auto mb-4" />
+              <p className="text-bone-faint text-sm font-light tracking-quiet">
+                集中精神，让问题在心中浮现
               </p>
             </div>
-            
-            <div className="glass-panel p-1 rounded-2xl relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-purple-600 rounded-2xl opacity-20 group-focus-within:opacity-50 transition duration-500 blur-sm"></div>
+
+            <div className="ink-panel-quiet">
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="例如：我在事业上应该采取什么行动？"
-                className="w-full h-48 px-6 py-6 bg-[#0F0518]/80 rounded-xl text-xl text-amber-50 placeholder-purple-500/30 resize-none focus:outline-none relative z-10 text-center leading-relaxed"
+                className="w-full h-44 px-8 py-7 bg-transparent text-lg text-bone placeholder:text-bone-whisper resize-none focus:outline-none text-center leading-loose font-light"
                 spellCheck={false}
               />
             </div>
-            
-            <div className="mt-10 flex justify-center">
+
+            <div className="mt-12 flex justify-center">
               <button
                 onClick={() => goToPhase('spread')}
                 disabled={!question.trim()}
-                className="btn-mystic px-12 py-4 rounded-full text-lg tracking-widest uppercase font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-ink-primary px-10 py-3"
               >
-                继续
+                继 续 ✦
               </button>
             </div>
           </div>
@@ -156,20 +146,20 @@ export default function ReadingPage() {
 
         {/* Phase: Spread Selection */}
         {phase === 'spread' && (
-          <div className="w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <div className="w-full flex flex-col items-center anim-fade-in-up">
             <SpreadSelector selectedSpread={spread} onSelect={setSpread} />
-            <div className="mt-12 flex gap-6">
+            <div className="mt-12 flex gap-8 items-center">
               <button
                 onClick={() => goToPhase('question')}
-                className="px-8 py-3 text-purple-300/60 hover:text-purple-100 transition-colors uppercase tracking-widest text-base"
+                className="btn-ink-ghost"
               >
-                返回
+                ← 返 回
               </button>
               <button
                 onClick={() => goToPhase('shuffle')}
-                className="btn-mystic px-10 py-3 rounded-full text-base tracking-widest uppercase font-semibold"
+                className="btn-ink-primary px-10 py-3"
               >
-                确认牌阵
+                确 认 牌 阵
               </button>
             </div>
           </div>
@@ -177,42 +167,41 @@ export default function ReadingPage() {
 
         {/* Phase: Shuffle */}
         {phase === 'shuffle' && (
-          <div className="flex flex-col items-center animate-in fade-in duration-700">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-serif text-amber-100 mb-3 tracking-wide">
-                汇聚你的能量
+          <div className="flex flex-col items-center anim-fade-in">
+            <div className="text-center mb-14">
+              <span className="text-gold text-xl">✦</span>
+              <h2 className="text-2xl font-serif text-bone mt-6 mb-3 tracking-wider">
+                汇 聚 你 的 能 量
               </h2>
-              <p className="text-purple-200/60 font-light italic text-lg">
-                在洗牌时，于心中默念你的问题...
+              <div className="rule-h-fade w-24 mx-auto mb-4" />
+              <p className="text-bone-faint font-light italic text-sm">
+                在洗牌时，于心中默念你的问题
               </p>
             </div>
-            <div className="scale-125 transform transition-transform duration-500 hover:scale-130">
-              <CardDeck onShuffle={shuffleAndDraw} />
-            </div>
+            <CardDeck onShuffle={shuffleAndDraw} />
           </div>
         )}
 
         {/* Phase: Draw / Reveal */}
         {(phase === 'draw' || phase === 'reveal') && (
-          <div className="flex flex-col items-center w-full max-w-6xl animate-in fade-in duration-500">
+          <div className="flex flex-col items-center w-full max-w-6xl anim-fade-in">
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-serif text-amber-100 mb-2">
-                {phase === 'draw' ? '牌面已现' : '命运揭晓'}
+              <span className="text-gold text-lg">✦</span>
+              <h2 className="text-2xl font-serif text-bone mt-4 mb-3 tracking-wider">
+                {phase === 'draw' ? '牌 面 已 现' : '命 运 揭 晓'}
               </h2>
-              <div className="text-base text-purple-300/40 uppercase tracking-[0.2em]">
-                {spread.nameCn} • {question}
+              <div className="rule-h-fade w-24 mx-auto mb-3" />
+              <div className="text-xs text-bone-faint tracking-mystic uppercase">
+                {spread.nameCn}
               </div>
             </div>
 
-            {/* Table / Card Area */}
-            <div className="relative w-full min-h-[600px] flex items-center justify-center p-12 rounded-[3rem] border border-white/5 bg-gradient-to-b from-[#1A0B2E]/50 to-transparent backdrop-blur-sm shadow-2xl">
-               {/* Decorative Table Elements */}
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.05),transparent_70%)] pointer-events-none" />
-               
-               <div className={`flex flex-wrap justify-center items-center gap-8 md:gap-12 transition-all duration-700 ${spread.id === 'celtic-cross' ? 'max-w-4xl' : ''}`}>
+            {/* Card table */}
+            <div className="relative w-full min-h-[600px] flex items-center justify-center p-12 ink-panel-quiet">
+              <div className={`flex flex-wrap justify-center items-center gap-8 md:gap-12 transition-all duration-700 ${spread.id === 'celtic-cross' ? 'max-w-4xl' : ''}`}>
                 {drawnCards.map((drawn, index) => (
-                  <div key={drawn.position.id} className="flex flex-col items-center gap-4 group">
-                    <span className="text-sm text-purple-300/40 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8">
+                  <div key={drawn.position.id} className="flex flex-col items-center gap-4 group relative">
+                    <span className="absolute -top-7 text-[10px] text-bone-whisper uppercase tracking-mystic opacity-0 group-hover:opacity-100 transition-opacity">
                       {drawn.position.nameCn}
                     </span>
                     <TarotCardComponent
@@ -232,30 +221,30 @@ export default function ReadingPage() {
             </div>
 
             {/* Controls */}
-            <div className="mt-12 flex gap-6 items-center">
+            <div className="mt-12 flex gap-8 items-center">
               {phase === 'draw' && revealedCount < drawnCards.length && (
                 <button
                   onClick={revealAllCards}
-                  className="px-8 py-3 border border-purple-500/30 text-purple-200 rounded-full hover:bg-purple-800/30 transition-all uppercase text-base tracking-widest hover:border-amber-500/50 hover:text-amber-200"
+                  className="btn-ink px-8 py-3"
                 >
-                  全部翻开
+                  全 部 翻 开
                 </button>
               )}
-              
+
               {phase === 'reveal' && (
-                <div className="flex gap-4 animate-in slide-in-from-bottom-4 duration-500">
-                   <button
+                <div className="flex gap-8 items-center anim-fade-in-up">
+                  <button
                     onClick={reset}
-                    className="px-8 py-3 text-purple-300/60 hover:text-white transition-colors uppercase tracking-widest text-base"
+                    className="btn-ink-ghost"
                   >
-                    重新开始
+                    重 新 开 始
                   </button>
                   <button
                     onClick={handleStartInterpretation}
                     disabled={isInterpreting}
-                    className="btn-mystic px-10 py-3 rounded-full text-base tracking-widest uppercase font-semibold disabled:opacity-50"
+                    className="btn-ink-primary px-10 py-3"
                   >
-                    {isInterpreting ? '正在聆听神谕...' : '请求神谕'}
+                    {isInterpreting ? '聆 听 神 谕' : '请 求 神 谕 ✦'}
                   </button>
                 </div>
               )}
@@ -265,9 +254,8 @@ export default function ReadingPage() {
 
         {/* Phase: Interpretation */}
         {phase === 'interpret' && (
-          <div className="flex flex-col items-center gap-10 w-full max-w-5xl animate-in fade-in duration-700">
-             {/* Mini Spread Review */}
-            <div className="flex flex-wrap justify-center gap-4 opacity-80 hover:opacity-100 transition-opacity">
+          <div className="flex flex-col items-center gap-10 w-full max-w-5xl anim-fade-in">
+            <div className="flex flex-wrap justify-center gap-4 opacity-70 hover:opacity-100 transition-opacity">
               {drawnCards.map((drawn) => (
                 <div key={drawn.position.id} className="transform scale-75 origin-top">
                   <TarotCardComponent
@@ -286,20 +274,20 @@ export default function ReadingPage() {
               error={error}
             />
 
-            <div className="flex gap-6 pb-20">
-               {!isInterpreting && (
+            <div className="flex gap-8 items-center pb-12">
+              {!isInterpreting && (
                 <>
                   <button
                     onClick={handleStartInterpretation}
-                    className="px-8 py-3 border border-amber-500/30 text-amber-400 rounded-full hover:bg-amber-500/10 transition-colors uppercase tracking-widest text-base"
+                    className="btn-ink px-8 py-3"
                   >
-                    重新解读
+                    重 新 解 读
                   </button>
                   <button
                     onClick={reset}
-                    className="btn-mystic px-10 py-3 rounded-full text-base tracking-widest uppercase font-semibold"
+                    className="btn-ink-primary px-10 py-3"
                   >
-                    开始新的占卜
+                    新 的 占 卜 ✦
                   </button>
                 </>
               )}

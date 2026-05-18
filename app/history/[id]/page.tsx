@@ -27,7 +27,7 @@ export default function ReadingDetailPage({ params }: PageProps) {
 
   const handleDelete = (): void => {
     if (!reading) return;
-    
+
     const confirmed = window.confirm('确定要删除这条占卜记录吗？');
     if (!confirmed) return;
 
@@ -41,13 +41,13 @@ export default function ReadingDetailPage({ params }: PageProps) {
     const day = String(date.getDate()).padStart(2, '0');
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
-    return `${year}年${month}月${day}日 ${hour}:${minute}`;
+    return `${year}.${month}.${day} ${hour}:${minute}`;
   };
 
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-purple-200 animate-pulse">加载中...</div>
+        <span className="text-bone-faint text-xs tracking-mystic uppercase anim-whisper">载 入 中</span>
       </div>
     );
   }
@@ -55,15 +55,15 @@ export default function ReadingDetailPage({ params }: PageProps) {
   if (!reading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="glass-panel rounded-2xl p-12 text-center max-w-md">
-          <div className="text-6xl mb-6 opacity-30">🌑</div>
-          <h3 className="text-2xl font-serif text-purple-200/70 mb-3">记录不存在</h3>
-          <p className="text-purple-300/50 mb-8">该占卜记录已消失在虚空中</p>
-          <Link 
+        <div className="ink-panel-quiet p-16 text-center max-w-md">
+          <div className="text-bone-whisper text-3xl mb-8">◇</div>
+          <h3 className="text-xl font-serif text-bone-dim mb-4 tracking-wider">记 录 不 存 在</h3>
+          <p className="text-bone-faint text-sm font-light mb-10">该占卜已消失在虚空中</p>
+          <Link
             href="/history"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium transition-all shadow-lg"
+            className="btn-ink-primary inline-block px-10 py-3"
           >
-            返回历史
+            返 回 轨 迹
           </Link>
         </div>
       </div>
@@ -71,81 +71,76 @@ export default function ReadingDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col p-8">
-      {/* 装饰光效 */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[128px] pointer-events-none" />
-
+    <div className="relative min-h-screen flex flex-col px-8 py-10">
       {/* Header */}
-      <header className="relative z-20 max-w-7xl w-full mx-auto mb-8">
+      <header className="relative z-20 max-w-7xl w-full mx-auto mb-14">
         <div className="flex items-center justify-between">
-          <Link 
+          <Link
             href="/history"
-            className="text-purple-300/60 hover:text-amber-400 transition-colors flex items-center gap-2 group"
+            className="text-bone-faint hover:text-bone transition-colors flex items-center gap-3 group"
           >
-            <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            返回历史
+            <span className="text-sm group-hover:-translate-x-1 transition-transform">←</span>
+            <span className="text-xs tracking-mystic uppercase">返 回 轨 迹</span>
           </Link>
 
           <button
             onClick={handleDelete}
-            className="px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 transition-all flex items-center gap-2"
+            className="btn-ink-ghost"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            删除记录
+            删 除 记 录
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto">
+      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto">
         {/* Title & Date */}
-        <div className="text-center mb-12">
-          <div className="text-sm text-purple-300/50 mb-3 flex items-center justify-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="text-center mb-16 anim-fade-in">
+          <div className="text-[10px] text-bone-whisper mb-6 tracking-mystic uppercase">
             {formatDate(reading.createdAt)}
           </div>
-          <h1 className="text-4xl md:text-5xl font-serif text-gold-gradient mb-3 tracking-wide">
-            {reading.question || '未记录问题'}
+          <span className="text-gold text-xl">✦</span>
+          <h1 className="text-3xl md:text-4xl font-serif text-bone mt-5 mb-5 tracking-wider leading-snug max-w-3xl mx-auto">
+            {reading.question || '未 记 录 问 题'}
           </h1>
-          <div className="flex items-center justify-center gap-3 text-purple-200/70">
-            <span className="text-amber-400/70">⊹</span>
-            <span className="font-serif">{reading.spread.nameCn}</span>
-            <span className="text-purple-400/40">·</span>
-            <span>{reading.drawnCards.length} 张牌</span>
+          <div className="rule-h-fade w-24 mx-auto mb-5" />
+          <div className="flex items-center justify-center gap-3 text-bone-faint text-xs tracking-quiet uppercase">
+            <span className="text-gold-dim">◇</span>
+            <span>{reading.spread.nameCn}</span>
+            <span className="w-2 h-px bg-[var(--ink-line)]" />
+            <span>{reading.drawnCards.length} 张</span>
           </div>
-          <div className="h-px w-32 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mt-6" />
         </div>
 
         {/* Spread Info */}
-        <div className="glass-panel rounded-2xl p-8 mb-12">
-          <h2 className="text-2xl font-serif text-amber-200 mb-4 flex items-center gap-3">
-            <span className="text-amber-400">✧</span>
-            牌阵信息
-          </h2>
-          <div className="space-y-2 text-purple-100">
-            <p><span className="text-purple-300/70">牌阵名称：</span>{reading.spread.nameCn} ({reading.spread.name})</p>
-            <p className="text-purple-200/70">{reading.spread.description}</p>
+        <div className="ink-panel-quiet p-10 mb-16">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="text-gold-dim">◇</span>
+            <h2 className="text-xs font-serif text-bone tracking-mystic uppercase">牌 阵 信 息</h2>
+          </div>
+          <div className="rule-h-fade w-16 mb-5" />
+          <div className="space-y-3 font-light">
+            <p className="text-bone-dim text-sm">
+              <span className="text-bone-faint mr-3 tracking-quiet uppercase text-xs">名称</span>
+              {reading.spread.nameCn} <span className="text-bone-whisper">/ {reading.spread.name}</span>
+            </p>
+            <p className="text-bone-faint text-sm leading-relaxed">{reading.spread.description}</p>
           </div>
         </div>
 
         {/* Drawn Cards */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-serif text-amber-200 mb-8 text-center flex items-center justify-center gap-3">
-            <span className="text-amber-400">✧</span>
-            抽取的牌
-            <span className="text-amber-400">✧</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="mb-16">
+          <div className="text-center mb-12">
+            <span className="text-gold text-lg">✦</span>
+            <h2 className="text-2xl font-serif text-bone mt-4 mb-3 tracking-mystic uppercase">
+              抽 取 的 牌
+            </h2>
+            <div className="rule-h-fade w-24 mx-auto" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
             {reading.drawnCards.map((drawn, index) => (
               <div key={index} className="flex flex-col items-center">
-                <div className="mb-4">
+                <div className="mb-6">
                   <TarotCardComponent
                     card={drawn.card}
                     isReversed={drawn.isReversed}
@@ -154,16 +149,17 @@ export default function ReadingDetailPage({ params }: PageProps) {
                   />
                 </div>
                 <div className="text-center">
-                  <h3 className="text-lg font-serif text-amber-200 mb-2">
+                  <p className="text-[10px] text-gold-dim tracking-mystic uppercase mb-3">
                     {drawn.position.nameCn}
-                  </h3>
-                  <p className="text-sm text-purple-200/70 mb-3">
+                  </p>
+                  <p className="text-xs text-bone-faint font-light mb-5 leading-relaxed max-w-xs">
                     {drawn.position.description}
                   </p>
-                  <p className="text-purple-100 font-medium">
+                  <div className="rule-h-fade w-12 mx-auto mb-4" />
+                  <p className="text-bone font-serif tracking-wider">
                     {drawn.card.nameCn}
                   </p>
-                  <p className="text-sm text-purple-300/60">
+                  <p className="text-xs text-bone-whisper tracking-quiet uppercase mt-1">
                     {drawn.card.name}
                   </p>
                 </div>
