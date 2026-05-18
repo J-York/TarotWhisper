@@ -47,7 +47,7 @@ export default function ReadingDetailPage({ params }: PageProps) {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="font-display text-bone-faint text-xs tracking-veil uppercase anim-whisper">
+        <span className="cn-label text-bone-faint anim-whisper">
           载 入 中
         </span>
       </div>
@@ -81,14 +81,14 @@ export default function ReadingDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between">
           <Link
             href="/history"
-            className="text-bone-faint hover:text-bone transition-colors duration-500 flex items-center gap-4 group"
+            className="text-bone-dim hover:text-bone transition-colors duration-500 flex items-center gap-4 group"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
-            <span className="text-sm group-hover:-translate-x-1 transition-transform duration-700"
+            <span className="text-base group-hover:-translate-x-1 transition-transform duration-700"
                   style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
               ←
             </span>
-            <span className="font-display text-[10px] tracking-veil uppercase">
+            <span className="cn-nav">
               返 回 轨 迹
             </span>
           </Link>
@@ -103,7 +103,7 @@ export default function ReadingDetailPage({ params }: PageProps) {
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto">
         {/* 标题 + 日期 + 问题 */}
         <div className="text-center mb-20 anim-veil-rise">
-          <div className="font-display text-[10px] text-bone-whisper mb-7 tracking-veil uppercase">
+          <div className="font-display text-[11px] text-bone-faint mb-7 tracking-veil uppercase">
             {formatDate(reading.createdAt)}
           </div>
           <span className="text-gold text-xl anim-drift">✦</span>
@@ -111,7 +111,7 @@ export default function ReadingDetailPage({ params }: PageProps) {
             {reading.question || '未 记 录 问 题'}
           </h1>
           <div className="rule-h-gold w-20 mx-auto mb-6" />
-          <div className="flex items-center justify-center gap-3 font-display text-bone-faint text-[10px] tracking-veil uppercase">
+          <div className="flex items-center justify-center gap-3 cn-label text-bone-dim">
             <span className="text-gold-dim">◇</span>
             <span>{reading.spread.nameCn}</span>
             <span className="w-2 h-px bg-[var(--ink-line)]" />
@@ -123,15 +123,15 @@ export default function ReadingDetailPage({ params }: PageProps) {
         <div className="ink-panel-quiet p-12 mb-20 anim-veil-rise">
           <div className="flex items-center gap-4 mb-5">
             <span className="text-gold-dim">◇</span>
-            <h2 className="font-display text-xs text-bone tracking-veil uppercase">
+            <h2 className="cn-nav text-bone">
               牌 阵 信 息
             </h2>
           </div>
           <div className="rule-h-gold w-12 mb-6" />
           <div className="space-y-4">
             <p className="font-body text-bone-dim text-base">
-              <span className="font-display text-bone-faint mr-4 tracking-veil uppercase text-[10px]">
-                名称
+              <span className="cn-hint text-bone-faint mr-4 inline-block">
+                名 称
               </span>
               {reading.spread.nameCn}
               <span className="text-bone-whisper ml-2">/ {reading.spread.name}</span>
@@ -163,17 +163,17 @@ export default function ReadingDetailPage({ params }: PageProps) {
                   />
                 </div>
                 <div className="text-center">
-                  <p className="font-display text-[10px] text-gold-dim tracking-veil uppercase mb-3">
+                  <p className="cn-label text-gold-dim mb-3">
                     {drawn.position.nameCn}
                   </p>
                   <p className="font-body italic-soft text-sm text-bone-faint mb-6 leading-relaxed max-w-xs">
                     {drawn.position.description}
                   </p>
                   <div className="rule-h-fade w-10 mx-auto mb-5" />
-                  <p className="font-display text-bone tracking-[0.18em] text-base">
+                  <p className="font-display text-bone tracking-[0.18em] text-lg">
                     {drawn.card.nameCn}
                   </p>
-                  <p className="font-display text-[10px] text-bone-whisper tracking-veil uppercase mt-2">
+                  <p className="font-display text-[11px] text-bone-faint tracking-veil uppercase mt-2">
                     {drawn.card.name}
                   </p>
                 </div>

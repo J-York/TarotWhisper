@@ -144,8 +144,8 @@ export function Interpretation({
         <p className="font-body text-bone-dim text-base leading-relaxed mb-4 italic-soft">
           {error}
         </p>
-        <p className="font-display text-[10px] tracking-veil text-bone-faint uppercase">
-          请检查与以太的连接，然后重试
+        <p className="cn-label text-bone-dim">
+          请 检 查 与 以 太 的 连 接 ， 然 后 重 试
         </p>
       </div>
     );
@@ -200,14 +200,14 @@ export function Interpretation({
                       <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
                         <div className="flex items-center gap-4">
                           <span className="text-gold-dim text-sm">◇</span>
-                          <div className="flex flex-col gap-1">
-                            <span className="font-display text-[11px] tracking-veil uppercase text-bone-dim">
+                          <div className="flex flex-col gap-1.5">
+                            <span className="cn-label text-bone">
                               模 型 思 考
                             </span>
-                            <span className="font-display text-[9px] tracking-veil uppercase text-bone-whisper group-open:hidden">
+                            <span className="cn-hint text-bone-faint group-open:hidden">
                               点 击 展 开
                             </span>
-                            <span className="font-display text-[9px] tracking-veil uppercase text-bone-whisper hidden group-open:inline">
+                            <span className="cn-hint text-bone-faint hidden group-open:inline">
                               点 击 折 叠
                             </span>
                           </div>
@@ -251,7 +251,7 @@ export function Interpretation({
                 <span className="text-gold text-4xl anim-whisper">✦</span>
                 <span className="absolute inset-0 anim-glow-pulse rounded-full" aria-hidden />
               </div>
-              <p className="font-display text-bone-dim tracking-veil uppercase text-xs">
+              <p className="cn-label text-bone-dim">
                 正 在 通 灵
               </p>
               <div className="flex gap-2.5">
@@ -259,7 +259,7 @@ export function Interpretation({
                 <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '400ms' }} />
                 <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
               </div>
-              <p className="font-body italic-soft text-bone-whisper text-xs mt-2">
+              <p className="font-body italic-soft text-bone-faint text-sm mt-2">
                 星辰需要时间才能开口
               </p>
             </div>
@@ -267,7 +267,7 @@ export function Interpretation({
             // ─── 空态 ───
             <div className="flex flex-col items-center justify-center py-14 gap-5">
               <span className="text-bone-whisper text-2xl">◇</span>
-              <p className="font-display text-bone-whisper tracking-veil text-xs uppercase">
+              <p className="cn-label text-bone-faint">
                 等 待 牌 面
               </p>
             </div>

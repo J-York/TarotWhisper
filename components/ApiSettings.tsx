@@ -86,7 +86,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
         <div className="flex items-center justify-between px-10 py-7 hairline-bottom">
           <div className="flex items-center gap-4">
             <span className="text-gold-dim">◇</span>
-            <h2 className="font-display text-xs text-bone tracking-veil uppercase">
+            <h2 className="cn-nav text-bone">
               星 图 配 置
             </h2>
           </div>
@@ -113,7 +113,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
 
           {/* 端点 */}
           <div>
-            <label className="block font-display text-[10px] text-bone-faint tracking-veil uppercase mb-4">
+            <label className="block cn-label text-bone-dim mb-4">
               端 点
             </label>
             <input
@@ -121,16 +121,16 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
               value={localConfig.endpoint}
               onChange={(e) => setLocalConfig({ ...localConfig, endpoint: e.target.value })}
               placeholder="https://api.openai.com/v1/chat/completions"
-              className="input-ink font-mono text-xs"
+              className="input-ink font-mono text-sm"
             />
-            <p className="font-display text-[9px] text-bone-whisper mt-3 tracking-veil uppercase">
+            <p className="cn-hint text-bone-faint mt-3">
               OpenAI ╱ Claude ╱ 兼容格式
             </p>
           </div>
 
           {/* 密钥 */}
           <div>
-            <label className="block font-display text-[10px] text-bone-faint tracking-veil uppercase mb-4">
+            <label className="block cn-label text-bone-dim mb-4">
               密 钥
             </label>
             <input
@@ -138,9 +138,9 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
               value={localConfig.apiKey}
               onChange={(e) => setLocalConfig({ ...localConfig, apiKey: e.target.value })}
               placeholder="sk-..."
-              className="input-ink font-mono text-xs"
+              className="input-ink font-mono text-sm"
             />
-            <p className="font-display text-[9px] text-bone-whisper mt-3 tracking-veil uppercase">
+            <p className="cn-hint text-bone-faint mt-3">
               ⊹ 仅 保 存 在 本 地
             </p>
           </div>
@@ -148,7 +148,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
           {/* 模型 */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <label className="block font-display text-[10px] text-bone-faint tracking-veil uppercase">
+              <label className="block cn-label text-bone-dim">
                 模 型
               </label>
               <button
@@ -165,7 +165,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
               <select
                 value={localConfig.model}
                 onChange={(e) => setLocalConfig({ ...localConfig, model: e.target.value })}
-                className="input-ink font-mono text-xs"
+                className="input-ink font-mono text-sm"
               >
                 {availableModels.map((model) => (
                   <option key={model.id} value={model.id} className="bg-[var(--ink-deep)]">
@@ -179,24 +179,24 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
                 value={localConfig.model}
                 onChange={(e) => setLocalConfig({ ...localConfig, model: e.target.value })}
                 placeholder="gpt-4o-mini"
-                className="input-ink font-mono text-xs"
+                className="input-ink font-mono text-sm"
               />
             )}
 
             {modelsError && (
-              <p className="font-display text-[9px] text-gold-dim mt-3 tracking-veil uppercase">
+              <p className="cn-hint text-gold-dim mt-3">
                 ◇ {modelsError}
               </p>
             )}
 
             {!modelsError && availableModels.length === 0 && (
-              <p className="font-display text-[9px] text-bone-whisper mt-3 tracking-veil uppercase">
+              <p className="cn-hint text-bone-faint mt-3">
                 如 gpt-4o ╱ claude-3-opus
               </p>
             )}
 
             {availableModels.length > 0 && (
-              <p className="font-display text-[9px] text-gold-dim mt-3 tracking-veil uppercase">
+              <p className="cn-hint text-gold-dim mt-3">
                 ✦ 已 载 入 {availableModels.length} 个 模 型
               </p>
             )}

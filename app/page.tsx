@@ -21,23 +21,23 @@ export default function Home() {
     <div className="relative min-h-screen flex flex-col">
       {/* ─── 顶部 utility bar ─── */}
       <nav className="absolute top-0 left-0 right-0 flex justify-between items-center px-10 py-7 z-20">
-        <span className="font-display text-[10px] tracking-veil text-bone-faint uppercase">
+        <span className="font-display text-[11px] tracking-veil text-bone-faint uppercase">
           Whisper
         </span>
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-10">
           <Link
             href="/history"
-            className="font-display text-[10px] tracking-veil text-bone-faint hover:text-bone uppercase transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
-            轨迹
+            轨 迹
           </Link>
           <button
             onClick={() => setShowSettings(true)}
-            className="font-display text-[10px] tracking-veil text-bone-faint hover:text-bone uppercase transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
-            配置
+            配 置
           </button>
         </div>
       </nav>
@@ -57,7 +57,7 @@ export default function Home() {
           </h1>
 
           {/* 中文副标题 — Cormorant 衬线 + 间距 */}
-          <p className="font-display text-xs tracking-veil text-bone-dim uppercase mt-5">
+          <p className="font-display text-sm tracking-mystic text-bone-dim mt-5">
             神 秘 塔 罗
           </p>
 
@@ -80,7 +80,7 @@ export default function Home() {
 
           {/* 配置提示 */}
           {isLoaded && !isConfigured && !fallbackAvailable && (
-            <p className="mt-12 font-body text-xs tracking-quiet text-bone-faint italic">
+            <p className="mt-12 font-body text-sm tracking-quiet text-bone-faint italic">
               <span className="text-gold-dim mr-2">◇</span>
               请先于「配置」中设置 API 密钥
             </p>
@@ -115,8 +115,8 @@ export default function Home() {
 
       {/* ─── Footer ─── */}
       <footer className="py-10 text-center">
-        <p className="font-display text-[10px] tracking-veil text-bone-whisper uppercase">
-          命运 ╱ 在等待召唤
+        <p className="cn-hint text-bone-whisper">
+          命 运 ╱ 在 等 待 召 唤
         </p>
       </footer>
 
@@ -154,11 +154,11 @@ function Pillar({ symbol, title, subtitle, text, position }: PillarProps) {
         {symbol}
       </span>
 
-      <h3 className="font-display text-bone text-base mb-2 tracking-[0.18em]">
+      <h3 className="font-display text-bone text-lg mb-2 tracking-[0.18em]">
         {title}
       </h3>
 
-      <p className="font-display text-[10px] tracking-veil uppercase text-bone-faint mb-6">
+      <p className="font-display text-[11px] tracking-veil uppercase text-bone-faint mb-6">
         {subtitle}
       </p>
 

@@ -63,7 +63,7 @@ export default function HistoryPage() {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span className="font-display text-bone-faint text-xs tracking-veil uppercase anim-whisper">
+        <span className="cn-label text-bone-faint anim-whisper">
           载 入 中
         </span>
       </div>
@@ -77,14 +77,14 @@ export default function HistoryPage() {
         <div className="flex items-center justify-between">
           <Link
             href="/"
-            className="text-bone-faint hover:text-bone transition-colors duration-500 flex items-center gap-4 group"
+            className="text-bone-dim hover:text-bone transition-colors duration-500 flex items-center gap-4 group"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
-            <span className="text-sm group-hover:-translate-x-1 transition-transform duration-700"
+            <span className="text-base group-hover:-translate-x-1 transition-transform duration-700"
                   style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
               ←
             </span>
-            <span className="font-display text-[10px] tracking-veil uppercase">返 回</span>
+            <span className="cn-nav">返 回</span>
           </Link>
 
           {readings.length > 0 && (
@@ -135,7 +135,7 @@ export default function HistoryPage() {
           <h1 className="font-display text-4xl md:text-5xl text-bone mt-6 mb-3 tracking-[0.22em]">
             占 卜 轨 迹
           </h1>
-          <p className="font-display text-[10px] tracking-veil text-bone-faint uppercase mt-3">
+          <p className="font-display text-[11px] tracking-veil text-bone-faint uppercase mt-3">
             Trace of Divination
           </p>
           <div className="rule-h-gold w-20 mx-auto mt-6" />
@@ -216,7 +216,7 @@ export default function HistoryPage() {
                     className={`block p-9 ${isSelectionMode ? 'pointer-events-none' : ''}`}
                   >
                     {/* 日期 */}
-                    <div className="font-display text-[10px] text-bone-whisper mb-6 tracking-veil uppercase">
+                    <div className="font-display text-[11px] text-bone-faint mb-6 tracking-veil uppercase">
                       {formatDate(reading.createdAt)}
                     </div>
 
@@ -233,7 +233,7 @@ export default function HistoryPage() {
                     </h3>
 
                     {/* 牌阵信息 */}
-                    <div className="flex items-center gap-3 mb-7 font-display text-[10px] text-bone-faint tracking-veil uppercase">
+                    <div className="flex items-center gap-3 mb-7 cn-label text-bone-dim">
                       <span className="text-gold-dim">◇</span>
                       <span>{reading.spread.nameCn}</span>
                       <span className="w-2 h-px bg-[var(--ink-line)]" />
@@ -253,7 +253,7 @@ export default function HistoryPage() {
                         />
                       ))}
                       {reading.drawnCards.length > 8 && (
-                        <div className="font-display text-bone-whisper text-[10px] self-end ml-1">
+                        <div className="font-display text-bone-faint text-[11px] self-end ml-1">
                           +{reading.drawnCards.length - 8}
                         </div>
                       )}

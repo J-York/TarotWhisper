@@ -60,14 +60,14 @@ export default function ReadingPage() {
       <header className="fixed top-0 w-full z-50 flex items-center justify-between px-10 py-7 bg-gradient-to-b from-[var(--ink-deep)] via-[var(--ink-deep)]/85 to-transparent pointer-events-none">
         <Link
           href="/"
-          className="pointer-events-auto flex items-center gap-4 text-bone-faint hover:text-bone transition-colors duration-500 group"
+          className="pointer-events-auto flex items-center gap-4 text-bone-dim hover:text-bone transition-colors duration-500 group"
           style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
         >
-          <span className="text-sm group-hover:-translate-x-1 transition-transform duration-700"
+          <span className="text-base group-hover:-translate-x-1 transition-transform duration-700"
                 style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
             ←
           </span>
-          <span className="font-display text-[10px] tracking-veil uppercase">离 开</span>
+          <span className="cn-nav">离 开</span>
         </Link>
 
         {/* Step indicator · 缓慢的金线 */}
@@ -91,11 +91,11 @@ export default function ReadingPage() {
                 />
                 <span
                   className={`
-                    font-display text-[10px] tracking-veil uppercase transition-colors duration-700
+                    cn-label transition-colors duration-700
                     ${isActive
                       ? 'text-gold'
                       : isCompleted
-                      ? 'text-bone-faint'
+                      ? 'text-bone-dim'
                       : 'text-bone-whisper'}
                   `}
                   style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
@@ -117,17 +117,17 @@ export default function ReadingPage() {
           })}
         </div>
 
-        <div className="flex items-center gap-7 pointer-events-auto">
+        <div className="flex items-center gap-9 pointer-events-auto">
           <Link
             href="/history"
-            className="font-display text-[10px] tracking-veil text-bone-faint hover:text-bone uppercase transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             轨 迹
           </Link>
           <button
             onClick={() => setShowSettings(true)}
-            className="font-display text-[10px] tracking-veil text-bone-faint hover:text-bone uppercase transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             配 置
@@ -221,7 +221,7 @@ export default function ReadingPage() {
                 {phase === 'draw' ? '牌 面 已 现' : '命 运 揭 晓'}
               </h2>
               <div className="rule-h-gold w-20 mx-auto mb-4" />
-              <div className="font-display text-[10px] text-bone-faint tracking-veil uppercase">
+              <div className="cn-label text-bone-dim">
                 {spread.nameCn}
               </div>
               {phase === 'draw' && revealedCount < drawnCards.length && (
@@ -242,7 +242,7 @@ export default function ReadingPage() {
                 {drawnCards.map((drawn, index) => (
                   <div key={drawn.position.id} className="flex flex-col items-center gap-4 group relative">
                     <span
-                      className="absolute -top-8 font-display text-[10px] text-bone-whisper uppercase tracking-veil opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                      className="absolute -top-8 cn-label text-bone-faint opacity-0 group-hover:opacity-100 transition-opacity duration-700"
                       style={{ transitionTimingFunction: 'var(--ease-veil)' }}
                     >
                       {drawn.position.nameCn}

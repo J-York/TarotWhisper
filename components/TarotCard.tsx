@@ -59,7 +59,7 @@ export function TarotCardComponent({
                  style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
               <span className="text-gold-dim text-2xl">✦</span>
               <span className="h-px w-10 bg-[var(--gold-faint)]" />
-              <span className="font-display text-bone-whisper text-[9px] tracking-veil uppercase">
+              <span className="font-display text-bone-faint text-[10px] tracking-veil uppercase">
                 Tarot
               </span>
             </div>
@@ -91,10 +91,10 @@ export function TarotCardComponent({
               <div className="absolute bottom-0 w-full p-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700"
                    style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
                 <div className="rule-h-gold w-8 mx-auto mb-2" />
-                <h3 className="font-display text-bone text-sm tracking-[0.2em]">
+                <h3 className="font-display text-bone text-base tracking-[0.2em]">
                   {card.nameCn}
                 </h3>
-                <p className="font-display text-[9px] tracking-veil text-gold-dim uppercase mt-1">
+                <p className="font-display text-[10px] tracking-veil text-gold-dim uppercase mt-1">
                   {card.name}
                 </p>
               </div>
@@ -106,10 +106,10 @@ export function TarotCardComponent({
                 {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
               </div>
               <div className="rule-h-gold w-12 mb-4" />
-              <div className="font-display text-base text-bone mb-2 tracking-[0.18em]">
+              <div className="font-display text-lg text-bone mb-2 tracking-[0.18em]">
                 {card.nameCn}
               </div>
-              <div className="font-display text-[10px] tracking-veil text-bone-faint uppercase">
+              <div className="font-display text-[11px] tracking-veil text-bone-dim uppercase">
                 {card.name}
               </div>
             </div>
@@ -120,7 +120,7 @@ export function TarotCardComponent({
       {/* 逆位标识 */}
       {isRevealed && isReversed && (
         <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 anim-fade-in">
-          <span className="font-display text-[10px] tracking-veil text-gold-dim uppercase">
+          <span className="cn-label text-gold-dim">
             逆 位
           </span>
         </div>

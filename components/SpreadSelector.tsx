@@ -62,8 +62,8 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
                   {isSelected ? '✦' : '◇'}
                 </span>
                 <span
-                  className={`font-display text-[10px] tracking-veil uppercase transition-colors duration-700 ${
-                    isSelected ? 'text-gold' : 'text-bone-faint'
+                  className={`font-display text-[11px] tracking-veil uppercase transition-colors duration-700 ${
+                    isSelected ? 'text-gold' : 'text-bone-dim'
                   }`}
                 >
                   {spread.name}
@@ -87,7 +87,7 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
               </p>
 
               {/* 底部 · 张数 */}
-              <div className="mt-auto flex items-center gap-3 font-display text-[10px] tracking-veil uppercase text-bone-whisper">
+              <div className="mt-auto flex items-center gap-3 cn-label text-bone-faint">
                 <span>{spread.positions.length}</span>
                 <span className="w-6 h-px bg-[var(--ink-line)]" />
                 <span>张 牌</span>

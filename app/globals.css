@@ -194,10 +194,10 @@ h1, h2, h3, h4, h5, h6 {
     color        var(--dur-soft) var(--ease-ritual),
     background   var(--dur-soft) var(--ease-ritual),
     letter-spacing var(--dur-ritual) var(--ease-veil);
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  font-family: var(--font-cinzel), serif;
-  font-size: 0.78rem;
+  font-family: var(--font-cinzel), "Songti SC", "STSong", serif;
+  font-size: 0.9375rem;     /* 15px · 中文按钮可读 */
   font-weight: 400;
   position: relative;
 }
@@ -205,7 +205,7 @@ h1, h2, h3, h4, h5, h6 {
 .btn-ink:hover:not(:disabled) {
   border-color: var(--gold-dim);
   color: var(--gold);
-  letter-spacing: 0.28em;
+  letter-spacing: 0.26em;
 }
 
 .btn-ink:disabled {
@@ -224,10 +224,10 @@ h1, h2, h3, h4, h5, h6 {
     background   var(--dur-soft) var(--ease-ritual),
     box-shadow   var(--dur-ritual) var(--ease-veil),
     letter-spacing var(--dur-ritual) var(--ease-veil);
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  font-family: var(--font-cinzel), serif;
-  font-size: 0.78rem;
+  font-family: var(--font-cinzel), "Songti SC", "STSong", serif;
+  font-size: 0.9375rem;     /* 15px · 中文按钮可读 */
   font-weight: 400;
   position: relative;
 }
@@ -239,7 +239,7 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow:
     0 0 24px -8px var(--gold-glow),
     inset 0 0 24px -16px var(--gold-faint);
-  letter-spacing: 0.28em;
+  letter-spacing: 0.26em;
 }
 
 .btn-ink-primary:disabled {
@@ -253,16 +253,16 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--bone-faint);
   transition: color var(--dur-soft) var(--ease-ritual),
               letter-spacing var(--dur-ritual) var(--ease-veil);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  font-family: var(--font-cinzel), serif;
-  font-size: 0.72rem;
+  font-family: var(--font-cinzel), "Songti SC", "STSong", serif;
+  font-size: 0.875rem;      /* 14px · ghost 按钮也保持可读 */
   border-radius: 0;
 }
 
 .btn-ink-ghost:hover:not(:disabled) {
   color: var(--bone);
-  letter-spacing: 0.26em;
+  letter-spacing: 0.24em;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -282,6 +282,31 @@ h1, h2, h3, h4, h5, h6 {
 .tracking-mystic { letter-spacing: 0.32em; }
 .tracking-quiet  { letter-spacing: 0.2em; }
 .tracking-veil   { letter-spacing: 0.45em; }
+
+/* ─── 中文小标签 · 字号充足 / 字间距收敛 ─── */
+/* 西文小标签可继续用 text-[10px] tracking-veil；
+   中文请用下列类，避免笔画在大间距小字号下不可辨 */
+
+.cn-nav {
+  font-family: var(--font-cinzel), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  font-size: 0.8125rem;     /* 13px */
+  letter-spacing: 0.22em;
+  font-weight: 400;
+}
+
+.cn-label {
+  font-family: var(--font-cinzel), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  font-size: 0.75rem;       /* 12px */
+  letter-spacing: 0.18em;
+  font-weight: 400;
+}
+
+.cn-hint {
+  font-family: var(--font-cinzel), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  font-size: 0.6875rem;     /* 11px */
+  letter-spacing: 0.16em;
+  font-weight: 400;
+}
 
 /* 字体类 */
 .font-display { font-family: var(--font-cinzel), "Songti SC", "STSong", serif; }
