@@ -26,9 +26,11 @@ export function TarotCardComponent({
     lg: 'w-64 h-96',
   };
 
-  const cardFaceTransform = isReversed && isRevealed
-    ? 'rotateY(180deg) rotate(180deg)'
-    : 'rotateY(180deg)';
+  // 翻牌后若为逆位，再叠加 180° 旋转
+  const cardFaceTransform =
+    isReversed && isRevealed
+      ? 'rotateY(180deg) rotate(180deg)'
+      : 'rotateY(180deg)';
 
   return (
     <div
@@ -36,38 +38,42 @@ export function TarotCardComponent({
       onClick={onClick}
     >
       <div
-        className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${
+        className={`relative w-full h-full card-flip transform-style-3d ${
           isRevealed ? 'rotate-y-180' : ''
         }`}
       >
-        {/* Card back — minimal ink */}
-        <div className="absolute w-full h-full backface-hidden overflow-hidden border border-[var(--ink-line)] bg-[var(--ink-void)]">
+        {/* ─── 背面 · 极简墨色 ─── */}
+        <div
+          className={`absolute w-full h-full backface-hidden overflow-hidden bg-[var(--ink-void)] hairline ${
+            !isRevealed ? 'group-hover:shadow-[0_0_24px_-12px_var(--gold-glow)]' : ''
+          }`}
+          style={{ transition: 'box-shadow 700ms var(--ease-veil)' }}
+        >
           <div className="w-full h-full relative flex items-center justify-center">
-            {/* inner frame */}
-            <div className="absolute inset-2 border border-[var(--bone-whisper)]" />
+            {/* 内框 · 0.5px 双层 */}
+            <div className="absolute inset-2 hairline" />
+            <div className="absolute inset-3.5 hairline-strong" />
 
-            {/* central glyph */}
-            <div className="relative flex flex-col items-center gap-3 transition-transform duration-500 group-hover:scale-105">
+            {/* 中央徽记 */}
+            <div className="relative flex flex-col items-center gap-3 transition-transform duration-700 group-hover:scale-105"
+                 style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
               <span className="text-gold-dim text-2xl">✦</span>
-              <span className="h-px w-10 bg-[var(--ink-line)]" />
-              <span className="text-bone-whisper text-xs tracking-mystic uppercase">Tarot</span>
+              <span className="h-px w-10 bg-[var(--gold-faint)]" />
+              <span className="font-display text-bone-whisper text-[9px] tracking-veil uppercase">
+                Tarot
+              </span>
             </div>
 
-            {/* corner ticks */}
-            <span className="absolute top-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
-            <span className="absolute top-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
-            <span className="absolute top-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
-            <span className="absolute top-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
-            <span className="absolute bottom-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
-            <span className="absolute bottom-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
-            <span className="absolute bottom-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
-            <span className="absolute bottom-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
+            {/* 角部刻痕 */}
+            <CornerTicks />
           </div>
         </div>
 
-        {/* Card face */}
+        {/* ─── 正面 · 揭示后金色光晕 ─── */}
         <div
-          className="absolute w-full h-full backface-hidden overflow-hidden border border-[var(--ink-line)] bg-[var(--ink-void)]"
+          className={`absolute w-full h-full backface-hidden overflow-hidden bg-[var(--ink-void)] ${
+            isRevealed ? 'card-revealed-halo' : 'hairline'
+          }`}
           style={{ transform: cardFaceTransform }}
         >
           {!imageError ? (
@@ -78,23 +84,32 @@ export function TarotCardComponent({
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/80 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-0 w-full p-3 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <h3 className="text-bone font-serif text-base tracking-wider">
+              {/* 底部渐隐 */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/85 via-transparent to-[var(--ink-void)]/30 pointer-events-none" />
+
+              {/* 牌名 · 悬停显现 */}
+              <div className="absolute bottom-0 w-full p-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                   style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
+                <div className="rule-h-gold w-8 mx-auto mb-2" />
+                <h3 className="font-display text-bone text-sm tracking-[0.2em]">
                   {card.nameCn}
                 </h3>
+                <p className="font-display text-[9px] tracking-veil text-gold-dim uppercase mt-1">
+                  {card.name}
+                </p>
               </div>
             </div>
           ) : (
+            // 图片缺失的回落版面
             <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
               <div className="text-gold-dim text-2xl mb-4">
                 {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
               </div>
-              <div className="w-12 h-px bg-[var(--ink-line)] mb-4" />
-              <div className="font-serif text-base text-bone mb-2 tracking-widest">
+              <div className="rule-h-gold w-12 mb-4" />
+              <div className="font-display text-base text-bone mb-2 tracking-[0.18em]">
                 {card.nameCn}
               </div>
-              <div className="text-bone-faint text-xs tracking-quiet uppercase">
+              <div className="font-display text-[10px] tracking-veil text-bone-faint uppercase">
                 {card.name}
               </div>
             </div>
@@ -102,9 +117,10 @@ export function TarotCardComponent({
         </div>
       </div>
 
+      {/* 逆位标识 */}
       {isRevealed && isReversed && (
         <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 anim-fade-in">
-          <span className="text-xs tracking-mystic text-gold-dim uppercase">
+          <span className="font-display text-[10px] tracking-veil text-gold-dim uppercase">
             逆 位
           </span>
         </div>
@@ -113,12 +129,27 @@ export function TarotCardComponent({
   );
 }
 
+function CornerTicks() {
+  return (
+    <>
+      <span className="absolute top-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
+      <span className="absolute top-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
+      <span className="absolute top-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
+      <span className="absolute top-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
+      <span className="absolute bottom-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
+      <span className="absolute bottom-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
+      <span className="absolute bottom-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
+      <span className="absolute bottom-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
+    </>
+  );
+}
+
 function getSuitSymbol(suit?: string): string {
   switch (suit) {
-    case 'wands': return '✦';
-    case 'cups': return '◇';
-    case 'swords': return '✧';
+    case 'wands':     return '✦';
+    case 'cups':      return '◇';
+    case 'swords':    return '✧';
     case 'pentacles': return '⊹';
-    default: return '✦';
+    default:          return '✦';
   }
 }

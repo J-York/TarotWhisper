@@ -11,53 +11,85 @@ interface SpreadSelectorProps {
 export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps) {
   return (
     <div className="w-full max-w-5xl px-4">
-      <div className="text-center mb-12">
-        <h3 className="text-2xl font-serif text-bone mb-2 tracking-quiet uppercase">
+      {/* ─── 标题 ─── */}
+      <div className="text-center mb-14">
+        <span className="text-gold text-lg" aria-hidden>✦</span>
+        <h3 className="font-display text-2xl text-bone mt-5 mb-3 tracking-[0.22em] uppercase">
           选 择 牌 阵
         </h3>
-        <div className="rule-h-fade w-16 mx-auto" />
+        <div className="rule-h-gold w-20 mx-auto mt-4" />
+        <p className="font-body italic-soft text-bone-faint text-sm mt-5">
+          每一种排布，都是宇宙不同侧面的回声
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--ink-line)] border border-[var(--ink-line)]">
-        {spreads.map((spread) => {
+      {/* ─── 牌阵卡片 · 极细分隔 ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-3">
+        {spreads.map((spread, index) => {
           const isSelected = selectedSpread.id === spread.id;
+          const isMiddle = index === 1;
 
           return (
             <button
               key={spread.id}
               onClick={() => onSelect(spread)}
               className={`
-                relative group flex flex-col items-start text-left p-8 transition-colors duration-300
+                relative group flex flex-col items-start text-left p-10
+                transition-all duration-700
                 ${isSelected
                   ? 'bg-[var(--ink-veil)]'
-                  : 'bg-[var(--ink-deep)] hover:bg-[var(--ink-veil)]'
+                  : 'bg-transparent hover:bg-[var(--ink-veil)]'
                 }
+                ${isMiddle ? 'md:border-l md:border-r md:border-[var(--ink-line)]' : ''}
               `}
+              style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
             >
-              {isSelected && (
-                <span className="absolute top-0 left-0 right-0 h-px bg-[var(--gold-dim)]" />
-              )}
+              {/* 选中态 · 顶部金线 */}
+              <span
+                className={`absolute top-0 left-0 right-0 h-px transition-all duration-700 ${
+                  isSelected ? 'bg-[var(--gold)]' : 'bg-transparent'
+                }`}
+                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+              />
 
-              <div className="flex items-center gap-3 mb-6">
-                <span className={`text-lg transition-colors ${isSelected ? 'text-gold' : 'text-gold-dim'}`}>
+              {/* 符号 + 英文名 */}
+              <div className="flex items-center gap-4 mb-8">
+                <span
+                  className={`text-lg transition-colors duration-700 ${
+                    isSelected ? 'text-gold' : 'text-gold-dim'
+                  }`}
+                >
                   {isSelected ? '✦' : '◇'}
                 </span>
-                <span className={`text-xs tracking-mystic uppercase transition-colors ${isSelected ? 'text-gold' : 'text-bone-faint'}`}>
+                <span
+                  className={`font-display text-[10px] tracking-veil uppercase transition-colors duration-700 ${
+                    isSelected ? 'text-gold' : 'text-bone-faint'
+                  }`}
+                >
                   {spread.name}
                 </span>
               </div>
 
-              <h4 className={`font-serif text-xl mb-3 tracking-wider transition-colors ${isSelected ? 'text-bone' : 'text-bone-dim group-hover:text-bone'}`}>
+              {/* 中文名 · 主标题 */}
+              <h4
+                className={`font-display text-xl mb-4 tracking-[0.18em] transition-colors duration-700 ${
+                  isSelected
+                    ? 'text-bone'
+                    : 'text-bone-dim group-hover:text-bone'
+                }`}
+              >
                 {spread.nameCn}
               </h4>
 
-              <p className="text-bone-faint text-sm font-light leading-relaxed mb-8">
+              {/* 描述 · Cormorant 衬线 */}
+              <p className="font-body text-bone-faint text-base leading-relaxed mb-10 italic-soft">
                 {spread.description}
               </p>
 
-              <div className="mt-auto flex items-center gap-2 text-xs tracking-quiet uppercase text-bone-whisper">
+              {/* 底部 · 张数 */}
+              <div className="mt-auto flex items-center gap-3 font-display text-[10px] tracking-veil uppercase text-bone-whisper">
                 <span>{spread.positions.length}</span>
-                <span className="w-4 h-px bg-[var(--ink-line)]" />
+                <span className="w-6 h-px bg-[var(--ink-line)]" />
                 <span>张 牌</span>
               </div>
             </button>

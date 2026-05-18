@@ -38,7 +38,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
     }
   }, [isOpen]);
 
-  const handleFetchModels = async () => {
+  const handleFetchModels = async (): Promise<void> => {
     if (!localConfig.endpoint || !localConfig.apiKey) {
       setModelsError('请先填写 API 端点和密钥');
       return;
@@ -66,7 +66,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
     }
   };
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     onSave(localConfig);
     onClose();
   };
@@ -74,36 +74,46 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[var(--ink-void)]/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 anim-fade-in">
-      <div className="ink-panel-quiet bg-[var(--ink-deep)] w-full max-w-md anim-fade-in-up">
-        {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-[var(--ink-line)]">
-          <div className="flex items-center gap-3">
+    <div
+      className="fixed inset-0 bg-[var(--ink-void)]/92 backdrop-blur-md flex items-center justify-center z-50 p-4 anim-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="ink-panel-quiet bg-[var(--ink-deep)] w-full max-w-md anim-veil-rise"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ─── Header ─── */}
+        <div className="flex items-center justify-between px-10 py-7 hairline-bottom">
+          <div className="flex items-center gap-4">
             <span className="text-gold-dim">◇</span>
-            <h2 className="text-sm font-serif text-bone tracking-mystic uppercase">星 图 配 置</h2>
+            <h2 className="font-display text-xs text-bone tracking-veil uppercase">
+              星 图 配 置
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-bone-faint hover:text-bone transition-colors text-lg leading-none"
+            className="text-bone-faint hover:text-bone transition-colors duration-500 text-2xl leading-none"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
             aria-label="关闭"
           >
             ×
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-8 py-7 space-y-8">
+        {/* ─── Body ─── */}
+        <div className="px-10 py-9 space-y-9">
           {fallbackInfo?.available && (
-            <div className="px-4 py-3 border-l border-[var(--gold-dim)]">
-              <p className="text-bone-faint text-xs leading-relaxed font-light">
+            <div className="px-5 py-4 border-l border-[var(--gold-dim)]">
+              <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed">
                 未填写配置时，将使用内置 API（每小时 {fallbackInfo.rateLimit} 次）。
                 配置自有密钥可解除限制。
               </p>
             </div>
           )}
 
+          {/* 端点 */}
           <div>
-            <label className="block text-xs text-bone-faint tracking-mystic uppercase mb-3">
+            <label className="block font-display text-[10px] text-bone-faint tracking-veil uppercase mb-4">
               端 点
             </label>
             <input
@@ -113,13 +123,14 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
               placeholder="https://api.openai.com/v1/chat/completions"
               className="input-ink font-mono text-xs"
             />
-            <p className="text-[10px] text-bone-whisper mt-2 tracking-quiet uppercase">
+            <p className="font-display text-[9px] text-bone-whisper mt-3 tracking-veil uppercase">
               OpenAI ╱ Claude ╱ 兼容格式
             </p>
           </div>
 
+          {/* 密钥 */}
           <div>
-            <label className="block text-xs text-bone-faint tracking-mystic uppercase mb-3">
+            <label className="block font-display text-[10px] text-bone-faint tracking-veil uppercase mb-4">
               密 钥
             </label>
             <input
@@ -129,14 +140,15 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
               placeholder="sk-..."
               className="input-ink font-mono text-xs"
             />
-            <p className="text-[10px] text-bone-whisper mt-2 tracking-quiet uppercase">
+            <p className="font-display text-[9px] text-bone-whisper mt-3 tracking-veil uppercase">
               ⊹ 仅 保 存 在 本 地
             </p>
           </div>
 
+          {/* 模型 */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-xs text-bone-faint tracking-mystic uppercase">
+            <div className="flex items-center justify-between mb-4">
+              <label className="block font-display text-[10px] text-bone-faint tracking-veil uppercase">
                 模 型
               </label>
               <button
@@ -172,37 +184,38 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
             )}
 
             {modelsError && (
-              <p className="text-[10px] text-gold-dim mt-2 tracking-quiet uppercase">
+              <p className="font-display text-[9px] text-gold-dim mt-3 tracking-veil uppercase">
                 ◇ {modelsError}
               </p>
             )}
 
             {!modelsError && availableModels.length === 0 && (
-              <p className="text-[10px] text-bone-whisper mt-2 tracking-quiet uppercase">
+              <p className="font-display text-[9px] text-bone-whisper mt-3 tracking-veil uppercase">
                 如 gpt-4o ╱ claude-3-opus
               </p>
             )}
 
             {availableModels.length > 0 && (
-              <p className="text-[10px] text-gold-dim mt-2 tracking-quiet uppercase">
+              <p className="font-display text-[9px] text-gold-dim mt-3 tracking-veil uppercase">
                 ✦ 已 载 入 {availableModels.length} 个 模 型
               </p>
             )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex border-t border-[var(--ink-line)]">
+        {/* ─── Footer ─── */}
+        <div className="flex hairline-top">
           <button
             onClick={onClose}
-            className="btn-ink-ghost flex-1 py-4 border-r border-[var(--ink-line)]"
+            className="btn-ink-ghost flex-1 py-5 hairline"
+            style={{ boxShadow: 'inset -0.5px 0 0 0 var(--ink-line)' }}
           >
             取 消
           </button>
           <button
             onClick={handleSave}
-            className="btn-ink-primary flex-1 py-4 border-0"
-            style={{ borderRadius: 0 }}
+            className="btn-ink-primary flex-1 py-5"
+            style={{ border: 'none' }}
           >
             保 存
           </button>

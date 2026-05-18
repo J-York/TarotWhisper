@@ -1,62 +1,128 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════
+   Arcane Elegance — Design Tokens
+   仪式感 · 精简克制 · 留白驱动
+   ═══════════════════════════════════════════════════════════════ */
+
 :root {
-  /* Ink palette — 暗夜墨色 */
-  --ink-void: #07070B;
-  --ink-deep: #0A0A0F;
-  --ink-veil: #12121A;
-  --ink-line: rgba(232, 228, 216, 0.08);
-  --ink-line-soft: rgba(232, 228, 216, 0.04);
+  /* ─── Ink palette · 暗夜墨色 ─── */
+  --ink-void:      #06060A;   /* 最深处的虚空 */
+  --ink-deep:      #0A0810;   /* 主背景 · 午夜带一丝紫调 */
+  --ink-veil:      #11101A;   /* 表面层 */
+  --ink-burgundy:  #1A0E1A;   /* 深紫红 · 仅作氛围渐变 */
 
-  --bone: #E8E4D8;
-  --bone-dim: rgba(232, 228, 216, 0.6);
-  --bone-faint: rgba(232, 228, 216, 0.35);
-  --bone-whisper: rgba(232, 228, 216, 0.18);
+  /* ─── Hairlines · 极细分隔线 ─── */
+  --ink-line:        rgba(232, 228, 216, 0.07);
+  --ink-line-soft:   rgba(232, 228, 216, 0.035);
+  --ink-line-strong: rgba(232, 228, 216, 0.14);
 
-  --gold: #C9A961;
-  --gold-dim: rgba(201, 169, 97, 0.55);
-  --gold-faint: rgba(201, 169, 97, 0.25);
+  /* ─── Bone · 羊皮纸文字 ─── */
+  --bone:         #E8E2D0;                          /* 主文字 · 略偏暖的羊皮纸 */
+  --bone-dim:     rgba(232, 226, 208, 0.62);
+  --bone-faint:   rgba(232, 226, 208, 0.36);
+  --bone-whisper: rgba(232, 226, 208, 0.18);
 
+  /* ─── Moon-mist · 月雾紫（柔和冷调） ─── */
+  --mist:         rgba(184, 176, 204, 0.55);
+  --mist-faint:   rgba(184, 176, 204, 0.22);
+
+  /* ─── Gold leaf · 金叶（唯一强调色） ─── */
+  --gold:         #C9A961;                          /* 主金 */
+  --gold-warm:    #D4B873;                          /* 高光金 */
+  --gold-dim:     rgba(201, 169, 97, 0.55);
+  --gold-faint:   rgba(201, 169, 97, 0.22);
+  --gold-glow:    rgba(212, 184, 115, 0.35);        /* 光晕 */
+
+  /* ─── Surfaces ─── */
   --background: var(--ink-deep);
   --foreground: var(--bone);
 
-  --font-serif-heading: var(--font-cinzel);
+  /* ─── Type ─── */
+  --font-display: var(--font-cinzel);               /* 标题 / 标签 */
+  --font-body:    var(--font-cormorant);            /* 正文 / 副标题 */
+
+  /* ─── Easing · 仪式揭幕的柔缓曲线 ─── */
+  --ease-ritual: cubic-bezier(0.4, 0, 0.2, 1);      /* 标准缓动 */
+  --ease-veil:   cubic-bezier(0.16, 1, 0.3, 1);     /* 揭幕缓动 · 长尾舒展 */
+  --ease-deep:   cubic-bezier(0.65, 0, 0.35, 1);    /* 深沉缓动 */
+
+  /* ─── Durations ─── */
+  --dur-quick:  240ms;
+  --dur-soft:   500ms;
+  --dur-ritual: 700ms;
+  --dur-veil:   900ms;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-cinzel);
 
-  --color-ink-void: var(--ink-void);
-  --color-ink-deep: var(--ink-deep);
-  --color-ink-veil: var(--ink-veil);
-  --color-bone: var(--bone);
-  --color-gold: var(--gold);
+  --font-sans:   var(--font-cormorant);             /* 默认 sans 也指向衬线，保持气质 */
+  --font-serif:  var(--font-cormorant);
+  --font-display: var(--font-cinzel);
+  --font-mono:   var(--font-geist-mono);
+
+  --color-ink-void:     var(--ink-void);
+  --color-ink-deep:     var(--ink-deep);
+  --color-ink-veil:     var(--ink-veil);
+  --color-ink-burgundy: var(--ink-burgundy);
+
+  --color-bone:    var(--bone);
+  --color-mist:    var(--mist);
+  --color-gold:    var(--gold);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════════════════ */
 
 html, body {
   background: var(--ink-deep);
   color: var(--bone);
-  font-family: var(--font-geist-sans), sans-serif;
+  /* 正文：Cormorant Garamond + 中文衬线回落 */
+  font-family:
+    var(--font-cormorant),
+    "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC",
+    "Times New Roman", serif;
   font-weight: 300;
-  letter-spacing: 0.01em;
+  font-feature-settings: "liga" 1, "kern" 1;
+  letter-spacing: 0.012em;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  overflow-x: hidden;
+body { overflow-x: hidden; }
+
+/* 背景氛围：中央微弱烛光 + 深紫红晕染 */
+.bg-vignette {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%,
+      rgba(201, 169, 97, 0.04) 0%,
+      transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 110%,
+      rgba(60, 20, 50, 0.18) 0%,
+      transparent 70%),
+    radial-gradient(ellipse 60% 100% at 0% 50%,
+      rgba(26, 14, 26, 0.5) 0%,
+      transparent 60%);
 }
 
+/* 标题：Cinzel + 中文衬线 */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif-heading), serif;
+  font-family:
+    var(--font-cinzel),
+    "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC",
+    serif;
   font-weight: 400;
   letter-spacing: 0.08em;
 }
 
-/* ─── Surfaces ─── */
+/* ═══════════════════════════════════════════════════════════════
+   Surfaces & Hairlines
+   ═══════════════════════════════════════════════════════════════ */
+
 .ink-panel {
   background: var(--ink-veil);
   border: 1px solid var(--ink-line);
@@ -67,41 +133,83 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--ink-line);
 }
 
+/* Hairline · 0.5px 极细边框（用 box-shadow inset 在高 DPI 屏幕渲染） */
+.hairline {
+  box-shadow: inset 0 0 0 0.5px var(--ink-line);
+  border: 0;
+}
+.hairline-strong {
+  box-shadow: inset 0 0 0 0.5px var(--ink-line-strong);
+  border: 0;
+}
+.hairline-gold {
+  box-shadow: inset 0 0 0 0.5px var(--gold-dim);
+  border: 0;
+}
+.hairline-bottom {
+  box-shadow: inset 0 -0.5px 0 0 var(--ink-line);
+  border: 0;
+}
+.hairline-top {
+  box-shadow: inset 0 0.5px 0 0 var(--ink-line);
+  border: 0;
+}
+
 /* ─── Lines ─── */
 .rule-h {
   height: 1px;
   background: var(--ink-line);
 }
-
 .rule-h-fade {
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--bone-whisper), transparent);
+  background: linear-gradient(to right,
+    transparent,
+    var(--bone-whisper) 40%,
+    var(--bone-whisper) 60%,
+    transparent);
 }
-
+.rule-h-gold {
+  height: 1px;
+  background: linear-gradient(to right,
+    transparent,
+    var(--gold-dim) 50%,
+    transparent);
+}
 .rule-v {
   width: 1px;
   background: var(--ink-line);
 }
 
-/* ─── Buttons ─── */
+/* ═══════════════════════════════════════════════════════════════
+   Buttons · 矩形 · 极细边框 · 慢速过渡
+   ═══════════════════════════════════════════════════════════════ */
+
 .btn-ink {
   background: transparent;
   border: 1px solid var(--bone-whisper);
   color: var(--bone);
-  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
-  letter-spacing: 0.2em;
+  border-radius: 0;
+  transition:
+    border-color var(--dur-soft) var(--ease-ritual),
+    color        var(--dur-soft) var(--ease-ritual),
+    background   var(--dur-soft) var(--ease-ritual),
+    letter-spacing var(--dur-ritual) var(--ease-veil);
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  font-size: 0.8rem;
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.78rem;
   font-weight: 400;
+  position: relative;
 }
 
 .btn-ink:hover:not(:disabled) {
   border-color: var(--gold-dim);
   color: var(--gold);
+  letter-spacing: 0.28em;
 }
 
 .btn-ink:disabled {
-  opacity: 0.3;
+  opacity: 0.28;
   cursor: not-allowed;
 }
 
@@ -109,16 +217,29 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   border: 1px solid var(--gold-dim);
   color: var(--gold);
-  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
-  letter-spacing: 0.2em;
+  border-radius: 0;
+  transition:
+    border-color var(--dur-soft) var(--ease-ritual),
+    color        var(--dur-soft) var(--ease-ritual),
+    background   var(--dur-soft) var(--ease-ritual),
+    box-shadow   var(--dur-ritual) var(--ease-veil),
+    letter-spacing var(--dur-ritual) var(--ease-veil);
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  font-size: 0.8rem;
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.78rem;
   font-weight: 400;
+  position: relative;
 }
 
 .btn-ink-primary:hover:not(:disabled) {
   border-color: var(--gold);
-  background: rgba(201, 169, 97, 0.06);
+  color: var(--gold-warm);
+  background: rgba(201, 169, 97, 0.05);
+  box-shadow:
+    0 0 24px -8px var(--gold-glow),
+    inset 0 0 24px -16px var(--gold-faint);
+  letter-spacing: 0.28em;
 }
 
 .btn-ink-primary:disabled {
@@ -130,36 +251,59 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   border: none;
   color: var(--bone-faint);
-  transition: color 200ms ease;
-  letter-spacing: 0.2em;
+  transition: color var(--dur-soft) var(--ease-ritual),
+              letter-spacing var(--dur-ritual) var(--ease-veil);
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.72rem;
+  border-radius: 0;
 }
 
 .btn-ink-ghost:hover:not(:disabled) {
   color: var(--bone);
+  letter-spacing: 0.26em;
 }
 
-/* ─── Text utilities ─── */
+/* ═══════════════════════════════════════════════════════════════
+   Text utilities
+   ═══════════════════════════════════════════════════════════════ */
+
 .text-bone { color: var(--bone); }
 .text-bone-dim { color: var(--bone-dim); }
 .text-bone-faint { color: var(--bone-faint); }
 .text-bone-whisper { color: var(--bone-whisper); }
+.text-mist { color: var(--mist); }
+.text-mist-faint { color: var(--mist-faint); }
 .text-gold { color: var(--gold); }
+.text-gold-warm { color: var(--gold-warm); }
 .text-gold-dim { color: var(--gold-dim); }
 
-.tracking-mystic { letter-spacing: 0.3em; }
-.tracking-quiet { letter-spacing: 0.2em; }
+.tracking-mystic { letter-spacing: 0.32em; }
+.tracking-quiet  { letter-spacing: 0.2em; }
+.tracking-veil   { letter-spacing: 0.45em; }
 
-/* ─── Inputs ─── */
+/* 字体类 */
+.font-display { font-family: var(--font-cinzel), "Songti SC", "STSong", serif; }
+.font-body    { font-family: var(--font-cormorant), "Songti SC", "STSong", serif; }
+
+/* 装饰性细节 */
+.italic-soft  { font-style: italic; font-weight: 300; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Inputs
+   ═══════════════════════════════════════════════════════════════ */
+
 .input-ink {
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--ink-line);
   color: var(--bone);
-  padding: 0.75rem 0;
-  transition: border-color 200ms ease;
+  padding: 0.85rem 0;
+  transition: border-color var(--dur-soft) var(--ease-ritual);
   width: 100%;
+  font-family: var(--font-cormorant), "Songti SC", serif;
+  border-radius: 0;
 }
 
 .input-ink:focus {
@@ -169,64 +313,167 @@ h1, h2, h3, h4, h5, h6 {
 
 .input-ink::placeholder {
   color: var(--bone-whisper);
+  font-style: italic;
 }
 
-/* ─── Animations ─── */
+.input-ink-bare {
+  background: transparent;
+  border: none;
+  color: var(--bone);
+  font-family: var(--font-cormorant), "Songti SC", serif;
+  border-radius: 0;
+}
+
+.input-ink-bare:focus {
+  outline: none;
+}
+
+.input-ink-bare::placeholder {
+  color: var(--bone-whisper);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Animations · 仪式揭幕 · 节奏偏慢 · cubic-bezier 柔缓
+   ═══════════════════════════════════════════════════════════════ */
+
 @keyframes fade-in {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes veil-rise {
+  from { opacity: 0; transform: translateY(16px); filter: blur(2px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
 @keyframes drift {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  50%      { transform: translateY(-8px); }
 }
 
 @keyframes whisper {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
 }
 
-.anim-fade-in { animation: fade-in 700ms ease forwards; }
-.anim-fade-in-up { animation: fade-in-up 700ms ease forwards; }
-.anim-drift { animation: drift 8s ease-in-out infinite; }
-.anim-whisper { animation: whisper 3s ease-in-out infinite; }
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 97, 0); }
+  50%      { box-shadow: 0 0 32px -4px var(--gold-glow); }
+}
 
-/* ─── 3D Card ─── */
-.perspective-1000 { perspective: 1000px; }
+@keyframes word-reveal {
+  from { opacity: 0; filter: blur(4px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+.anim-fade-in    { animation: fade-in     var(--dur-veil) var(--ease-veil) forwards; }
+.anim-fade-in-up { animation: fade-in-up  var(--dur-veil) var(--ease-veil) forwards; }
+.anim-veil-rise  { animation: veil-rise   var(--dur-veil) var(--ease-veil) forwards; }
+.anim-drift      { animation: drift 9s var(--ease-deep) infinite; }
+.anim-whisper    { animation: whisper 4s var(--ease-deep) infinite; }
+.anim-glow-pulse { animation: glow-pulse 4s var(--ease-deep) infinite; }
+
+/* Stagger reveal · 用于段落、列表项 */
+.anim-stagger > * {
+  opacity: 0;
+  animation: veil-rise var(--dur-veil) var(--ease-veil) forwards;
+}
+.anim-stagger > *:nth-child(1)  { animation-delay: 80ms; }
+.anim-stagger > *:nth-child(2)  { animation-delay: 200ms; }
+.anim-stagger > *:nth-child(3)  { animation-delay: 320ms; }
+.anim-stagger > *:nth-child(4)  { animation-delay: 440ms; }
+.anim-stagger > *:nth-child(5)  { animation-delay: 560ms; }
+.anim-stagger > *:nth-child(6)  { animation-delay: 680ms; }
+.anim-stagger > *:nth-child(7)  { animation-delay: 800ms; }
+.anim-stagger > *:nth-child(8)  { animation-delay: 920ms; }
+.anim-stagger > *:nth-child(9)  { animation-delay: 1040ms; }
+.anim-stagger > *:nth-child(10) { animation-delay: 1160ms; }
+.anim-stagger > *:nth-child(n+11) { animation-delay: 1280ms; }
+
+/* ═══════════════════════════════════════════════════════════════
+   3D Tarot Card · 翻牌仪式
+   ═══════════════════════════════════════════════════════════════ */
+
+.perspective-1000   { perspective: 1400px; }
 .transform-style-3d { transform-style: preserve-3d; }
-.backface-hidden { backface-visibility: hidden; }
-.rotate-y-180 { transform: rotateY(180deg); }
+.backface-hidden    { backface-visibility: hidden; }
+.rotate-y-180       { transform: rotateY(180deg); }
 
-/* ─── Scrollbar ─── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--ink-line); }
+.card-flip {
+  transition: transform 800ms var(--ease-veil);
+}
+
+/* 牌面光晕 · 揭示后的金色辉光 */
+.card-revealed-halo {
+  box-shadow:
+    0 0 0 0.5px var(--gold-dim),
+    0 0 32px -8px var(--gold-glow),
+    0 0 80px -32px var(--gold-glow);
+  transition: box-shadow var(--dur-veil) var(--ease-veil);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Scrollbar · 极细
+   ═══════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar          { width: 3px; height: 3px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: var(--ink-line-strong); }
 ::-webkit-scrollbar-thumb:hover { background: var(--bone-whisper); }
 
-/* ─── Selection ─── */
+/* ═══════════════════════════════════════════════════════════════
+   Selection
+   ═══════════════════════════════════════════════════════════════ */
+
 ::selection {
   background: var(--gold-faint);
   color: var(--bone);
 }
 
-/* ─── Interpretation streaming cursor ─── */
+/* ═══════════════════════════════════════════════════════════════
+   Interpretation · 解读正文
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 流式光标 · 缓慢闪烁如蜡烛 */
 .interpretation-content .streaming-cursor {
   display: inline-block;
-  width: 0.4rem;
-  height: 1rem;
+  width: 0.3rem;
+  height: 1.1em;
   background-color: var(--gold);
-  margin-left: 0.25rem;
-  vertical-align: middle;
-  animation: cursor-blink 1.2s infinite;
+  margin-left: 0.3rem;
+  vertical-align: text-bottom;
+  animation: cursor-pulse 1.4s var(--ease-deep) infinite;
+  box-shadow: 0 0 8px var(--gold-glow);
 }
 
-@keyframes cursor-blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+@keyframes cursor-pulse {
+  0%, 45%   { opacity: 1; }
+  55%, 100% { opacity: 0; }
+}
+
+/* 解读完成后，段落逐一揭幕 */
+.interpretation-reveal > * {
+  opacity: 0;
+  animation: word-reveal var(--dur-veil) var(--ease-veil) forwards;
+}
+.interpretation-reveal > *:nth-child(1)  { animation-delay:  60ms; }
+.interpretation-reveal > *:nth-child(2)  { animation-delay: 220ms; }
+.interpretation-reveal > *:nth-child(3)  { animation-delay: 380ms; }
+.interpretation-reveal > *:nth-child(4)  { animation-delay: 540ms; }
+.interpretation-reveal > *:nth-child(5)  { animation-delay: 700ms; }
+.interpretation-reveal > *:nth-child(6)  { animation-delay: 860ms; }
+.interpretation-reveal > *:nth-child(7)  { animation-delay: 1020ms; }
+.interpretation-reveal > *:nth-child(8)  { animation-delay: 1180ms; }
+.interpretation-reveal > *:nth-child(n+9){ animation-delay: 1340ms; }
+
+/* 流式过程中保持稳定，仅由光标提示进度 ——
+   实际「逐词显现」由 LLM token 流式自然产生 */
+.interpretation-streaming {
+  animation: fade-in var(--dur-soft) var(--ease-veil);
 }

@@ -7,6 +7,12 @@ interface InterpretationProps {
   content: string;
   isLoading: boolean;
   error: string | null;
+  /**
+   * 是否在首次加载时应用逐段揭幕动画。
+   * 历史详情页：true。
+   * 实时解读（已经有流式动画）：false。
+   */
+  staggerOnMount?: boolean;
 }
 
 type InterpretationSegmentType = 'answer' | 'thinking';
@@ -18,71 +24,76 @@ interface InterpretationSegment {
 
 const THINKING_TAG_PATTERN = /<\/?(think|thinking)>/gi;
 
+/**
+ * Markdown 渲染映射 —
+ * 标题用 Cinzel · 正文用 Cormorant Garamond ·
+ * 强调用金叶色 · 引用用金线左缀
+ */
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => (
-    <h1 className="text-2xl font-serif text-bone mt-10 mb-5 first:mt-0 tracking-wider pb-3 border-b border-[var(--ink-line)]">
+    <h1 className="font-display text-2xl text-bone mt-12 mb-6 first:mt-0 tracking-[0.18em] pb-4 hairline-bottom">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="text-xl font-serif text-bone mt-8 mb-4 first:mt-0 tracking-wider">
+    <h2 className="font-display text-xl text-bone mt-10 mb-5 first:mt-0 tracking-[0.16em]">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="text-lg font-serif text-bone mt-6 mb-3 first:mt-0 tracking-wider">
+    <h3 className="font-display text-lg text-bone mt-8 mb-4 first:mt-0 tracking-[0.14em]">
       {children}
     </h3>
   ),
   h4: ({ children }) => (
-    <h4 className="text-base font-serif text-bone mt-5 mb-2 first:mt-0 tracking-wider">
+    <h4 className="font-display text-base text-bone mt-6 mb-3 first:mt-0 tracking-[0.12em]">
       {children}
     </h4>
   ),
   p: ({ children }) => (
-    <p className="text-bone-dim text-base leading-loose mb-5 last:mb-0 font-light">
+    <p className="font-body text-bone-dim text-lg leading-[1.95] mb-6 last:mb-0 font-light">
       {children}
     </p>
   ),
   ul: ({ children }) => (
-    <ul className="list-none text-bone-dim text-base leading-loose my-5 space-y-2 pl-0 font-light marker:text-gold-dim">
+    <ul className="font-body list-none text-bone-dim text-lg leading-[1.95] my-6 space-y-3 pl-0 font-light">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-inside text-bone-dim text-base leading-loose my-5 space-y-2 pl-2 font-light">
+    <ol className="font-body list-decimal list-inside text-bone-dim text-lg leading-[1.95] my-6 space-y-3 pl-2 font-light">
       {children}
     </ol>
   ),
   li: ({ children }) => (
-    <li className="text-bone-dim leading-loose pl-4 relative before:content-['◇'] before:absolute before:left-0 before:text-gold-dim before:text-xs before:top-2">
+    <li className="text-bone-dim leading-[1.95] pl-6 relative before:content-['◇'] before:absolute before:left-0 before:text-gold-dim before:text-sm before:top-2">
       {children}
     </li>
   ),
   strong: ({ children }) => (
-    <strong className="text-gold font-normal tracking-wide">{children}</strong>
+    <strong className="text-gold font-medium tracking-wide">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="text-bone italic">{children}</em>
+    <em className="font-body italic text-bone">{children}</em>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l border-[var(--gold-dim)] pl-5 my-6 italic text-bone-faint font-light">
+    <blockquote className="font-body border-l border-[var(--gold-dim)] pl-6 my-8 italic-soft text-bone-faint text-lg leading-[1.95]">
       {children}
     </blockquote>
   ),
   hr: () => (
-    <hr className="my-8 border-t border-[var(--ink-line)]" />
+    <hr className="my-10 border-0 rule-h-fade" />
   ),
 };
+
+/* ─── Segment 解析（保留 thinking 标签处理） ─── */
 
 function appendSegment(
   segments: InterpretationSegment[],
   type: InterpretationSegmentType,
   markdown: string
 ): void {
-  if (!markdown.trim()) {
-    return;
-  }
+  if (!markdown.trim()) return;
 
   const normalizedMarkdown = type === 'thinking' ? markdown.trim() : markdown;
   const last = segments.at(-1);
@@ -113,64 +124,103 @@ function parseInterpretationSegments(rawContent: string): InterpretationSegment[
   return segments;
 }
 
-export function Interpretation({ content, isLoading, error }: InterpretationProps) {
+export function Interpretation({
+  content,
+  isLoading,
+  error,
+  staggerOnMount = false,
+}: InterpretationProps) {
+  /* ─── 错误态 ─── */
   if (error) {
     return (
-      <div className="w-full max-w-4xl p-10 ink-panel-quiet anim-fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-gold-dim">◇</span>
-          <h3 className="font-serif text-xl text-bone tracking-wider">连 接 已 断</h3>
+      <div className="w-full max-w-4xl p-12 ink-panel-quiet anim-veil-rise">
+        <div className="flex items-center gap-4 mb-5">
+          <span className="text-gold-dim text-lg">◇</span>
+          <h3 className="font-display text-xl text-bone tracking-[0.18em]">
+            连 接 已 断
+          </h3>
         </div>
-        <div className="rule-h-fade w-24 mb-5" />
-        <p className="text-bone-dim font-light leading-relaxed text-sm mb-3">{error}</p>
-        <p className="text-bone-faint text-xs tracking-quiet uppercase">
+        <div className="rule-h-gold w-20 mb-6" />
+        <p className="font-body text-bone-dim text-base leading-relaxed mb-4 italic-soft">
+          {error}
+        </p>
+        <p className="font-display text-[10px] tracking-veil text-bone-faint uppercase">
           请检查与以太的连接，然后重试
         </p>
       </div>
     );
   }
 
-  const displayContent = isLoading ? `${content}▌` : content;
-  const segments = parseInterpretationSegments(displayContent);
+  // 流式过程中追加金色光标
+  const segments = parseInterpretationSegments(content);
+  const isStreamingActive = isLoading && content.length > 0;
+
+  // 仅在历史重现时启用逐段揭幕；实时解读依赖 LLM 流式自然逐词显现
+  const useStaggerReveal = staggerOnMount && !isLoading && content.length > 0;
 
   return (
     <div className="w-full max-w-4xl">
-      {/* Header */}
-      <div className="flex flex-col items-center gap-3 mb-10 anim-fade-in">
-        <span className="text-gold text-lg">✦</span>
-        <h3 className="text-2xl font-serif text-bone tracking-mystic uppercase">
+      {/* ─── 标题 ─── */}
+      <div className="flex flex-col items-center gap-4 mb-12 anim-fade-in">
+        <span className="text-gold text-xl anim-drift">✦</span>
+        <h3 className="font-display text-2xl text-bone tracking-[0.32em] uppercase">
           神 谕
         </h3>
-        <div className="rule-h-fade w-24" />
+        <div className="rule-h-gold w-20" />
+        <p className="font-body italic-soft text-bone-faint text-sm">
+          The Oracle Speaks
+        </p>
       </div>
 
-      <div className={`
-        relative ink-panel-quiet transition-all duration-1000
-        ${isLoading ? 'min-h-[300px]' : 'min-h-[100px]'}
-      `}>
-        <div className="p-8 md:p-14 relative">
+      {/* ─── 内容容器 ─── */}
+      <div
+        className={`relative ink-panel-quiet transition-all duration-1000 ${
+          isLoading && !content ? 'min-h-[320px]' : 'min-h-[120px]'
+        }`}
+        style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+      >
+        <div className="p-10 md:p-16 relative">
           {content ? (
-            <div className="interpretation-content">
+            <div
+              className={`interpretation-content ${
+                useStaggerReveal
+                  ? 'interpretation-reveal'
+                  : isStreamingActive
+                  ? 'interpretation-streaming'
+                  : ''
+              }`}
+            >
               {segments.map((segment, index) => {
                 if (segment.type === 'thinking') {
                   return (
                     <details
                       key={`thinking-${index}`}
-                      className="group ink-panel-quiet my-5"
+                      className="group ink-panel-quiet my-6"
                     >
-                      <summary className="flex items-center justify-between gap-4 px-5 py-4 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
-                        <div className="flex items-center gap-3">
+                      <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
+                        <div className="flex items-center gap-4">
                           <span className="text-gold-dim text-sm">◇</span>
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs tracking-mystic uppercase text-bone-dim">模 型 思 考</span>
-                            <span className="text-[10px] tracking-quiet uppercase text-bone-whisper group-open:hidden">点 击 展 开</span>
-                            <span className="text-[10px] tracking-quiet uppercase text-bone-whisper hidden group-open:inline">点 击 折 叠</span>
+                            <span className="font-display text-[11px] tracking-veil uppercase text-bone-dim">
+                              模 型 思 考
+                            </span>
+                            <span className="font-display text-[9px] tracking-veil uppercase text-bone-whisper group-open:hidden">
+                              点 击 展 开
+                            </span>
+                            <span className="font-display text-[9px] tracking-veil uppercase text-bone-whisper hidden group-open:inline">
+                              点 击 折 叠
+                            </span>
                           </div>
                         </div>
-                        <span className="text-bone-faint transition-transform duration-300 group-open:rotate-180">⌄</span>
+                        <span
+                          className="text-bone-faint transition-transform duration-700 group-open:rotate-180"
+                          style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+                        >
+                          ⌄
+                        </span>
                       </summary>
 
-                      <div className="px-5 pb-5 border-t border-[var(--ink-line)] pt-4">
+                      <div className="px-6 pb-6 hairline-top pt-5">
                         <ReactMarkdown components={MARKDOWN_COMPONENTS}>
                           {segment.markdown}
                         </ReactMarkdown>
@@ -180,30 +230,44 @@ export function Interpretation({ content, isLoading, error }: InterpretationProp
                 }
 
                 return (
-                  <ReactMarkdown key={`answer-${index}`} components={MARKDOWN_COMPONENTS}>
+                  <ReactMarkdown
+                    key={`answer-${index}`}
+                    components={MARKDOWN_COMPONENTS}
+                  >
                     {segment.markdown}
                   </ReactMarkdown>
                 );
               })}
+
+              {/* 流式光标 — 仅在加载中显示 */}
+              {isStreamingActive && (
+                <span className="streaming-cursor" aria-hidden />
+              )}
             </div>
           ) : isLoading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+            // ─── 加载态 · 通灵中 ───
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-7">
               <div className="relative">
-                <span className="text-gold text-3xl anim-whisper">✦</span>
+                <span className="text-gold text-4xl anim-whisper">✦</span>
+                <span className="absolute inset-0 anim-glow-pulse rounded-full" aria-hidden />
               </div>
-              <p className="text-bone-dim tracking-mystic uppercase text-xs">
+              <p className="font-display text-bone-dim tracking-veil uppercase text-xs">
                 正 在 通 灵
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '0ms' }} />
-                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '300ms' }} />
-                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '600ms' }} />
+                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '400ms' }} />
+                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
               </div>
+              <p className="font-body italic-soft text-bone-whisper text-xs mt-2">
+                星辰需要时间才能开口
+              </p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
+            // ─── 空态 ───
+            <div className="flex flex-col items-center justify-center py-14 gap-5">
               <span className="text-bone-whisper text-2xl">◇</span>
-              <p className="text-bone-whisper tracking-mystic text-xs uppercase">
+              <p className="font-display text-bone-whisper tracking-veil text-xs uppercase">
                 等 待 牌 面
               </p>
             </div>
