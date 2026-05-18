@@ -26,6 +26,13 @@ export default function Home() {
         </span>
         <div className="flex items-center gap-10">
           <Link
+            href="/library"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+          >
+            牌 典
+          </Link>
+          <Link
             href="/history"
             className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
@@ -95,6 +102,7 @@ export default function Home() {
             subtitle="Rider–Waite Smith"
             text="大阿卡纳与小阿卡纳，完整呈现于幽暗之中。"
             position="left"
+            href="/library"
           />
           <Pillar
             symbol="✦"
@@ -136,25 +144,23 @@ interface PillarProps {
   subtitle: string;
   text: string;
   position: 'left' | 'middle' | 'right';
+  href?: string;
 }
 
-function Pillar({ symbol, title, subtitle, text, position }: PillarProps) {
+function Pillar({ symbol, title, subtitle, text, position, href }: PillarProps) {
   // 中柱左右各加一条极细分隔线
   const dividerClass =
     position === 'middle'
       ? 'md:border-l md:border-r md:border-[var(--ink-line)]'
       : '';
 
-  return (
-    <div
-      className={`group p-12 flex flex-col items-start transition-all duration-700 hover:bg-[var(--ink-veil)] ${dividerClass}`}
-      style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-    >
+  const inner = (
+    <>
       <span className="text-gold-dim text-xl mb-8 group-hover:text-gold transition-colors duration-700">
         {symbol}
       </span>
 
-      <h3 className="font-display text-bone text-lg mb-2 tracking-[0.18em]">
+      <h3 className="font-display text-bone text-lg mb-2 tracking-[0.18em] group-hover:text-gold-warm transition-colors duration-700">
         {title}
       </h3>
 
@@ -162,11 +168,32 @@ function Pillar({ symbol, title, subtitle, text, position }: PillarProps) {
         {subtitle}
       </p>
 
-      <div className="rule-h w-8 mb-6" />
+      <div className="rule-h w-8 mb-6 group-hover:bg-[var(--gold-dim)] transition-colors duration-700" />
 
       <p className="font-body text-bone-dim text-base leading-relaxed">
         {text}
       </p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`group p-12 flex flex-col items-start transition-all duration-700 hover:bg-[var(--ink-veil)] ${dividerClass}`}
+        style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className={`group p-12 flex flex-col items-start transition-all duration-700 hover:bg-[var(--ink-veil)] ${dividerClass}`}
+      style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+    >
+      {inner}
     </div>
   );
 }
