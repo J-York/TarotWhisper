@@ -7,6 +7,7 @@ import { CardDeck } from '@/components/CardDeck';
 import { SpreadSelector } from '@/components/SpreadSelector';
 import { ApiSettings } from '@/components/ApiSettings';
 import { Interpretation } from '@/components/Interpretation';
+import { FollowUpPanel } from '@/components/FollowUpPanel';
 import { useReading } from '@/hooks/useReading';
 import { useApiConfig } from '@/hooks/useApiConfig';
 
@@ -20,21 +21,35 @@ export default function ReadingPage() {
     interpretation,
     isInterpreting,
     error,
+    followUps,
+    hasInFlightFollowUp,
     setQuestion,
     setSpread,
     shuffleAndDraw,
     revealNextCard,
     revealAllCards,
     startInterpretation,
+    askFollowUp,
+    revealNextFollowUpCard,
+    revealAllFollowUpCards,
+    retryFollowUp,
     reset,
     goToPhase,
   } = useReading();
 
   const { config, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
+  const [followUpDraft, setFollowUpDraft] = useState('');
 
   const handleStartInterpretation = (): void => {
     startInterpretation(config);
+  };
+
+  const handleAskFollowUp = (): void => {
+    const text = followUpDraft.trim();
+    if (!text || hasInFlightFollowUp) return;
+    askFollowUp(text, config);
+    setFollowUpDraft('');
   };
 
   const steps = [
@@ -118,6 +133,13 @@ export default function ReadingPage() {
         </div>
 
         <div className="flex items-center gap-9 pointer-events-auto">
+          <Link
+            href="/library"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+          >
+            牌 典
+          </Link>
           <Link
             href="/history"
             className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
@@ -313,8 +335,56 @@ export default function ReadingPage() {
               error={error}
             />
 
+            {/* ─── 追问区 ─── */}
+            {!isInterpreting && !error && interpretation && (
+              <>
+                {followUps.map((fu) => (
+                  <FollowUpPanel
+                    key={fu.id}
+                    followUp={fu}
+                    apiConfig={config}
+                    onRevealNext={revealNextFollowUpCard}
+                    onRevealAll={revealAllFollowUpCards}
+                    onRetry={retryFollowUp}
+                  />
+                ))}
+
+                <div className="w-full max-w-4xl">
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="text-gold-dim text-base">◆</span>
+                    <span className="cn-label text-gold-dim">继 续 追 问</span>
+                    <div className="rule-h-fade flex-1" />
+                  </div>
+                  <div className="ink-panel-quiet">
+                    <textarea
+                      value={followUpDraft}
+                      onChange={(e) => setFollowUpDraft(e.target.value)}
+                      placeholder={
+                        hasInFlightFollowUp
+                          ? '神谕正在回应，请稍候…'
+                          : '若想深入某张牌、追问具体行动，或换个角度，请在此提出'
+                      }
+                      disabled={hasInFlightFollowUp}
+                      className="input-ink-bare w-full h-28 px-7 py-5 text-base text-bone resize-none font-body leading-relaxed"
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="mt-5 flex justify-end">
+                    <button
+                      onClick={handleAskFollowUp}
+                      disabled={hasInFlightFollowUp || !followUpDraft.trim()}
+                      className="btn-ink-primary px-10 py-3 inline-flex items-center gap-3"
+                    >
+                      <span>追 问</span>
+                      <span className="text-xs">✦</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="flex gap-10 items-center pb-12">
-              {!isInterpreting && (
+              {!isInterpreting && !hasInFlightFollowUp && (
                 <>
                   <button
                     onClick={handleStartInterpretation}

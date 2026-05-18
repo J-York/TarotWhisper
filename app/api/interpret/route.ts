@@ -1,12 +1,63 @@
 import { NextRequest } from 'next/server';
 import { DrawnCard, Spread, ApiConfig } from '@/lib/tarot/types';
-import { buildInterpretationPrompt } from '@/lib/api/prompts';
+import {
+  buildInterpretationPrompt,
+  buildFollowUpDecidePrompt,
+  buildFollowUpDirectPrompt,
+  buildFollowUpWithExtrasPrompt,
+} from '@/lib/api/prompts';
+
+type FollowUpMode = 'decide' | 'direct' | 'with-extras';
+
+interface FollowUpPayload {
+  mode: FollowUpMode;
+  previousInterpretation: string;
+  followUpQuestion: string;
+  additionalCards?: DrawnCard[];
+}
 
 interface InterpretRequest {
   question: string;
   spread: Spread;
   drawnCards: DrawnCard[];
   apiConfig: ApiConfig;
+  followUp?: FollowUpPayload;
+}
+
+function buildPrompt(req: InterpretRequest): string {
+  const { question, spread, drawnCards, followUp } = req;
+
+  if (!followUp) {
+    return buildInterpretationPrompt(question, spread, drawnCards);
+  }
+
+  switch (followUp.mode) {
+    case 'decide':
+      return buildFollowUpDecidePrompt(
+        question,
+        spread,
+        drawnCards,
+        followUp.previousInterpretation,
+        followUp.followUpQuestion,
+      );
+    case 'direct':
+      return buildFollowUpDirectPrompt(
+        question,
+        spread,
+        drawnCards,
+        followUp.previousInterpretation,
+        followUp.followUpQuestion,
+      );
+    case 'with-extras':
+      return buildFollowUpWithExtrasPrompt(
+        question,
+        spread,
+        drawnCards,
+        followUp.previousInterpretation,
+        followUp.followUpQuestion,
+        followUp.additionalCards ?? [],
+      );
+  }
 }
 
 // 从环境变量获取后备配置
@@ -41,7 +92,7 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(request: NextRequest) {
   try {
     const body: InterpretRequest = await request.json();
-    const { question, spread, drawnCards, apiConfig } = body;
+    const { apiConfig } = body;
 
     // 安全检查：如果客户端发送的 apiConfig 与内置配置完全匹配，拒绝请求
     // 这防止有人通过某种方式获取了内置配置并尝试直接使用
@@ -84,7 +135,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = buildInterpretationPrompt(question, spread, drawnCards);
+    const prompt = buildPrompt(body);
 
     const endpoint = effectiveConfig.endpoint.trim();
     const hasChatCompletions = endpoint.includes('/chat/completions');

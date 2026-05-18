@@ -124,6 +124,32 @@ function parseInterpretationSegments(rawContent: string): InterpretationSegment[
   return segments;
 }
 
+/**
+ * 把模型多轮交错产生的 thinking / answer 段合并：
+ * - thinking 全部并到顶部统一折叠块（每段间空一行）
+ * - answer 拼成连续正文，避免被思考块切碎、视觉错乱
+ */
+function mergeSegments(segments: InterpretationSegment[]): {
+  thinking: string;
+  answer: string;
+} {
+  const thinkingChunks: string[] = [];
+  const answerChunks: string[] = [];
+
+  for (const seg of segments) {
+    if (seg.type === 'thinking') {
+      thinkingChunks.push(seg.markdown);
+    } else {
+      answerChunks.push(seg.markdown);
+    }
+  }
+
+  return {
+    thinking: thinkingChunks.join('\n\n'),
+    answer: answerChunks.join(''),
+  };
+}
+
 export function Interpretation({
   content,
   isLoading,
@@ -152,7 +178,6 @@ export function Interpretation({
   }
 
   // 流式过程中追加金色光标
-  const segments = parseInterpretationSegments(content);
   const isStreamingActive = isLoading && content.length > 0;
 
   // 仅在历史重现时启用逐段揭幕；实时解读依赖 LLM 流式自然逐词显现
@@ -181,69 +206,11 @@ export function Interpretation({
       >
         <div className="p-10 md:p-16 relative">
           {content ? (
-            <div
-              className={`interpretation-content ${
-                useStaggerReveal
-                  ? 'interpretation-reveal'
-                  : isStreamingActive
-                  ? 'interpretation-streaming'
-                  : ''
-              }`}
-            >
-              {segments.map((segment, index) => {
-                if (segment.type === 'thinking') {
-                  return (
-                    <details
-                      key={`thinking-${index}`}
-                      className="group ink-panel-quiet my-6"
-                    >
-                      <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
-                        <div className="flex items-center gap-4">
-                          <span className="text-gold-dim text-sm">◇</span>
-                          <div className="flex flex-col gap-1.5">
-                            <span className="cn-label text-bone">
-                              模 型 思 考
-                            </span>
-                            <span className="cn-hint text-bone-faint group-open:hidden">
-                              点 击 展 开
-                            </span>
-                            <span className="cn-hint text-bone-faint hidden group-open:inline">
-                              点 击 折 叠
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          className="text-bone-faint transition-transform duration-700 group-open:rotate-180"
-                          style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-                        >
-                          ⌄
-                        </span>
-                      </summary>
-
-                      <div className="px-6 pb-6 hairline-top pt-5">
-                        <ReactMarkdown components={MARKDOWN_COMPONENTS}>
-                          {segment.markdown}
-                        </ReactMarkdown>
-                      </div>
-                    </details>
-                  );
-                }
-
-                return (
-                  <ReactMarkdown
-                    key={`answer-${index}`}
-                    components={MARKDOWN_COMPONENTS}
-                  >
-                    {segment.markdown}
-                  </ReactMarkdown>
-                );
-              })}
-
-              {/* 流式光标 — 仅在加载中显示 */}
-              {isStreamingActive && (
-                <span className="streaming-cursor" aria-hidden />
-              )}
-            </div>
+            <InterpretationBody
+              content={content}
+              streaming={isStreamingActive}
+              stagger={useStaggerReveal}
+            />
           ) : isLoading ? (
             // ─── 加载态 · 通灵中 ───
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-7">
@@ -274,6 +241,91 @@ export function Interpretation({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 无外框的 markdown 解读正文：解析 thinking 段并渲染。
+ * 供主解读区与 FollowUpPanel 共用。
+ */
+interface InterpretationBodyProps {
+  content: string;
+  streaming?: boolean;
+  stagger?: boolean;
+}
+
+export function InterpretationBody({
+  content,
+  streaming = false,
+  stagger = false,
+}: InterpretationBodyProps) {
+  const segments = parseInterpretationSegments(content);
+  const { thinking, answer } = mergeSegments(segments);
+  const showWaitingHint = streaming && !answer;
+
+  return (
+    <div
+      className={`interpretation-content ${
+        stagger
+          ? 'interpretation-reveal'
+          : streaming
+          ? 'interpretation-streaming'
+          : ''
+      }`}
+    >
+      {/* 思考块 · 统一折叠在顶部，不再切碎正文 */}
+      {thinking && (
+        <details className="group ink-panel-quiet my-6">
+          <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
+            <div className="flex items-center gap-4">
+              <span className="text-gold-dim text-sm">◇</span>
+              <div className="flex flex-col gap-1.5">
+                <span className="cn-label text-bone">
+                  模 型 思 考
+                </span>
+                <span className="cn-hint text-bone-faint group-open:hidden">
+                  点 击 展 开
+                </span>
+                <span className="cn-hint text-bone-faint hidden group-open:inline">
+                  点 击 折 叠
+                </span>
+              </div>
+            </div>
+            <span
+              className="text-bone-faint transition-transform duration-700 group-open:rotate-180"
+              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+            >
+              ⌄
+            </span>
+          </summary>
+
+          <div className="px-6 pb-6 hairline-top pt-5">
+            <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+              {thinking}
+            </ReactMarkdown>
+          </div>
+        </details>
+      )}
+
+      {/* 思考已经在动但正文还未出现 · 给一个轻量等候提示 */}
+      {showWaitingHint && (
+        <div className="flex items-center gap-4 py-3">
+          <span className="text-gold-dim anim-whisper">✦</span>
+          <span className="cn-hint text-bone-faint">神 谕 正 在 凝 聚</span>
+        </div>
+      )}
+
+      {/* 正文 · 连续渲染 */}
+      {answer && (
+        <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+          {answer}
+        </ReactMarkdown>
+      )}
+
+      {streaming && answer && (
+        <span className="streaming-cursor" aria-hidden />
+      )}
     </div>
   );
 }

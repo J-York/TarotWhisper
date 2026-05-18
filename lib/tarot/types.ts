@@ -50,6 +50,29 @@ export interface Reading {
   createdAt: Date;
 }
 
+export type FollowUpDecision = 'direct' | 'draw';
+
+export type FollowUpStatus =
+  | 'deciding'         // 等待 decide 步返回
+  | 'awaiting-draw'    // decide=draw，等用户点「继续抽牌」
+  | 'awaiting-reveal'  // 已抽好补充牌，等用户翻开
+  | 'interpreting'     // 流式解读中
+  | 'done'
+  | 'error';
+
+export interface FollowUp {
+  id: string;
+  question: string;
+  status: FollowUpStatus;
+  decision?: FollowUpDecision;
+  drawCount: number;
+  reason?: string;
+  additionalCards: DrawnCard[];
+  revealedCount: number;
+  interpretation: string;
+  error: string | null;
+}
+
 export interface ApiConfig {
   endpoint: string;
   apiKey: string;
