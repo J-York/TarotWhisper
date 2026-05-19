@@ -502,3 +502,286 @@ h1, h2, h3, h4, h5, h6 {
 .interpretation-streaming {
   animation: fade-in var(--dur-soft) var(--ease-veil);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Ambient field · 环境氛围层（烛火 / 雾气 / 粒子）
+   仅做"几乎不被察觉"的氛围补足，不要喧宾夺主
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 烛火光晕 · 跟随鼠标的柔和金色径向渐变
+   --mx / --my 由 JS 实时写入；transition 让它在停止时缓缓追上 */
+.candle-aura {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      420px circle at var(--mx, 50%) var(--my, 35%),
+      rgba(212, 184, 115, 0.07) 0%,
+      rgba(212, 184, 115, 0.035) 25%,
+      transparent 60%
+    );
+  transition: background 900ms var(--ease-veil);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: candle-fade-in 2.4s var(--ease-veil) 200ms forwards;
+}
+
+@keyframes candle-fade-in {
+  to { opacity: 1; }
+}
+
+/* 雾气层 · 极慢的水平漂移，几乎不可见 */
+.mist-veil {
+  position: fixed;
+  inset: -10% -20%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 50% 30% at 20% 60%,
+      rgba(184, 176, 204, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 25% at 80% 40%,
+      rgba(60, 20, 50, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 20% at 50% 90%,
+      rgba(201, 169, 97, 0.04) 0%, transparent 70%);
+  animation: mist-drift 48s var(--ease-deep) infinite alternate;
+  will-change: transform;
+}
+
+@keyframes mist-drift {
+  0%   { transform: translate3d(0, 0, 0)        scale(1);    opacity: 0.85; }
+  50%  { transform: translate3d(-3%, -1%, 0)    scale(1.04); opacity: 1; }
+  100% { transform: translate3d(2%, 1.5%, 0)    scale(1.02); opacity: 0.9; }
+}
+
+/* 粒子 canvas · 全屏低 z-index，靠 JS 绘制 */
+.particle-field {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  animation: candle-fade-in 3s var(--ease-veil) 400ms forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Tarot card · 增强（视差 / shimmer / 呼吸 halo）
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 视差容器：让卡片获得真正的 3D 触感 */
+.card-parallax {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 600ms var(--ease-veil);
+  will-change: transform;
+}
+.card-parallax.is-tracking {
+  transition: transform 120ms linear;   /* 跟手时缩短 transition */
+}
+
+/* 翻牌时的金箔反光 · 一次性扫过 */
+.card-shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+}
+.card-shimmer.is-active {
+  animation: shimmer-sweep 1200ms var(--ease-veil) forwards;
+}
+.card-shimmer::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -75%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(212, 184, 115, 0.18) 50%,
+    rgba(232, 226, 208, 0.28) 52%,
+    rgba(212, 184, 115, 0.18) 54%,
+    transparent 70%,
+    transparent 100%
+  );
+  transform: translateX(0);
+}
+.card-shimmer.is-active::before {
+  animation: shimmer-translate 1200ms var(--ease-veil) forwards;
+}
+
+@keyframes shimmer-sweep {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes shimmer-translate {
+  from { transform: translateX(0)    skewX(-8deg); }
+  to   { transform: translateX(320%) skewX(-8deg); }
+}
+
+/* 揭示后 halo 升级：在原有金光基础上加微弱呼吸 */
+.card-halo-breathe {
+  animation: halo-breathe 5.6s var(--ease-deep) infinite;
+}
+
+@keyframes halo-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0.5px var(--gold-dim),
+      0 0 24px -10px var(--gold-glow),
+      0 0 60px -28px var(--gold-glow);
+  }
+  50% {
+    box-shadow:
+      0 0 0 0.5px var(--gold),
+      0 0 40px -8px var(--gold-glow),
+      0 0 100px -28px var(--gold-glow);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Interpretation · 增强（金色关键词 / 墨迹揭幕 / 封印）
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 关键词描边小标签 · 牌名 / 阵位名自动金色高亮 */
+.glyph-card,
+.glyph-position {
+  display: inline-block;
+  padding: 0.05em 0.5em;
+  margin: 0 0.1em;
+  color: var(--gold-warm);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 0.5px var(--gold-faint);
+  background: linear-gradient(180deg,
+    rgba(201, 169, 97, 0.02) 0%,
+    rgba(201, 169, 97, 0.06) 100%);
+  transition: box-shadow var(--dur-soft) var(--ease-ritual),
+              color      var(--dur-soft) var(--ease-ritual),
+              background var(--dur-soft) var(--ease-ritual);
+}
+.glyph-card:hover,
+.glyph-position:hover {
+  color: var(--gold);
+  box-shadow: inset 0 0 0 0.5px var(--gold-dim),
+              0 0 12px -4px var(--gold-glow);
+  background: rgba(201, 169, 97, 0.08);
+}
+.glyph-position {
+  color: var(--mist);
+  box-shadow: inset 0 0 0 0.5px rgba(184, 176, 204, 0.18);
+  background: transparent;
+}
+.glyph-position:hover {
+  color: var(--bone);
+  box-shadow: inset 0 0 0 0.5px rgba(184, 176, 204, 0.4);
+}
+
+/* 墨迹揭幕 · 替换 word-reveal 的逐段动画
+   用 mask-image 让文本像被墨水从左浸染过来 */
+.interpretation-reveal > * {
+  -webkit-mask-image: linear-gradient(90deg,
+    #000 0%, #000 var(--mp, 0%), transparent calc(var(--mp, 0%) + 18%));
+          mask-image: linear-gradient(90deg,
+    #000 0%, #000 var(--mp, 0%), transparent calc(var(--mp, 0%) + 18%));
+  animation: ink-bleed var(--dur-veil) var(--ease-veil) forwards;
+  opacity: 1; /* 覆盖原来的 opacity: 0，由 mask 接管显现 */
+  filter: none;
+}
+
+@keyframes ink-bleed {
+  from {
+    --mp: -20%;
+    filter: blur(2px);
+  }
+  to {
+    --mp: 120%;
+    filter: blur(0);
+  }
+}
+
+/* 仪式封印 · 解读完成后底部金色圆印 */
+.sigil-seal {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: 2.5rem auto 0;
+  opacity: 0;
+  transform: scale(0.6) rotate(-18deg);
+  animation: sigil-stamp 1400ms var(--ease-veil) 200ms forwards;
+}
+.sigil-seal::before,
+.sigil-seal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 0.5px solid var(--gold-dim);
+  border-radius: 50%;
+}
+.sigil-seal::after {
+  inset: 6px;
+  border-color: var(--gold-faint);
+}
+.sigil-seal > .sigil-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  font-family: var(--font-cinzel), serif;
+  font-size: 1.25rem;
+  letter-spacing: 0;
+  text-shadow: 0 0 12px var(--gold-glow);
+}
+.sigil-seal > .sigil-ring-tick {
+  position: absolute;
+  width: 4px;
+  height: 1px;
+  background: var(--gold-dim);
+  left: 50%;
+  top: 50%;
+  transform-origin: 0 50%;
+}
+
+@keyframes sigil-stamp {
+  0%   { opacity: 0; transform: scale(0.6) rotate(-18deg); filter: blur(4px); }
+  60%  { opacity: 1; transform: scale(1.05) rotate(2deg); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg);    filter: blur(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Reduced motion · 尊重系统设置
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-drift,
+  .anim-whisper,
+  .anim-glow-pulse,
+  .card-halo-breathe,
+  .mist-veil,
+  .particle-field,
+  .card-shimmer.is-active,
+  .card-shimmer.is-active::before {
+    animation: none !important;
+  }
+  .card-parallax {
+    transform: none !important;
+  }
+  .interpretation-reveal > * {
+    -webkit-mask-image: none;
+            mask-image: none;
+    animation: fade-in var(--dur-soft) var(--ease-ritual) forwards;
+  }
+  .sigil-seal {
+    animation: fade-in var(--dur-soft) var(--ease-ritual) 200ms forwards;
+    transform: none;
+  }
+}

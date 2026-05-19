@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { FollowUp, ApiConfig } from '@/lib/tarot/types';
 import { TarotCardComponent } from '@/components/TarotCard';
 import { InterpretationBody } from '@/components/Interpretation';
@@ -7,6 +8,10 @@ import { InterpretationBody } from '@/components/Interpretation';
 interface FollowUpPanelProps {
   followUp: FollowUp;
   apiConfig: ApiConfig;
+  /** 主占卜已抽牌的名称，供金色关键词高亮 */
+  baseCardTerms?: string[];
+  /** 主占卜阵位名称，供月雾色关键词高亮 */
+  basePositionTerms?: string[];
   onRevealNext: (id: string, config: ApiConfig) => void;
   onRevealAll: (id: string, config: ApiConfig) => void;
   onRetry: (id: string, config: ApiConfig) => void;
@@ -15,11 +20,29 @@ interface FollowUpPanelProps {
 export function FollowUpPanel({
   followUp,
   apiConfig,
+  baseCardTerms,
+  basePositionTerms,
   onRevealNext,
   onRevealAll,
   onRetry,
 }: FollowUpPanelProps) {
   const { status, decision, reason, additionalCards, revealedCount, interpretation, error } = followUp;
+
+  // 合并主占卜与追问补充牌的名称
+  const cardTerms = useMemo<string[]>(
+    () => [
+      ...(baseCardTerms ?? []),
+      ...additionalCards.flatMap((d) => [d.card.nameCn, d.card.name]),
+    ],
+    [baseCardTerms, additionalCards]
+  );
+  const positionTerms = useMemo<string[]>(
+    () => [
+      ...(basePositionTerms ?? []),
+      ...additionalCards.map((d) => d.position.nameCn),
+    ],
+    [basePositionTerms, additionalCards]
+  );
 
   return (
     <section className="w-full max-w-4xl anim-veil-rise">
@@ -106,6 +129,9 @@ export function FollowUpPanel({
           <InterpretationBody
             content={interpretation}
             streaming={status === 'interpreting'}
+            cardTerms={cardTerms}
+            positionTerms={positionTerms}
+            showSigil={status === 'done'}
           />
         </div>
       )}

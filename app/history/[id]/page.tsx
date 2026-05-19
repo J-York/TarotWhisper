@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Reading } from '@/lib/tarot/types';
@@ -184,14 +184,30 @@ export default function ReadingDetailPage({ params }: PageProps) {
 
         {/* 解读 */}
         <div className="flex flex-col items-center pb-12">
-          <Interpretation
-            content={reading.interpretation || ''}
-            isLoading={false}
-            error={null}
-            staggerOnMount
-          />
+          <ReadingInterpretation reading={reading} />
         </div>
       </main>
     </div>
+  );
+}
+
+function ReadingInterpretation({ reading }: { reading: Reading }) {
+  const cardTerms = useMemo<string[]>(
+    () => reading.drawnCards.flatMap((d) => [d.card.nameCn, d.card.name]),
+    [reading]
+  );
+  const positionTerms = useMemo<string[]>(
+    () => reading.spread.positions.map((p) => p.nameCn),
+    [reading]
+  );
+  return (
+    <Interpretation
+      content={reading.interpretation || ''}
+      isLoading={false}
+      error={null}
+      staggerOnMount
+      cardTerms={cardTerms}
+      positionTerms={positionTerms}
+    />
   );
 }

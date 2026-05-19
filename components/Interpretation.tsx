@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 
@@ -13,6 +14,15 @@ interface InterpretationProps {
    * 实时解读（已经有流式动画）：false。
    */
   staggerOnMount?: boolean;
+  /**
+   * 需要高亮为金色描边小标签的牌名。
+   * 传入后，文中出现的 nameCn / name 会被识别并装饰。
+   */
+  cardTerms?: string[];
+  /**
+   * 需要高亮为月雾色阵位标签的阵位名。
+   */
+  positionTerms?: string[];
 }
 
 type InterpretationSegmentType = 'answer' | 'thinking';
@@ -86,6 +96,91 @@ const MARKDOWN_COMPONENTS: Components = {
   ),
 };
 
+/* ─── 关键词装饰 · 在 markdown 渲染前用 HTML span 包裹 ───
+   ReactMarkdown 默认不走原生 HTML，这里用零宽零室 placeholder 还原，
+   以避免依赖 rehype-raw 这样的额外 deps。
+   策略：在 Markdown AST 处理之后、渲染为 React 节点之前，用一个 text 重写器。
+   由于我们控制了 paragraph / heading / li 等几个容器，在它们内部运行拆分。 */
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildTermRegex(terms: string[]): RegExp | null {
+  const cleaned = terms.filter(t => t && t.trim().length > 1);
+  if (cleaned.length === 0) return null;
+  // 按长度降序，避免“圣杯骑士”被 “圣杯” 先吃掉
+  const sorted = [...cleaned].sort((a, b) => b.length - a.length);
+  return new RegExp(sorted.map(escapeRegExp).join('|'), 'g');
+}
+
+function renderWithGlyphs(
+  text: string,
+  cardRe: RegExp | null,
+  positionRe: RegExp | null
+): React.ReactNode {
+  if (!cardRe && !positionRe) return text;
+
+  // 先按牌名拆，再在未装饰片段按阵位名拆
+  const parts: Array<{ text: string; kind: 'plain' | 'card' | 'position' }> = [
+    { text, kind: 'plain' },
+  ];
+
+  const splitBy = (re: RegExp, kind: 'card' | 'position'): void => {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const seg = parts[i];
+      if (seg.kind !== 'plain') continue;
+      const matches = [...seg.text.matchAll(re)];
+      if (matches.length === 0) continue;
+
+      const replacement: typeof parts = [];
+      let cursor = 0;
+      for (const m of matches) {
+        const idx = m.index ?? 0;
+        if (idx > cursor) {
+          replacement.push({ text: seg.text.slice(cursor, idx), kind: 'plain' });
+        }
+        replacement.push({ text: m[0], kind });
+        cursor = idx + m[0].length;
+      }
+      if (cursor < seg.text.length) {
+        replacement.push({ text: seg.text.slice(cursor), kind: 'plain' });
+      }
+      parts.splice(i, 1, ...replacement);
+    }
+  };
+
+  if (cardRe) splitBy(cardRe, 'card');
+  if (positionRe) splitBy(positionRe, 'position');
+
+  return parts.map((seg, i) => {
+    if (seg.kind === 'card')     return <span key={i} className="glyph-card">{seg.text}</span>;
+    if (seg.kind === 'position') return <span key={i} className="glyph-position">{seg.text}</span>;
+    return seg.text;
+  });
+}
+
+/** 递归遍历 ReactMarkdown 的 children，仅处理字符串叶节点 */
+function decorateChildren(
+  children: React.ReactNode,
+  cardRe: RegExp | null,
+  positionRe: RegExp | null
+): React.ReactNode {
+  if (!cardRe && !positionRe) return children;
+  if (typeof children === 'string') {
+    return renderWithGlyphs(children, cardRe, positionRe);
+  }
+  if (Array.isArray(children)) {
+    return children.map((child, i) => {
+      if (typeof child === 'string') {
+        return <Fragment key={i}>{renderWithGlyphs(child, cardRe, positionRe)}</Fragment>;
+      }
+      return child;
+    });
+  }
+  return children;
+}
+
 /* ─── Segment 解析（保留 thinking 标签处理） ─── */
 
 function appendSegment(
@@ -155,6 +250,8 @@ export function Interpretation({
   isLoading,
   error,
   staggerOnMount = false,
+  cardTerms,
+  positionTerms,
 }: InterpretationProps) {
   /* ─── 错误态 ─── */
   if (error) {
@@ -210,6 +307,9 @@ export function Interpretation({
               content={content}
               streaming={isStreamingActive}
               stagger={useStaggerReveal}
+              cardTerms={cardTerms}
+              positionTerms={positionTerms}
+              showSigil={!isLoading}
             />
           ) : isLoading ? (
             // ─── 加载态 · 通灵中 ───
@@ -253,16 +353,61 @@ interface InterpretationBodyProps {
   content: string;
   streaming?: boolean;
   stagger?: boolean;
+  cardTerms?: string[];
+  positionTerms?: string[];
+  /**
+   * 是否在正文后面盖一个金色封印。
+   * 仅在解读完成（非流式中）且有正文时应该为 true。
+   */
+  showSigil?: boolean;
 }
 
 export function InterpretationBody({
   content,
   streaming = false,
   stagger = false,
+  cardTerms,
+  positionTerms,
+  showSigil = false,
 }: InterpretationBodyProps) {
   const segments = parseInterpretationSegments(content);
   const { thinking, answer } = mergeSegments(segments);
   const showWaitingHint = streaming && !answer;
+
+  // 关键词正则 · useMemo 避免每个 paragraph 重建
+  const cardRe     = useMemo(() => buildTermRegex(cardTerms ?? []),     [cardTerms]);
+  const positionRe = useMemo(() => buildTermRegex(positionTerms ?? []), [positionTerms]);
+
+  const components: Components = useMemo(() => {
+    if (!cardRe && !positionRe) return MARKDOWN_COMPONENTS;
+    // 包装 paragraph / heading / li / strong / em 使其子元素被装饰
+    const wrap =
+      <T extends keyof typeof MARKDOWN_COMPONENTS>(
+        key: T
+      ): (typeof MARKDOWN_COMPONENTS)[T] => {
+        const original = MARKDOWN_COMPONENTS[key];
+        if (!original) return original;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return ((props: any) => {
+          const decorated = decorateChildren(props.children, cardRe, positionRe);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return (original as any)({ ...props, children: decorated });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any;
+      };
+    return {
+      ...MARKDOWN_COMPONENTS,
+      p:   wrap('p'),
+      h1:  wrap('h1'),
+      h2:  wrap('h2'),
+      h3:  wrap('h3'),
+      h4:  wrap('h4'),
+      li:  wrap('li'),
+      em:  wrap('em'),
+      strong: wrap('strong'),
+      blockquote: wrap('blockquote'),
+    };
+  }, [cardRe, positionRe]);
 
   return (
     <div
@@ -318,7 +463,7 @@ export function InterpretationBody({
 
       {/* 正文 · 连续渲染 */}
       {answer && (
-        <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+        <ReactMarkdown components={components}>
           {answer}
         </ReactMarkdown>
       )}
@@ -326,6 +471,27 @@ export function InterpretationBody({
       {streaming && answer && (
         <span className="streaming-cursor" aria-hidden />
       )}
+
+      {/* 仪式封印 · 解读完成后盖在正文底部 */}
+      {showSigil && answer && !streaming && <SigilSeal />}
+    </div>
+  );
+}
+
+/** 金色仪式封印 · 解读完成的“盖印”动作 */
+function SigilSeal(): React.ReactElement {
+  // 上下左右四道小到许 · 表示四象限定
+  const ticks = [0, 90, 180, 270];
+  return (
+    <div className="sigil-seal" aria-hidden>
+      {ticks.map((deg) => (
+        <span
+          key={deg}
+          className="sigil-ring-tick"
+          style={{ transform: `rotate(${deg}deg) translateX(28px)` }}
+        />
+      ))}
+      <span className="sigil-glyph">✦</span>
     </div>
   );
 }

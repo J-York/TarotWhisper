@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { TarotCardComponent } from '@/components/TarotCard';
 import { CardDeck } from '@/components/CardDeck';
@@ -40,6 +40,16 @@ export default function ReadingPage() {
   const { config, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
   const [followUpDraft, setFollowUpDraft] = useState('');
+
+  // 跨“牌名 / 阵位名”提取，用于解读区金色关键词高亮
+  const baseCardTerms = useMemo<string[]>(
+    () => drawnCards.flatMap((d) => [d.card.nameCn, d.card.name]),
+    [drawnCards]
+  );
+  const basePositionTerms = useMemo<string[]>(
+    () => spread.positions.map((p) => p.nameCn),
+    [spread]
+  );
 
   const handleStartInterpretation = (): void => {
     startInterpretation(config);
@@ -333,6 +343,8 @@ export default function ReadingPage() {
               content={interpretation}
               isLoading={isInterpreting}
               error={error}
+              cardTerms={baseCardTerms}
+              positionTerms={basePositionTerms}
             />
 
             {/* ─── 追问区 ─── */}
@@ -343,6 +355,8 @@ export default function ReadingPage() {
                     key={fu.id}
                     followUp={fu}
                     apiConfig={config}
+                    baseCardTerms={baseCardTerms}
+                    basePositionTerms={basePositionTerms}
                     onRevealNext={revealNextFollowUpCard}
                     onRevealAll={revealAllFollowUpCards}
                     onRetry={retryFollowUp}
