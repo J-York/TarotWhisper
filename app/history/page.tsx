@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Reading } from '@/lib/tarot/types';
-import { getReadings, deleteReadings, clearAll } from '@/lib/storage';
+import { getReadings, deleteReadings, clearAll } from '@/lib/readingStorage';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useConfirm } from '@/hooks/useConfirm';
 import { HistoryListSkeleton } from '@/components/Skeletons';

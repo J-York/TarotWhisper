@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Reading } from '@/lib/tarot/types';
-import { getReadingById, deleteReadings } from '@/lib/storage';
+import { getReadingById, deleteReadings } from '@/lib/readingStorage';
 import { Interpretation } from '@/components/Interpretation';
 import { TarotCardComponent } from '@/components/TarotCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';

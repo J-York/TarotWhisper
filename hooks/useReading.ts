@@ -12,7 +12,7 @@ import {
 } from '@/lib/tarot/types';
 import { allCards } from '@/lib/tarot/cards';
 import { getDefaultSpread } from '@/lib/tarot/spreads';
-import { saveReading } from '@/lib/storage';
+import { saveReading } from '@/lib/readingStorage';
 
 export type ReadingPhase = 'question' | 'spread' | 'shuffle' | 'draw' | 'reveal' | 'interpret';
 
