@@ -155,14 +155,16 @@ export function TarotCardComponent({
             </div>
           </div>
 
-          {/* ─── 正面 · 揭示后金色光晕 + 翻牌 shimmer ─── */}
+          {/* ─── 正面 · 仅图像（含跟随翻转的底部渐隐） + shimmer ───
+             可读文字（牌名 / fallback 字标）不放在这里，以免逆位时被
+             rotate(180deg) 连同上下颠倒 */}
           <div
             className={`absolute w-full h-full backface-hidden overflow-hidden bg-[var(--ink-void)] ${
               isRevealed ? 'card-revealed-halo card-halo-breathe' : 'hairline'
             }`}
             style={{ transform: cardFaceTransform }}
           >
-            {!imageError ? (
+            {!imageError && (
               <div className="w-full h-full relative">
                 <Image
                   src={card.image}
@@ -173,34 +175,8 @@ export function TarotCardComponent({
                   onError={() => setImageError(true)}
                   priority={size === 'lg'}
                 />
-                {/* 底部渐隐 */}
+                {/* 底部渐隐 · 跟随牌图翻转，视觉合理 */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/85 via-transparent to-[var(--ink-void)]/30 pointer-events-none" />
-
-                {/* 牌名 · 悬停显现 */}
-                <div className="absolute bottom-0 w-full p-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                     style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
-                  <div className="rule-h-gold w-8 mx-auto mb-2" />
-                  <h3 className="font-display text-bone text-base tracking-[0.2em]">
-                    {card.nameCn}
-                  </h3>
-                  <p className="font-display text-[10px] tracking-veil text-gold-dim uppercase mt-1">
-                    {card.name}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              // 图片缺失的回落版面
-              <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
-                <div className="text-gold-dim text-2xl mb-4">
-                  {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
-                </div>
-                <div className="rule-h-gold w-12 mb-4" />
-                <div className="font-display text-lg text-bone mb-2 tracking-[0.18em]">
-                  {card.nameCn}
-                </div>
-                <div className="font-display text-[11px] tracking-veil text-bone-dim uppercase">
-                  {card.name}
-                </div>
               </div>
             )}
 
@@ -209,6 +185,43 @@ export function TarotCardComponent({
           </div>
         </div>
       </div>
+
+      {/* ─── 文字 / 字标层 · 独立于 3D 翻转，永远视觉正向 ───
+         彻底解决了逆位时（cardFaceTransform 含 rotate(180deg)）牌名跟着
+         上下颠倒 / 被推到视觉顶部的问题。 */}
+      {isRevealed && (imageError ? (
+        // 图片缺失时的纪念碑式版面 · 常显
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center pointer-events-none">
+          <span className="text-gold-dim text-2xl mb-4">
+            {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
+          </span>
+          <div className="rule-h-gold w-12 mb-4" />
+          <div className="font-display text-lg text-bone mb-2 tracking-[0.18em]">
+            {card.nameCn}
+          </div>
+          <div className="font-display text-[11px] tracking-veil text-bone-dim uppercase">
+            {card.name}
+          </div>
+        </div>
+      ) : (
+        // 图片正常时的 hover 牌名 · 自带底部渐变以保证可读性
+        <div
+          className="absolute bottom-0 inset-x-0 p-4 pt-10 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+          style={{
+            transitionTimingFunction: 'var(--ease-veil)',
+            background:
+              'linear-gradient(to top, rgba(6,6,10,0.92), rgba(6,6,10,0.7) 40%, transparent)',
+          }}
+        >
+          <div className="rule-h-gold w-8 mx-auto mb-2" />
+          <h3 className="font-display text-bone text-base tracking-[0.2em]">
+            {card.nameCn}
+          </h3>
+          <p className="font-display text-[10px] tracking-veil text-gold-dim uppercase mt-1">
+            {card.name}
+          </p>
+        </div>
+      ))}
 
       {/* 逆位标识 */}
       {isRevealed && isReversed && (
