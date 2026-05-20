@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TarotCardComponent } from '@/components/TarotCard';
 import { CardDeck } from '@/components/CardDeck';
@@ -40,6 +40,28 @@ export default function ReadingPage() {
   const { config, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
   const [followUpDraft, setFollowUpDraft] = useState('');
+
+  // 解读区 ref · 进入 interpret 阶段时自动滚动至此
+  const interpretSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (phase !== 'interpret') return;
+    const el = interpretSectionRef.current;
+    if (!el) return;
+
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // 让牙台动画先展开，随后再滚，避免跳动感
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [phase]);
 
   // 跨“牌名 / 阵位名”提取，用于解读区金色关键词高亮
   const baseCardTerms = useMemo<string[]>(
@@ -142,17 +164,17 @@ export default function ReadingPage() {
           })}
         </div>
 
-        <div className="flex items-center gap-9 pointer-events-auto">
+        <div className="flex items-center gap-6 md:gap-9 pointer-events-auto">
           <Link
             href="/library"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             牌 典
           </Link>
           <Link
             href="/history"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             轨 迹
@@ -167,10 +189,59 @@ export default function ReadingPage() {
         </div>
       </header>
 
+      {/* ═════════════════════════════════════
+          移动端步骤指示 · 底部隐性 · 仅 < md 可见
+         ═════════════════════════════════════ */}
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
+        aria-hidden
+      >
+        {/* 上边缘 · 金色进度细线 */}
+        <div className="relative h-px bg-[var(--ink-line)]">
+          <div
+            className="absolute top-0 left-0 h-px bg-gradient-to-r from-[var(--gold-dim)] to-[var(--gold)] shadow-[0_0_8px_var(--gold-glow)] transition-all duration-1000"
+            style={{
+              width: `${((currentStepIndex + 1) / steps.length) * 100}%`,
+              transitionTimingFunction: 'var(--ease-veil)',
+            }}
+          />
+        </div>
+
+        {/* 下部 · 圆点 + 当前阶段名 */}
+        <div className="bg-gradient-to-t from-[var(--ink-deep)] via-[var(--ink-deep)]/92 to-transparent pt-5 pb-5 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {steps.map((step, index) => {
+              const isActive = index === currentStepIndex;
+              const isCompleted = index < currentStepIndex;
+              return (
+                <span
+                  key={step.id}
+                  className={`
+                    w-1 h-1 rounded-full transition-all duration-700
+                    ${isActive
+                      ? 'bg-[var(--gold)] scale-[1.6] shadow-[0_0_8px_var(--gold-glow)]'
+                      : isCompleted
+                      ? 'bg-[var(--gold-dim)]'
+                      : 'bg-[var(--bone-whisper)]'}
+                  `}
+                  style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+                />
+              );
+            })}
+          </div>
+          <span className="cn-hint text-gold-dim">
+            {steps[currentStepIndex]?.label}
+            <span className="text-bone-whisper ml-3">
+              {currentStepIndex + 1} ╱ {steps.length}
+            </span>
+          </span>
+        </div>
+      </div>
+
       {/* ═══════════════════════════════════════
           Main · 阶段
          ═══════════════════════════════════════ */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pt-32 pb-16 min-h-screen">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pt-32 pb-32 md:pb-16 min-h-screen">
 
         {/* ─── 阶段 1：提问 ─── */}
         {phase === 'question' && (
@@ -324,7 +395,10 @@ export default function ReadingPage() {
 
         {/* ─── 阶段 6：解读 ─── */}
         {phase === 'interpret' && (
-          <div className="flex flex-col items-center gap-12 w-full max-w-5xl anim-veil-rise">
+          <div
+            ref={interpretSectionRef}
+            className="flex flex-col items-center gap-12 w-full max-w-5xl anim-veil-rise scroll-mt-28 md:scroll-mt-32"
+          >
             <div className="flex flex-wrap justify-center gap-5 opacity-70 hover:opacity-100 transition-opacity duration-700"
                  style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
               {drawnCards.map((drawn) => (
