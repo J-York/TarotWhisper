@@ -757,6 +757,45 @@ h1, h2, h3, h4, h5, h6 {
   100% { opacity: 1; transform: scale(1) rotate(0deg);    filter: blur(0); }
 }
 
+/* Skeletons · 骨架屏 · 暗调脉冲 + 金色扫光 */
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+@keyframes skeleton-shimmer {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(110%); }
+}
+
+.skeleton-base {
+  position: relative;
+  background: var(--ink-veil);
+  box-shadow: inset 0 0 0 0.5px var(--ink-line);
+  overflow: hidden;
+  animation: skeleton-pulse 2.4s var(--ease-deep) infinite;
+  will-change: opacity;
+}
+
+.skeleton-base::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(212, 184, 115, 0.06) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 2.6s var(--ease-deep) infinite;
+  pointer-events: none;
+}
+
+/* 使用者可按需覆盖颜色 · 默认 ink-veil；需要颜色差异时传 style/className */
+
 /* ═══════════════════════════════════════════════════════════════
    Reduced motion · 尊重系统设置
    ═══════════════════════════════════════════════════════════════ */
@@ -769,9 +808,13 @@ h1, h2, h3, h4, h5, h6 {
   .mist-veil,
   .particle-field,
   .card-shimmer.is-active,
-  .card-shimmer.is-active::before {
+  .card-shimmer.is-active::before,
+  .skeleton-base,
+  .skeleton-base::after {
     animation: none !important;
   }
+  .skeleton-base { opacity: 0.72; }
+  .skeleton-base::after { opacity: 0; }
   .card-parallax {
     transform: none !important;
   }

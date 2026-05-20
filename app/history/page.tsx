@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Reading } from '@/lib/tarot/types';
 import { getReadings, deleteReadings, clearAll } from '@/lib/storage';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useConfirm } from '@/hooks/useConfirm';
+import { HistoryListSkeleton } from '@/components/Skeletons';
 
 export default function HistoryPage() {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
+  const { dialog, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => {
     const loadedReadings = getReadings();
@@ -29,11 +33,17 @@ export default function HistoryPage() {
     setSelectedIds(newSelected);
   };
 
-  const handleDeleteSelected = (): void => {
+  const handleDeleteSelected = async (): Promise<void> => {
     if (selectedIds.size === 0) return;
 
-    const confirmed = window.confirm(`确定要删除选中的 ${selectedIds.size} 条记录吗？`);
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: '删 除 选 中',
+      message: `将 删 除 选 中 的 ${selectedIds.size} 条 记 录 ， 此 举 不 可 撤 回 。`,
+      confirmLabel: '删 除',
+      cancelLabel: '保 留',
+      tone: 'danger',
+    });
+    if (!ok) return;
 
     deleteReadings(Array.from(selectedIds));
     setReadings(getReadings());
@@ -41,9 +51,15 @@ export default function HistoryPage() {
     setIsSelectionMode(false);
   };
 
-  const handleClearAll = (): void => {
-    const confirmed = window.confirm('确定要清空所有历史记录吗？此操作不可撤销！');
-    if (!confirmed) return;
+  const handleClearAll = async (): Promise<void> => {
+    const ok = await confirm({
+      title: '清 空 所 有',
+      message: '所 有 占 卜 轨 迹 都 将 散 入 虚 空 ， 此 举 不 可 撤 回 。',
+      confirmLabel: '清 空',
+      cancelLabel: '取 消',
+      tone: 'danger',
+    });
+    if (!ok) return;
 
     clearAll();
     setReadings([]);
@@ -61,13 +77,7 @@ export default function HistoryPage() {
   };
 
   if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <span className="cn-label text-bone-faint anim-whisper">
-          载 入 中
-        </span>
-      </div>
-    );
+    return <HistoryListSkeleton />;
   }
 
   return (
@@ -272,6 +282,17 @@ export default function HistoryPage() {
           </div>
         )}
       </main>
+
+      <ConfirmDialog
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        confirmLabel={dialog.confirmLabel}
+        cancelLabel={dialog.cancelLabel}
+        tone={dialog.tone}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

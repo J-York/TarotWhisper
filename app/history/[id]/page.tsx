@@ -7,6 +7,9 @@ import { Reading } from '@/lib/tarot/types';
 import { getReadingById, deleteReadings } from '@/lib/storage';
 import { Interpretation } from '@/components/Interpretation';
 import { TarotCardComponent } from '@/components/TarotCard';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useConfirm } from '@/hooks/useConfirm';
+import { ReadingDetailSkeleton } from '@/components/Skeletons';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -16,6 +19,7 @@ export default function ReadingDetailPage({ params }: PageProps) {
   const [reading, setReading] = useState<Reading | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const router = useRouter();
+  const { dialog, confirm, handleConfirm, handleCancel } = useConfirm();
 
   useEffect(() => {
     params.then((resolvedParams) => {
@@ -25,11 +29,17 @@ export default function ReadingDetailPage({ params }: PageProps) {
     });
   }, [params]);
 
-  const handleDelete = (): void => {
+  const handleDelete = async (): Promise<void> => {
     if (!reading) return;
 
-    const confirmed = window.confirm('确定要删除这条占卜记录吗？');
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: '删 除 记 录',
+      message: '此 次 占 卜 的 轨 迹 将 永 远 消 失 ， 不 可 被 唤 回 。',
+      confirmLabel: '删 除',
+      cancelLabel: '保 留',
+      tone: 'danger',
+    });
+    if (!ok) return;
 
     deleteReadings([reading.id]);
     router.push('/history');
@@ -45,13 +55,7 @@ export default function ReadingDetailPage({ params }: PageProps) {
   };
 
   if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <span className="cn-label text-bone-faint anim-whisper">
-          载 入 中
-        </span>
-      </div>
-    );
+    return <ReadingDetailSkeleton />;
   }
 
   if (!reading) {
@@ -187,6 +191,17 @@ export default function ReadingDetailPage({ params }: PageProps) {
           <ReadingInterpretation reading={reading} />
         </div>
       </main>
+
+      <ConfirmDialog
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        confirmLabel={dialog.confirmLabel}
+        cancelLabel={dialog.cancelLabel}
+        tone={dialog.tone}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }
