@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { TarotCard } from '@/lib/tarot/types';
 
 interface TarotCardProps {
@@ -163,12 +164,14 @@ export function TarotCardComponent({
           >
             {!imageError ? (
               <div className="w-full h-full relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={card.image}
                   alt={card.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes={size === 'lg' ? '256px' : size === 'md' ? '192px' : '96px'}
+                  className="object-cover"
                   onError={() => setImageError(true)}
+                  priority={size === 'lg'}
                 />
                 {/* 底部渐隐 */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/85 via-transparent to-[var(--ink-void)]/30 pointer-events-none" />

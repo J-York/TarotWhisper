@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { TarotCard } from '@/lib/tarot/types';
 
 interface CardDetailProps {
@@ -178,12 +179,13 @@ function CardFace({ card, fallbackSymbol }: CardFaceProps) {
     <div className="relative w-full max-w-[240px] aspect-[3/5] bg-[var(--ink-void)] hairline overflow-hidden">
       {!imageError ? (
         <>
-          <img
+          <Image
             src={card.image}
             alt={card.name}
-            className="w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 240px, 240px"
+            className="object-cover"
             onError={() => setImageError(true)}
-            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/55 via-transparent to-transparent pointer-events-none" />
         </>
