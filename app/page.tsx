@@ -1,14 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useMemo, useState, useEffect } from 'react';
 import { ApiSettings } from '@/components/ApiSettings';
 import { useApiConfig } from '@/hooks/useApiConfig';
+import { getDailyDraw } from '@/lib/tarot/daily';
 
 export default function Home() {
   const { config, isLoaded, isConfigured, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
   const [fallbackAvailable, setFallbackAvailable] = useState(false);
+
+  /* 今日一牌 · 确定性派生，需要在客户端计算以使用本地时区
+     queueMicrotask 避开 React 19 的 set-state-in-effect 告警，与 useApiConfig 使用同一约定 */
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => {
+    queueMicrotask(() => setToday(new Date()));
+  }, []);
+  const dailyDraw = useMemo(() => (today ? getDailyDraw(today) : null), [today]);
 
   useEffect(() => {
     fetch('/api/config')
@@ -24,17 +34,24 @@ export default function Home() {
         <span className="font-display text-[11px] tracking-veil text-bone-faint uppercase">
           Whisper
         </span>
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-6 md:gap-10">
+          <Link
+            href="/daily"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+          >
+            今 日
+          </Link>
           <Link
             href="/library"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             牌 典
           </Link>
           <Link
             href="/history"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             轨 迹
@@ -94,8 +111,63 @@ export default function Home() {
           )}
         </div>
 
+        {/* ─── 今日一牌 · 静谧的留存样素 ─── */}
+        {dailyDraw && (
+          <Link
+            href="/daily"
+            className="group mt-24 md:mt-28 w-full max-w-3xl flex items-center gap-7 md:gap-10 px-8 py-7 hairline hover:bg-[var(--ink-veil)] transition-all duration-700"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+          >
+            {/* 牌面缩略 */}
+            <div className="relative shrink-0 w-16 md:w-20 aspect-[3/5] bg-[var(--ink-void)] overflow-hidden hairline transition-all duration-700 group-hover:shadow-[0_0_24px_-12px_var(--gold-glow)]"
+                 style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
+              <Image
+                src={dailyDraw.card.image}
+                alt={dailyDraw.card.name}
+                fill
+                sizes="80px"
+                className={`object-cover transition-transform duration-1000 group-hover:scale-105 ${
+                  dailyDraw.isReversed ? 'rotate-180' : ''
+                }`}
+                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/60 via-transparent to-transparent" />
+            </div>
+
+            {/* 文字块 */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-gold text-sm">✦</span>
+                <span className="cn-label text-gold-dim">今 日 一 牌</span>
+                <span className="font-display text-[10px] tracking-veil text-bone-whisper uppercase hidden sm:inline">
+                  Card of the Day
+                </span>
+              </div>
+              <div className="flex items-baseline gap-3 mb-2">
+                <span className="font-display text-bone group-hover:text-gold text-xl tracking-[0.18em] transition-colors duration-700">
+                  {dailyDraw.card.nameCn}
+                </span>
+                {dailyDraw.isReversed && (
+                  <span className="cn-hint text-bone-whisper">· 逆 位</span>
+                )}
+              </div>
+              <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed line-clamp-1">
+                {(dailyDraw.isReversed ? dailyDraw.card.keywords.reversed : dailyDraw.card.keywords.upright).slice(0, 4).join(' ╱ ')}
+              </p>
+            </div>
+
+            {/* 右侧箭头 */}
+            <span
+              className="shrink-0 text-bone-faint group-hover:text-gold group-hover:translate-x-1 transition-all duration-700"
+              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+            >
+              →
+            </span>
+          </Link>
+        )}
+
         {/* ─── 三柱特性 · 极细分隔 ─── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 mt-36 w-full max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 mt-24 md:mt-28 w-full max-w-5xl">
           <Pillar
             symbol="◇"
             title="七十八卷"
