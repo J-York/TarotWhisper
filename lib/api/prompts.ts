@@ -391,3 +391,35 @@ export function buildSimplePrompt(
 
 请用2-3段话给出简洁但有深度的解读，结合问卜者的问题给出建议。使用中文回答。`;
 }
+
+/**
+ * 每日一牌 AI 解读。
+ * 不需问题，直接对今日牌面给出指引。
+ */
+export function buildDailyInterpretationPrompt(
+  cardName: string,
+  cardNameCn: string,
+  isReversed: boolean,
+  keywords: string[],
+  meaning: string,
+  dateStr: string
+): string {
+  const orientation = isReversed ? '逆位' : '正位';
+
+  return `你是一位充满智慧的塔罗牌解读师。今天是 ${dateStr}，星辰为问卜者揭下了今日的一张牌。
+
+## 今日一牌
+牌名：${cardNameCn}（${cardName}）
+方位：${orientation}
+关键词：${keywords.join('、')}
+基本牌义：${meaning}
+
+## 解读要求
+1. 请先简短地用 1–2 句描绘今日的能量基调
+2. 解释这张牌在「今日」的语境下的含义（而非泛泛的牌义复述）
+3. 给出 2–3 条具体的今日建议（如“今日适合……”“留意……”“避免……”）
+4. 用 3–5 段话，语气温和而富有诗意
+5. 使用中文
+
+请开始你的解读：`;
+}

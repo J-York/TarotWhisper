@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Reading } from '@/lib/tarot/types';
+import { Reading, FollowUp } from '@/lib/tarot/types';
 import { getReadingById, deleteReadings } from '@/lib/readingStorage';
-import { Interpretation } from '@/components/Interpretation';
+import { Interpretation, InterpretationBody } from '@/components/Interpretation';
 import { TarotCardComponent } from '@/components/TarotCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -187,8 +187,17 @@ export default function ReadingDetailPage({ params }: PageProps) {
         </div>
 
         {/* 解读 */}
-        <div className="flex flex-col items-center pb-12">
+        <div className="flex flex-col items-center pb-12 gap-12">
           <ReadingInterpretation reading={reading} />
+
+          {/* 追问记录 */}
+          {reading.followUps && reading.followUps.length > 0 && (
+            <div className="w-full max-w-4xl space-y-10">
+              {reading.followUps.map((fu) => (
+                <FollowUpRecord key={fu.id} followUp={fu} reading={reading} />
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
@@ -224,5 +233,73 @@ function ReadingInterpretation({ reading }: { reading: Reading }) {
       cardTerms={cardTerms}
       positionTerms={positionTerms}
     />
+  );
+}
+
+function FollowUpRecord({ followUp, reading }: { followUp: FollowUp; reading: Reading }) {
+  const cardTerms = useMemo<string[]>(
+    () => [
+      ...reading.drawnCards.flatMap((d) => [d.card.nameCn, d.card.name]),
+      ...followUp.additionalCards.flatMap((d) => [d.card.nameCn, d.card.name]),
+    ],
+    [reading, followUp]
+  );
+  const positionTerms = useMemo<string[]>(
+    () => [
+      ...reading.spread.positions.map((p) => p.nameCn),
+      ...followUp.additionalCards.map((d) => d.position.nameCn),
+    ],
+    [reading, followUp]
+  );
+
+  return (
+    <section className="w-full anim-veil-rise">
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-gold-dim text-base">◆</span>
+          <span className="cn-label text-gold-dim">追 问</span>
+          <div className="rule-h-fade flex-1" />
+        </div>
+        <p className="font-body italic-soft text-bone text-lg leading-relaxed pl-7">
+          {followUp.question}
+        </p>
+      </div>
+
+      {/* 补充牌 */}
+      {followUp.additionalCards.length > 0 && (
+        <div className="ink-panel-quiet p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-gold-dim">◇</span>
+            <span className="cn-label text-bone">补 充 指 引 · {followUp.additionalCards.length} 张</span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-6">
+            {followUp.additionalCards.map((drawn) => (
+              <div key={drawn.position.id} className="flex flex-col items-center gap-2">
+                <TarotCardComponent
+                  card={drawn.card}
+                  isReversed={drawn.isReversed}
+                  isRevealed={true}
+                  size="sm"
+                />
+                <span className="cn-hint text-bone-faint">{drawn.card.nameCn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 追问解读 */}
+      {followUp.interpretation && (
+        <div className="ink-panel-quiet p-8 md:p-12">
+          <InterpretationBody
+            content={followUp.interpretation}
+            stagger
+            cardTerms={cardTerms}
+            positionTerms={positionTerms}
+            showSigil
+          />
+        </div>
+      )}
+    </section>
   );
 }

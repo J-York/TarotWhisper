@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TarotCardComponent } from '@/components/TarotCard';
+import { InterpretationBody } from '@/components/Interpretation';
 import { DailyCardSkeleton } from '@/components/Skeletons';
+import { useApiConfig } from '@/hooks/useApiConfig';
 import {
   formatDateKey,
   getDailyDraw,
@@ -99,6 +101,94 @@ export default function DailyCardPage() {
     setNote(e.target.value);
     scheduleSave(e.target.value);
   };
+
+  /* ─── AI 解读 ─── */
+  const { config: apiConfig } = useApiConfig();
+  const [aiInterpretation, setAiInterpretation] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // 切换日期时清空 AI 解读
+  useEffect(() => {
+    setAiInterpretation('');
+    setAiError(null);
+    setAiLoading(false);
+  }, [activeDateKey]);
+
+  const requestAiInterpretation = useCallback(async () => {
+    if (!dailyDraw || !activeDate || aiLoading) return;
+    setAiLoading(true);
+    setAiInterpretation('');
+    setAiError(null);
+
+    try {
+      const keywords = dailyDraw.isReversed
+        ? dailyDraw.card.keywords.reversed
+        : dailyDraw.card.keywords.upright;
+      const meaning = dailyDraw.isReversed
+        ? dailyDraw.card.meaning.reversed
+        : dailyDraw.card.meaning.upright;
+
+      const response = await fetch('/api/interpret', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: '',
+          spread: { id: 'daily', name: 'Daily Card', nameCn: '今日一牌', description: '', positions: [] },
+          drawnCards: [],
+          apiConfig,
+          daily: {
+            cardName: dailyDraw.card.name,
+            cardNameCn: dailyDraw.card.nameCn,
+            isReversed: dailyDraw.isReversed,
+            keywords,
+            meaning,
+            dateStr: formatHumanDate(activeDate),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`请求失败: ${response.status} - ${errorText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('无法读取响应');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed?.choices?.[0]?.delta?.content;
+            if (content) {
+              setAiInterpretation((prev) => prev + content);
+            }
+          } catch {
+            // ignore parse errors
+          }
+        }
+      }
+      reader.releaseLock();
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'AI 解读失败');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [dailyDraw, activeDate, aiLoading, apiConfig]);
 
   /* ─── 最近 14 天的轨迹 · 取决于本地今日 ─── */
   const recent = useMemo(
@@ -207,6 +297,66 @@ export default function DailyCardPage() {
 
           {/* 正/逆位 关键词 + 释义 */}
           <DailyMeaning draw={dailyDraw} />
+
+          {/* AI 解读 */}
+          <div className="w-full max-w-2xl mt-12">
+            {!aiInterpretation && !aiLoading && !aiError && (
+              <div className="flex justify-center">
+                <button
+                  onClick={requestAiInterpretation}
+                  className="btn-ink-primary px-10 py-3 inline-flex items-center gap-3"
+                >
+                  <span>请 求 神 谕</span>
+                  <span className="text-xs">✦</span>
+                </button>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="ink-panel-quiet p-8 text-center">
+                <span className="text-gold-dim text-lg">◇</span>
+                <p className="font-body italic-soft text-bone-faint text-base mt-4 mb-6">
+                  {aiError}
+                </p>
+                <button
+                  onClick={requestAiInterpretation}
+                  className="btn-ink-ghost"
+                >
+                  重 试
+                </button>
+              </div>
+            )}
+
+            {(aiLoading || aiInterpretation) && (
+              <div className="mt-4">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-gold-dim text-base">◆</span>
+                  <span className="cn-label text-gold-dim">神 谕 指 引</span>
+                  <div className="rule-h-fade flex-1" />
+                </div>
+                <div className="ink-panel-quiet p-8 md:p-12">
+                  {aiInterpretation ? (
+                    <InterpretationBody
+                      content={aiInterpretation}
+                      streaming={aiLoading}
+                      cardTerms={[dailyDraw.card.nameCn, dailyDraw.card.name]}
+                      showSigil={!aiLoading}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center gap-4 py-8">
+                      <span className="text-gold anim-whisper">✦</span>
+                      <span className="cn-label text-bone-dim">正 在 通 灵</span>
+                      <span className="flex gap-2">
+                        <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '400ms' }} />
+                        <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ─── 笔记区 ─── */}

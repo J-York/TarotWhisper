@@ -47,6 +47,7 @@ export interface Reading {
   spread: Spread;
   drawnCards: DrawnCard[];
   interpretation?: string;
+  followUps?: FollowUp[];
   createdAt: Date;
 }
 

@@ -8,11 +8,14 @@ import {
   Reading,
   ApiConfig,
   FollowUp,
-  FollowUpDecision,
 } from '@/lib/tarot/types';
 import { allCards } from '@/lib/tarot/cards';
 import { getDefaultSpread } from '@/lib/tarot/spreads';
-import { saveReading } from '@/lib/readingStorage';
+import { saveReading, updateReadingFollowUps } from '@/lib/readingStorage';
+import {
+  parseSseChunk as parseSseChunkUtil,
+  extractDecisionJson as extractDecisionJsonUtil,
+} from '@/lib/tarot/sseUtils';
 
 export type ReadingPhase = 'question' | 'spread' | 'shuffle' | 'draw' | 'reveal' | 'interpret';
 
@@ -40,150 +43,10 @@ function drawSupplementaryCards(count: number, startIndex: number): DrawnCard[] 
   }));
 }
 
-interface DecisionResult {
-  decision: FollowUpDecision;
-  drawCount: number;
-  reason: string;
-}
+// DecisionResult & extractDecisionJson -> @/lib/tarot/sseUtils
+const extractDecisionJson = extractDecisionJsonUtil;
 
-function extractDecisionJson(text: string): DecisionResult | null {
-  // 模型可能在 JSON 前后输出多余文本，抽取第一个含 "decision" 的对象
-  const match = text.match(/\{[^{}]*"decision"[^{}]*\}/);
-  if (!match) return null;
-
-  try {
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    const decisionRaw = typeof parsed.decision === 'string' ? parsed.decision.toLowerCase() : '';
-    const decision: FollowUpDecision = decisionRaw === 'draw' ? 'draw' : 'direct';
-    const drawCountRaw = Number(parsed.drawCount);
-    const drawCount = decision === 'draw'
-      ? Math.max(1, Math.min(3, Math.floor(Number.isFinite(drawCountRaw) ? drawCountRaw : 1)))
-      : 0;
-    const reason = typeof parsed.reason === 'string' ? parsed.reason.slice(0, 120) : '';
-    return { decision, drawCount, reason };
-  } catch {
-    return null;
-  }
-}
-
-interface ParsedSseChunk {
-  content: string;
-  thinking: string;
-  error: string | null;
-  isDone: boolean;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function extractTextValue(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(extractTextValue).join('');
-  }
-
-  if (!isRecord(value)) {
-    return '';
-  }
-
-  const candidateKeys = ['text', 'content', 'value', 'output_text', 'thinking', 'reasoning'] as const;
-  for (const key of candidateKeys) {
-    const candidate = value[key];
-    const extracted = extractTextValue(candidate);
-    if (extracted) {
-      return extracted;
-    }
-  }
-
-  return '';
-}
-
-function isThinkingType(type: unknown): boolean {
-  if (typeof type !== 'string') {
-    return false;
-  }
-
-  const normalized = type.toLowerCase();
-  return normalized.includes('think') || normalized.includes('reason');
-}
-
-function extractContentText(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => {
-        if (isRecord(item) && isThinkingType(item.type)) {
-          return '';
-        }
-        return extractTextValue(item);
-      })
-      .join('');
-  }
-
-  if (isRecord(value) && isThinkingType(value.type)) {
-    return '';
-  }
-
-  return extractTextValue(value);
-}
-
-function extractThinkingText(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => {
-        if (isRecord(item) && !isThinkingType(item.type)) {
-          return '';
-        }
-        return extractTextValue(item);
-      })
-      .join('');
-  }
-
-  if (!isRecord(value)) {
-    return '';
-  }
-
-  if (isThinkingType(value.type)) {
-    return extractTextValue(value);
-  }
-
-  const thinkingKeys = ['reasoning_content', 'reasoning', 'thinking'] as const;
-  for (const key of thinkingKeys) {
-    const extracted = extractThinkingText(value[key]);
-    if (extracted) {
-      return extracted;
-    }
-  }
-
-  return '';
-}
-
-function pickFirstNonEmpty(...values: string[]): string {
-  return values.find((value) => value.length > 0) ?? '';
-}
-
-function extractErrorMessage(value: unknown): string | null {
-  if (typeof value === 'string' && value) {
-    return value;
-  }
-
-  if (isRecord(value) && typeof value.message === 'string' && value.message) {
-    return value.message;
-  }
-
-  return null;
-}
+// ParsedSseChunk & SSE parsing helpers -> @/lib/tarot/sseUtils
 
 interface StreamResult {
   fullText: string;
@@ -306,48 +169,8 @@ async function streamFromInterpret(
   return { fullText, usingFallback, receivedError };
 }
 
-function parseSseChunk(data: string): ParsedSseChunk {
-  if (data === '[DONE]') {
-    return { content: '', thinking: '', error: null, isDone: true };
-  }
-
-  try {
-    const parsedUnknown: unknown = JSON.parse(data);
-    if (!isRecord(parsedUnknown)) {
-      return { content: '', thinking: '', error: null, isDone: false };
-    }
-
-    const choices = Array.isArray(parsedUnknown.choices) ? parsedUnknown.choices : [];
-    const firstChoice = choices.length > 0 && isRecord(choices[0]) ? choices[0] : null;
-    const delta = firstChoice && isRecord(firstChoice.delta) ? firstChoice.delta : null;
-    const message = firstChoice && isRecord(firstChoice.message) ? firstChoice.message : null;
-
-    const content = pickFirstNonEmpty(
-      extractContentText(delta?.content),
-      extractContentText(message?.content),
-      extractContentText(parsedUnknown.content)
-    );
-
-    const thinking = pickFirstNonEmpty(
-      extractThinkingText(delta?.reasoning_content),
-      extractThinkingText(delta?.reasoning),
-      extractThinkingText(delta?.thinking),
-      extractThinkingText(message?.reasoning_content),
-      extractThinkingText(message?.reasoning),
-      extractThinkingText(message?.thinking),
-      extractThinkingText(parsedUnknown.reasoning_content),
-      extractThinkingText(parsedUnknown.reasoning),
-      extractThinkingText(parsedUnknown.thinking),
-      extractThinkingText(parsedUnknown.content)
-    );
-
-    const error = extractErrorMessage(parsedUnknown.error);
-
-    return { content, thinking, error, isDone: false };
-  } catch {
-    return { content: '', thinking: '', error: null, isDone: false };
-  }
-}
+// parseSseChunk -> @/lib/tarot/sseUtils
+const parseSseChunk = parseSseChunkUtil;
 
 export function useReading() {
   const [phase, setPhase] = useState<ReadingPhase>('question');
@@ -361,6 +184,7 @@ export function useReading() {
 
   // ── 追问状态 ─────────────────────────────────────────────
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [readingId, setReadingId] = useState<string | null>(null);
 
   const patchFollowUp = useCallback((id: string, patch: Partial<FollowUp> | ((prev: FollowUp) => Partial<FollowUp>)) => {
     setFollowUps((prev) =>
@@ -422,8 +246,10 @@ export function useReading() {
       }
 
       if (result.fullText) {
+        const id = crypto.randomUUID();
+        setReadingId(id);
         const reading: Reading = {
-          id: crypto.randomUUID(),
+          id,
           question,
           spread,
           drawnCards,
@@ -489,6 +315,17 @@ export function useReading() {
         patchFollowUp(followUpId, { status: 'error' });
       } else {
         patchFollowUp(followUpId, { status: 'done' });
+        // 持久化追问到 localStorage
+        if (readingId) {
+          // 需要拿最新的 followUps 状态，但 patchFollowUp 是异步更新，
+          // 在下一个微任务中读取以确保状态已更新
+          queueMicrotask(() => {
+            setFollowUps((current) => {
+              updateReadingFollowUps(readingId, current);
+              return current;
+            });
+          });
+        }
       }
     } catch (err) {
       patchFollowUp(followUpId, {
@@ -496,7 +333,7 @@ export function useReading() {
         error: err instanceof Error ? err.message : '追问解读失败',
       });
     }
-  }, [followUps, question, spread, drawnCards, interpretation, patchFollowUp]);
+  }, [followUps, question, spread, drawnCards, interpretation, patchFollowUp, readingId]);
 
   const askFollowUp = useCallback(async (
     followUpQuestion: string,
@@ -633,6 +470,7 @@ export function useReading() {
     setIsInterpreting(false);
     setError(null);
     setFollowUps([]);
+    setReadingId(null);
   }, []);
 
   const goToPhase = useCallback((newPhase: ReadingPhase) => {

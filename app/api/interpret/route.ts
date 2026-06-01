@@ -5,9 +5,19 @@ import {
   buildFollowUpDecidePrompt,
   buildFollowUpDirectPrompt,
   buildFollowUpWithExtrasPrompt,
+  buildDailyInterpretationPrompt,
 } from '@/lib/api/prompts';
 
 type FollowUpMode = 'decide' | 'direct' | 'with-extras';
+
+interface DailyPayload {
+  cardName: string;
+  cardNameCn: string;
+  isReversed: boolean;
+  keywords: string[];
+  meaning: string;
+  dateStr: string;
+}
 
 interface FollowUpPayload {
   mode: FollowUpMode;
@@ -22,10 +32,22 @@ interface InterpretRequest {
   drawnCards: DrawnCard[];
   apiConfig: ApiConfig;
   followUp?: FollowUpPayload;
+  daily?: DailyPayload;
 }
 
 function buildPrompt(req: InterpretRequest): string {
-  const { question, spread, drawnCards, followUp } = req;
+  const { question, spread, drawnCards, followUp, daily } = req;
+
+  if (daily) {
+    return buildDailyInterpretationPrompt(
+      daily.cardName,
+      daily.cardNameCn,
+      daily.isReversed,
+      daily.keywords,
+      daily.meaning,
+      daily.dateStr,
+    );
+  }
 
   if (!followUp) {
     return buildInterpretationPrompt(question, spread, drawnCards);
