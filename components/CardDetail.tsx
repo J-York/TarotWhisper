@@ -43,6 +43,9 @@ export function CardDetail({ card, onClose }: CardDetailProps) {
     <div
       className="fixed inset-0 bg-[var(--ink-void)]/92 backdrop-blur-md flex items-center justify-center z-50 p-4 anim-fade-in overflow-y-auto"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${card.nameCn} — ${card.name}`}
     >
       <div
         className="ink-panel-quiet bg-[var(--ink-deep)] w-full max-w-4xl anim-veil-rise my-8"

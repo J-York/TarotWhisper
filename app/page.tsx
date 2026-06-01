@@ -67,7 +67,7 @@ export default function Home() {
       </nav>
 
       {/* ─── Hero ─── */}
-      <main className="flex-1 flex flex-col items-center justify-center px-8 anim-veil-rise">
+      <main id="main-content" className="flex-1 flex flex-col items-center justify-center px-8 anim-veil-rise">
         <div className="flex flex-col items-center text-center max-w-2xl">
 
           {/* 漂浮的星辰符号 */}

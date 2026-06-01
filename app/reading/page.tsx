@@ -241,7 +241,7 @@ export default function ReadingPage() {
       {/* ═══════════════════════════════════════
           Main · 阶段
          ═══════════════════════════════════════ */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pt-32 pb-32 md:pb-16 min-h-screen">
+      <main id="main-content" className="flex-1 flex flex-col items-center justify-center px-6 pt-32 pb-32 md:pb-16 min-h-screen">
 
         {/* ─── 阶段 1：提问 ─── */}
         {phase === 'question' && (

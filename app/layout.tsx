@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Cinzel, Cormorant_Garamond } from "next/font/google";
 import { AmbientField } from "@/components/AmbientField";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -40,6 +41,13 @@ export default function RootLayout({
       <body
         className={`${cormorant.variable} ${geistMono.variable} ${cinzel.variable} antialiased min-h-screen`}
       >
+        {/* Skip to content · 键盘用户快捷进入 */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-[var(--ink-veil)] focus:text-gold focus:outline-none focus:ring-1 focus:ring-[var(--gold-dim)] cn-nav"
+        >
+          跳 至 内 容
+        </a>
         {/* Atmospheric vignette — candlelit center */}
         <div className="fixed inset-0 pointer-events-none z-0 bg-vignette" aria-hidden />
 
@@ -47,7 +55,9 @@ export default function RootLayout({
         <AmbientField />
 
         <div className="relative z-10">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </body>
     </html>

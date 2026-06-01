@@ -115,8 +115,17 @@ export function TarotCardComponent({
     <div
       className={`relative ${sizeClasses[size]} cursor-pointer perspective-1000 group`}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={`${card.nameCn} (${card.name})${isReversed && isRevealed ? ' · 逆位' : ''}${!isRevealed ? ' · 未翻开' : ''}`}
     >
       {/* parallax 容器 · 接收 --rx / --ry */}
       <div
