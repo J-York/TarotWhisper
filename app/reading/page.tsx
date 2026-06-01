@@ -8,6 +8,7 @@ import { SpreadSelector } from '@/components/SpreadSelector';
 import { ApiSettings } from '@/components/ApiSettings';
 import { Interpretation } from '@/components/Interpretation';
 import { FollowUpPanel } from '@/components/FollowUpPanel';
+import { CelticCrossLayout } from '@/components/CelticCrossLayout';
 import { useReading } from '@/hooks/useReading';
 import { useApiConfig } from '@/hooks/useApiConfig';
 
@@ -336,10 +337,17 @@ export default function ReadingPage() {
 
             {/* 牌桌 · 极细边框 · 留白驱动 */}
             <div className="relative w-full min-h-[600px] flex items-center justify-center p-12 ink-panel-quiet">
+              {spread.id === 'celtic-cross' ? (
+                <CelticCrossLayout
+                  drawnCards={drawnCards}
+                  revealedCount={revealedCount}
+                  onReveal={(index) => {
+                    if (index === revealedCount) revealNextCard();
+                  }}
+                />
+              ) : (
               <div
-                className={`flex flex-wrap justify-center items-center gap-10 md:gap-14 transition-all duration-1000 ${
-                  spread.id === 'celtic-cross' ? 'max-w-4xl' : ''
-                }`}
+                className="flex flex-wrap justify-center items-center gap-10 md:gap-14 transition-all duration-1000"
                 style={{ transitionTimingFunction: 'var(--ease-veil)' }}
               >
                 {drawnCards.map((drawn, index) => (
@@ -364,6 +372,7 @@ export default function ReadingPage() {
                   </div>
                 ))}
               </div>
+              )}
             </div>
 
             {/* 控制按钮 */}

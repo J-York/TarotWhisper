@@ -842,3 +842,34 @@ h1, h2, h3, h4, h5, h6 {
     transform: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Celtic Cross Grid · 凯尔特十字空间布局
+   7列 x 5行，左侧十字 + 右侧四牌柱
+   ═══════════════════════════════════════════════════════════════ */
+
+.celtic-cross-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(5, auto);
+  gap: 1rem;
+  align-items: center;
+  justify-items: center;
+  padding: 1.5rem 0;
+}
+
+/* 响应式：小屏时紧凑一些 */
+@media (min-width: 768px) {
+  .celtic-cross-grid {
+    gap: 1.5rem 2rem;
+    padding: 2rem 0;
+  }
+}
+
+/* 十字中心的挑战牌 (index 1) 旋转 90°，需要额外的空间 */
+.celtic-cross-cell {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

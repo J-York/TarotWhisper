@@ -27,7 +27,11 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
       <div className="grid grid-cols-1 md:grid-cols-3">
         {spreads.map((spread, index) => {
           const isSelected = selectedSpread.id === spread.id;
-          const isMiddle = index === 1;
+          // 每行中间列需要左右边线（3 列布局中 col % 3 === 1）
+          const col = index % 3;
+          const needBorderX = col === 1;
+          // 第二行起需要顶部边线
+          const needBorderT = index >= 3;
 
           return (
             <button
@@ -40,7 +44,8 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
                   ? 'bg-[var(--ink-veil)]'
                   : 'bg-transparent hover:bg-[var(--ink-veil)]'
                 }
-                ${isMiddle ? 'md:border-l md:border-r md:border-[var(--ink-line)]' : ''}
+                ${needBorderX ? 'md:border-l md:border-r md:border-[var(--ink-line)]' : ''}
+                ${needBorderT ? 'md:border-t md:border-[var(--ink-line)]' : ''}
               `}
               style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
             >
