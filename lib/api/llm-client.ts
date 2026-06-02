@@ -1,9 +1,9 @@
-import { ApiConfig } from '../tarot/types';
-
-export interface LLMMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+/**
+ * LLM API 工具 — 模型列表查询等
+ *
+ * 注意：流式调用已迁移至 stream-client.ts
+ * 此文件仅保留 fetchAvailableModels（ApiSettings 组件使用）
+ */
 
 export interface ModelInfo {
   id: string;
@@ -12,110 +12,9 @@ export interface ModelInfo {
   owned_by: string;
 }
 
-export interface ModelsListResponse {
+interface ModelsListResponse {
   object: string;
   data: ModelInfo[];
-}
-
-export interface LLMStreamResponse {
-  choices: Array<{
-    delta: {
-      content?: string;
-    };
-  }>;
-}
-
-export async function* streamLLMResponse(
-  config: ApiConfig,
-  messages: LLMMessage[]
-): AsyncGenerator<string, void, unknown> {
-  const response = await fetch(config.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages,
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API 请求失败: ${response.status} - ${error}`);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('无法读取响应流');
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-        if (!trimmed.startsWith('data: ')) continue;
-
-        try {
-          const json = JSON.parse(trimmed.slice(6)) as LLMStreamResponse;
-          // 安全访问choices数组，确保数组不为空
-          const choice = json.choices && json.choices.length > 0 ? json.choices[0] : null;
-          const content = choice?.delta?.content;
-          if (content) {
-            yield content;
-          }
-        } catch {
-          // 忽略解析错误，继续处理下一行
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-export async function callLLM(
-  config: ApiConfig,
-  messages: LLMMessage[]
-): Promise<string> {
-  const response = await fetch(config.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API 请求失败: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json();
-  // 安全访问choices数组，确保数组不为空
-  const choice = data.choices && data.choices.length > 0 ? data.choices[0] : null;
-  return choice?.message?.content || '';
 }
 
 /**

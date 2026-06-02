@@ -6,6 +6,8 @@ import { TarotCardComponent } from '@/components/TarotCard';
 import { InterpretationBody } from '@/components/Interpretation';
 import { DailyCardSkeleton } from '@/components/Skeletons';
 import { useApiConfig } from '@/hooks/useApiConfig';
+import { streamInterpret } from '@/lib/api/stream-client';
+import { LLMError } from '@/lib/api/errors';
 import {
   formatDateKey,
   getDailyDraw,
@@ -107,16 +109,29 @@ export default function DailyCardPage() {
   const [aiInterpretation, setAiInterpretation] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const dailyAbortRef = useRef<AbortController | null>(null);
 
-  // 切换日期时清空 AI 解读
+  // 切换日期时清空 AI 解读并取消进行中的请求
   useEffect(() => {
-    setAiInterpretation('');
-    setAiError(null);
-    setAiLoading(false);
+    if (dailyAbortRef.current) {
+      dailyAbortRef.current.abort();
+      dailyAbortRef.current = null;
+    }
+    queueMicrotask(() => {
+      setAiInterpretation('');
+      setAiError(null);
+      setAiLoading(false);
+    });
   }, [activeDateKey]);
 
   const requestAiInterpretation = useCallback(async () => {
     if (!dailyDraw || !activeDate || aiLoading) return;
+
+    // 取消旧请求
+    if (dailyAbortRef.current) dailyAbortRef.current.abort();
+    const controller = new AbortController();
+    dailyAbortRef.current = controller;
+
     setAiLoading(true);
     setAiInterpretation('');
     setAiError(null);
@@ -129,10 +144,8 @@ export default function DailyCardPage() {
         ? dailyDraw.card.meaning.reversed
         : dailyDraw.card.meaning.upright;
 
-      const response = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await streamInterpret(
+        {
           question: '',
           spread: { id: 'daily', name: 'Daily Card', nameCn: '今日一牌', description: '', positions: [] },
           drawnCards: [],
@@ -145,48 +158,23 @@ export default function DailyCardPage() {
             meaning,
             dateStr: formatHumanDate(activeDate),
           },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`请求失败: ${response.status} - ${errorText}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('无法读取响应');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const rawLine of lines) {
-          const line = rawLine.trim();
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(data);
-            const content = parsed?.choices?.[0]?.delta?.content;
-            if (content) {
-              setAiInterpretation((prev) => prev + content);
-            }
-          } catch {
-            // ignore parse errors
-          }
-        }
-      }
-      reader.releaseLock();
+        },
+        {
+          onContent: (chunk) => setAiInterpretation((prev) => prev + chunk),
+          onThinking: (chunk) => setAiInterpretation((prev) => prev + chunk),
+          onStreamError: (msg) => setAiError(msg),
+        },
+        { signal: controller.signal },
+      );
     } catch (err) {
-      setAiError(err instanceof Error ? err.message : 'AI 解读失败');
+      // 用户取消静默处理
+      if (err instanceof LLMError && err.info.code === 'ABORTED') return;
+      setAiError(err instanceof LLMError ? err.info.message : (err instanceof Error ? err.message : 'AI 解读失败'));
     } finally {
       setAiLoading(false);
+      if (dailyAbortRef.current === controller) {
+        dailyAbortRef.current = null;
+      }
     }
   }, [dailyDraw, activeDate, aiLoading, apiConfig]);
 

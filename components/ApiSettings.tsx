@@ -19,7 +19,7 @@ export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProp
   const [fallbackInfo, setFallbackInfo] = useState<{ available: boolean; rateLimit: number } | null>(null);
 
   useEffect(() => {
-    setLocalConfig(config);
+    queueMicrotask(() => setLocalConfig(config));
   }, [config]);
 
   useEffect(() => {
