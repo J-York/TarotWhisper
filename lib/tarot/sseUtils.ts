@@ -9,6 +9,8 @@ export interface ParsedSseChunk {
   thinking: string;
   error: string | null;
   isDone: boolean;
+  /** 如果模型因 token 上限停止，返回 true */
+  truncated: boolean;
 }
 
 export interface DecisionResult {
@@ -85,13 +87,13 @@ function extractErrorMessage(value: unknown): string | null {
 
 export function parseSseChunk(data: string): ParsedSseChunk {
   if (data === '[DONE]') {
-    return { content: '', thinking: '', error: null, isDone: true };
+    return { content: '', thinking: '', error: null, isDone: true, truncated: false };
   }
 
   try {
     const parsedUnknown: unknown = JSON.parse(data);
     if (!isRecord(parsedUnknown)) {
-      return { content: '', thinking: '', error: null, isDone: false };
+      return { content: '', thinking: '', error: null, isDone: false, truncated: false };
     }
 
     const choices = Array.isArray(parsedUnknown.choices) ? parsedUnknown.choices : [];
@@ -120,9 +122,13 @@ export function parseSseChunk(data: string): ParsedSseChunk {
 
     const error = extractErrorMessage(parsedUnknown.error);
 
-    return { content, thinking, error, isDone: false };
+    // 检测 finish_reason: "length" —— 表示模型因 token 上限被截断
+    const finishReason = firstChoice ? firstChoice.finish_reason : null;
+    const truncated = finishReason === 'length';
+
+    return { content, thinking, error, isDone: false, truncated };
   } catch {
-    return { content: '', thinking: '', error: null, isDone: false };
+    return { content: '', thinking: '', error: null, isDone: false, truncated: false };
   }
 }
 

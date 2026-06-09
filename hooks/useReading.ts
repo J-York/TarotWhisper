@@ -167,6 +167,10 @@ export function useReading() {
           createdAt: new Date(),
         };
         saveReading(reading);
+
+        if (result.truncated) {
+          setError('解读内容因模型输出长度限制被截断，已显示部分内容。建议在设置中切换更高输出限制的模型，或使用追问功能获取剩余内容。');
+        }
       } else if (!result.receivedError) {
         setError('未收到有效解读内容，连接可能被网关提前中断');
       }
@@ -239,7 +243,11 @@ export function useReading() {
       } else if (result.receivedError) {
         patchFollowUp(followUpId, { status: 'error' });
       } else {
-        patchFollowUp(followUpId, { status: 'done' });
+        const patch: Partial<FollowUp> = { status: 'done' };
+        if (result.truncated) {
+          patch.error = '回复因模型输出长度限制被截断，已显示部分内容。';
+        }
+        patchFollowUp(followUpId, patch);
         if (readingId) {
           queueMicrotask(() => {
             setFollowUps((current) => {

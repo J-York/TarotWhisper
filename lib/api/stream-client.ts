@@ -1,12 +1,12 @@
 /**
- * 统一 SSE 流客户端 — 面向前端的 /api/interpret 调用封装
+ * 统一 SSE 流客户端 - 面向前端的 /api/interpret 调用封装
  *
- * 特性：
- * - AbortController 支持（用户取消 + 组件卸载清理）
+ * 特性:
+ * - AbortController 支持(用户取消 + 组件卸载清理)
  * - 可配置的连接超时 & 流空闲超时
- * - 自动重试（仅对可重试错误，最多 N 次，指数退退）
- * - 结构化错误（集成 errors.ts 分类）
- * - 与 sseUtils.ts 解耦：仅负责传输层，解析由调用方传入
+ * - 自动重试(仅对可重试错误,最多 N 次,指数退退)
+ * - 结构化错误(集成 errors.ts 分类)
+ * - 与 sseUtils.ts 解耦:仅负责传输层,解析由调用方传入
  */
 
 import { classifyHttpError, classifyError, LLMError } from './errors';
@@ -16,21 +16,21 @@ import { parseSseChunk, type ParsedSseChunk } from '@/lib/tarot/sseUtils';
 // ─── 配置 ───────────────────────────────────────────────────────
 
 export interface StreamClientConfig {
-  /** 初始 fetch 的超时（毫秒）。默认 30s */
+  /** 初始 fetch 的超时(毫秒)。默认 30s */
   connectTimeoutMs?: number;
-  /** 流中两次数据之间的最大空闲时间（毫秒）。默认 15s */
+  /** 流中两次数据之间的最大空闲时间(毫秒)。默认 15s */
   streamIdleTimeoutMs?: number;
-  /** 最大自动重试次数（仅对 retryable 错误）。默认 2 */
+  /** 最大自动重试次数(仅对 retryable 错误)。默认 2 */
   maxRetries?: number;
-  /** 重试间隔的基数（毫秒），实际间隔 = base * 2^attempt。默认 1000 */
+  /** 重试间隔的基数(毫秒),实际间隔 = base * 2^attempt。默认 1000 */
   retryBaseMs?: number;
-  /** 外部传入的 AbortSignal，用于取消 */
+  /** 外部传入的 AbortSignal,用于取消 */
   signal?: AbortSignal;
 }
 
 const DEFAULT_CONFIG: Required<Omit<StreamClientConfig, 'signal'>> = {
   connectTimeoutMs: 30_000,
-  streamIdleTimeoutMs: 15_000,
+  streamIdleTimeoutMs: 30_000,
   maxRetries: 2,
   retryBaseMs: 1000,
 };
@@ -44,8 +44,10 @@ export interface StreamCallbacks {
   onThinking?: (chunk: string) => void;
   /** 收到 SSE 级别的 error 字段 */
   onStreamError?: (msg: string) => void;
-  /** 重试时通知（可用于 UI 显示"正在重试…"） */
+  /** 重试时通知（可用于 UI 显示“正在重试…”） */
   onRetry?: (attempt: number, maxRetries: number) => void;
+  /** 模型因 token 上限截断时通知 */
+  onTruncated?: () => void;
 }
 
 // ─── 结果 ─────────────────────────────────────────────────────
@@ -57,12 +59,14 @@ export interface StreamResult {
   usingFallback: boolean;
   /** 是否收到过 SSE error 字段 */
   receivedError: boolean;
+  /** 是否因 token 上限被截断 */
+  truncated: boolean;
 }
 
 // ─── 主函数 ───────────────────────────────────────────────────
 
 /**
- * 向 /api/interpret 发起流式请求，消费 SSE 并通过回调推送。
+ * 向 /api/interpret 发起流式请求,消费 SSE 并通过回调推送。
  * 支持超时、重试、取消。
  *
  * @throws {LLMError} 当所有重试耗尽仍然失败
@@ -78,7 +82,7 @@ export async function streamInterpret(
   let lastError: LLMErrorInfo | null = null;
 
   for (let attempt = 0; attempt <= cfg.maxRetries; attempt++) {
-    // 如果外部已取消，立即退出
+    // 如果外部已取消,立即退出
     if (externalSignal?.aborted) {
       throw new LLMError({
         code: 'ABORTED',
@@ -110,7 +114,7 @@ export async function streamInterpret(
     }
   }
 
-  // 理论上不会走到这里，但 TS 要求
+  // 理论上不会走到这里,但 TS 要求
   throw new LLMError(lastError ?? {
     code: 'UNKNOWN',
     message: '发生未知错误',
@@ -118,7 +122,7 @@ export async function streamInterpret(
   });
 }
 
-// ─── 内部：单次流请求 ─────────────────────────────────────────
+// ─── 内部:单次流请求 ─────────────────────────────────────────
 
 async function doStreamRequest(
   body: unknown,
@@ -126,7 +130,7 @@ async function doStreamRequest(
   cfg: Required<Omit<StreamClientConfig, 'signal'>>,
   externalSignal?: AbortSignal,
 ): Promise<StreamResult> {
-  // 组合 AbortController：连接超时 + 外部取消
+  // 组合 AbortController:连接超时 + 外部取消
   const controller = new AbortController();
   const { signal } = controller;
 
@@ -155,9 +159,9 @@ async function doStreamRequest(
       if (externalSignal?.aborted) {
         throw new LLMError({ code: 'ABORTED', message: '已取消请求', retryable: false });
       }
-      throw new LLMError({ code: 'TIMEOUT', message: '连接超时，请检查网络或稍后重试', retryable: true });
+      throw new LLMError({ code: 'TIMEOUT', message: '连接超时,请检查网络或稍后重试', retryable: true });
     }
-    throw err; // TypeError (network) 等，由上层 classifyError 处理
+    throw err; // TypeError (network) 等,由上层 classifyError 处理
   }
 
   clearTimeout(connectTimer);
@@ -188,6 +192,7 @@ async function doStreamRequest(
   let fullText = '';
   let streamComplete = false;
   let receivedError = false;
+  let truncated = false;
   let thinkingBlockOpen = false;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -231,6 +236,10 @@ async function doStreamRequest(
     if (parsed.error) {
       receivedError = true;
       callbacks.onStreamError?.(parsed.error);
+    }
+    if (parsed.truncated) {
+      truncated = true;
+      callbacks.onTruncated?.();
     }
   };
 
@@ -286,13 +295,13 @@ async function doStreamRequest(
       }
       // 空闲超时导致的中止
       if (fullText) {
-        // 已收到部分内容，当作流中断（不重试，返回已有内容）
+        // 已收到部分内容,当作流中断(不重试,返回已有内容)
         receivedError = true;
-        callbacks.onStreamError?.('解读传输中断，已显示部分内容');
+        callbacks.onStreamError?.('解读传输中断,已显示部分内容');
       } else {
         throw new LLMError({
           code: 'TIMEOUT',
-          message: '响应超时，未收到任何内容',
+          message: '响应超时,未收到任何内容',
           detail: `空闲超时 ${cfg.streamIdleTimeoutMs}ms`,
           retryable: true,
         });
@@ -312,7 +321,7 @@ async function doStreamRequest(
     externalSignal?.removeEventListener('abort', onExternalAbort);
   }
 
-  return { fullText, usingFallback, receivedError };
+  return { fullText, usingFallback, receivedError, truncated };
 }
 
 // ─── 工具 ────────────────────────────────────────────────────

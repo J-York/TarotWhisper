@@ -40,7 +40,10 @@ interface InterpretRequest {
 // ─── 常量配置 ────────────────────────────────────────────────
 
 /** 上游 LLM 请求的超时时间（毫秒） */
-const UPSTREAM_TIMEOUT_MS = 60_000;
+const UPSTREAM_TIMEOUT_MS = 120_000;
+
+/** LLM 输出的最大 token 数 */
+const MAX_OUTPUT_TOKENS = 8192;
 
 /** 从环境变量获取后备配置 */
 const FALLBACK_CONFIG = {
@@ -264,6 +267,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       body: JSON.stringify({
         model: effectiveConfig.model,
         messages: [{ role: 'user', content: prompt }],
+        max_tokens: MAX_OUTPUT_TOKENS,
         stream: true,
       }),
       signal: upstreamController.signal,
@@ -332,7 +336,7 @@ function mapUpstreamStatus(upstreamStatus: number): number {
 
 // ─── 带超时保护的流透传 ─────────────────────────────────────
 
-const STREAM_CHUNK_TIMEOUT_MS = 30_000; // 单 chunk 间最大间隔
+const STREAM_CHUNK_TIMEOUT_MS = 60_000; // 单 chunk 间最大间隔（思考模型可能较长时间不产出内容）
 
 function createGuardedStream(
   upstream: ReadableStream<Uint8Array>,
