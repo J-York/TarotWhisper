@@ -9,6 +9,11 @@ interface InterpretationProps {
   isLoading: boolean;
   error: string | null;
   /**
+   * 非致命警示（如输出被截断）。
+   * 与 error 不同：正文照常显示，仅在底部附加提示条。
+   */
+  notice?: string | null;
+  /**
    * 是否在首次加载时应用逐段揭幕动画。
    * 历史详情页：true。
    * 实时解读（已经有流式动画）：false。
@@ -249,6 +254,7 @@ export function Interpretation({
   content,
   isLoading,
   error,
+  notice,
   staggerOnMount = false,
   cardTerms,
   positionTerms,
@@ -303,14 +309,25 @@ export function Interpretation({
       >
         <div className="p-10 md:p-16 relative">
           {content ? (
-            <InterpretationBody
-              content={content}
-              streaming={isStreamingActive}
-              stagger={useStaggerReveal}
-              cardTerms={cardTerms}
-              positionTerms={positionTerms}
-              showSigil={!isLoading}
-            />
+            <>
+              <InterpretationBody
+                content={content}
+                streaming={isStreamingActive}
+                stagger={useStaggerReveal}
+                cardTerms={cardTerms}
+                positionTerms={positionTerms}
+                showSigil={!isLoading}
+              />
+              {/* 非致命警示 · 正文之下的安静提示条 */}
+              {notice && !isLoading && (
+                <div className="mt-10 px-5 py-4 border-l border-[var(--gold-dim)] anim-fade-in">
+                  <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed">
+                    <span className="text-gold-dim mr-2">◇</span>
+                    {notice}
+                  </p>
+                </div>
+              )}
+            </>
           ) : isLoading ? (
             // ─── 加载态 · 通灵中 ───
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-7">

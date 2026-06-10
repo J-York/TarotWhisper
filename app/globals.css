@@ -845,25 +845,48 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ═══════════════════════════════════════════════════════════════
    Celtic Cross Grid · 凯尔特十字空间布局
-   7列 x 5行，左侧十字 + 右侧四牌柱
+   移动端：3列紧凑十字（上）+ 2×2 牌柱（下）
+   桌面（≥768px）：7列 x 5行，左侧十字 + 右侧四牌柱
+   各牌坐标由 .celtic-pos-N 按断点定义（grid-area: 行 / 列）
    ═══════════════════════════════════════════════════════════════ */
 
 .celtic-cross-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(5, auto);
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.75rem 0.375rem;
   align-items: center;
   justify-items: center;
   padding: 1.5rem 0;
 }
 
-/* 响应式：小屏时紧凑一些 */
+/* 移动端坐标 · 十字 3×3 + 牌柱 2×2 */
+.celtic-pos-0 { grid-area: 2 / 2; } /* 现状 · 中央 */
+.celtic-pos-1 { grid-area: 2 / 2; } /* 挑战 · 横置覆盖中央 */
+.celtic-pos-2 { grid-area: 2 / 1; } /* 过去 · 左 */
+.celtic-pos-3 { grid-area: 2 / 3; } /* 未来 · 右 */
+.celtic-pos-4 { grid-area: 1 / 2; } /* 目标 · 上 */
+.celtic-pos-5 { grid-area: 3 / 2; } /* 潜意识 · 下 */
+.celtic-pos-6 { grid-area: 4 / 1; } /* 建议 */
+.celtic-pos-7 { grid-area: 4 / 3; } /* 外部影响 */
+.celtic-pos-8 { grid-area: 5 / 1; } /* 希望与恐惧 */
+.celtic-pos-9 { grid-area: 5 / 3; } /* 最终结果 */
+
 @media (min-width: 768px) {
   .celtic-cross-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 1.5rem 2rem;
     padding: 2rem 0;
   }
+  .celtic-pos-0 { grid-area: 3 / 3; }
+  .celtic-pos-1 { grid-area: 3 / 3; }
+  .celtic-pos-2 { grid-area: 3 / 1; }
+  .celtic-pos-3 { grid-area: 3 / 5; }
+  .celtic-pos-4 { grid-area: 1 / 3; }
+  .celtic-pos-5 { grid-area: 5 / 3; }
+  .celtic-pos-6 { grid-area: 5 / 7; }
+  .celtic-pos-7 { grid-area: 4 / 7; }
+  .celtic-pos-8 { grid-area: 2 / 7; }
+  .celtic-pos-9 { grid-area: 1 / 7; }
 }
 
 /* 十字中心的挑战牌 (index 1) 旋转 90°，需要额外的空间 */
@@ -872,4 +895,14 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   触屏适配 · 无 hover 的设备上，已翻开的牌名常驻显示
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (hover: none) {
+  .card-name-overlay {
+    opacity: 1 !important;
+  }
 }

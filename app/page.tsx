@@ -30,11 +30,11 @@ export default function Home() {
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* ─── 顶部 utility bar ─── */}
-      <nav className="absolute top-0 left-0 right-0 flex justify-between items-center px-10 py-7 z-20">
+      <nav className="absolute top-0 left-0 right-0 flex justify-between items-center px-5 md:px-10 py-7 z-20">
         <span className="font-display text-[11px] tracking-veil text-bone-faint uppercase">
           Whisper
         </span>
-        <div className="flex items-center gap-6 md:gap-10">
+        <div className="flex items-center gap-5 md:gap-10">
           <Link
             href="/daily"
             className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
@@ -44,14 +44,14 @@ export default function Home() {
           </Link>
           <Link
             href="/library"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             牌 典
           </Link>
           <Link
             href="/history"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             轨 迹

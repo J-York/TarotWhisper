@@ -65,6 +65,8 @@ export function useReading() {
   const [interpretation, setInterpretation] = useState('');
   const [isInterpreting, setIsInterpreting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 非致命警示（如输出被截断）· 与 error 分离，不遮蔽已生成的正文
+  const [notice, setNotice] = useState<string | null>(null);
 
   // ── 追问状态 ─────────────────────────────────────────────
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -132,6 +134,7 @@ export function useReading() {
     setIsInterpreting(true);
     setInterpretation('');
     setError(null);
+    setNotice(null);
     setFollowUps([]);
     setPhase('interpret');
 
@@ -169,7 +172,7 @@ export function useReading() {
         saveReading(reading);
 
         if (result.truncated) {
-          setError('解读内容因模型输出长度限制被截断，已显示部分内容。建议在设置中切换更高输出限制的模型，或使用追问功能获取剩余内容。');
+          setNotice('解读内容因模型输出长度限制被截断，已显示部分内容。建议在设置中切换更高输出限制的模型，或使用追问功能获取剩余内容。');
         }
       } else if (!result.receivedError) {
         setError('未收到有效解读内容，连接可能被网关提前中断');
@@ -421,6 +424,7 @@ export function useReading() {
     setInterpretation('');
     setIsInterpreting(false);
     setError(null);
+    setNotice(null);
     setFollowUps([]);
     setReadingId(null);
   }, [cancelRequest]);
@@ -438,6 +442,7 @@ export function useReading() {
     interpretation,
     isInterpreting,
     error,
+    notice,
     followUps,
     hasInFlightFollowUp,
     setQuestion,

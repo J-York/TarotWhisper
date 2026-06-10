@@ -85,13 +85,11 @@ export function FollowUpPanel({
           )}
 
           {/* 补充牌网格 */}
-          <div className="flex flex-wrap justify-center gap-8 md:gap-10">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-12 md:gap-x-10">
             {additionalCards.map((drawn, idx) => (
-              <div key={drawn.position.id} className="flex flex-col items-center gap-3 group relative">
-                <span
-                  className="absolute -top-7 cn-label text-bone-faint opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                  style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-                >
+              <div key={drawn.position.id} className="flex flex-col items-center gap-3">
+                {/* 阵位名 · 常驻显示 */}
+                <span className="cn-hint text-bone-faint">
                   {drawn.position.nameCn}
                 </span>
                 <TarotCardComponent
@@ -133,6 +131,15 @@ export function FollowUpPanel({
             positionTerms={positionTerms}
             showSigil={status === 'done'}
           />
+          {/* 非致命警示（如截断）· 完成态但 error 非空时显示 */}
+          {status === 'done' && error && (
+            <div className="mt-8 px-5 py-4 border-l border-[var(--gold-dim)] anim-fade-in">
+              <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed">
+                <span className="text-gold-dim mr-2">◇</span>
+                {error}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

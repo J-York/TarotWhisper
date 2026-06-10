@@ -214,8 +214,9 @@ export function TarotCardComponent({
         </div>
       ) : (
         // 图片正常时的 hover 牌名 · 自带底部渐变以保证可读性
+        // card-name-overlay：触屏设备（无 hover）上常驻显示，见 globals.css
         <div
-          className="absolute bottom-0 inset-x-0 p-4 pt-10 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+          className="card-name-overlay absolute bottom-0 inset-x-0 p-4 pt-10 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
           style={{
             transitionTimingFunction: 'var(--ease-veil)',
             background:

@@ -22,6 +22,7 @@ export default function ReadingPage() {
     interpretation,
     isInterpreting,
     error,
+    notice,
     followUps,
     hasInFlightFollowUp,
     setQuestion,
@@ -105,7 +106,7 @@ export default function ReadingPage() {
       {/* ═══════════════════════════════════════
           Header · 步骤指示
          ═══════════════════════════════════════ */}
-      <header className="fixed top-0 w-full z-50 flex items-center justify-between px-10 py-7 bg-gradient-to-b from-[var(--ink-deep)] via-[var(--ink-deep)]/85 to-transparent pointer-events-none">
+      <header className="fixed top-0 w-full z-50 flex items-center justify-between px-5 md:px-10 py-7 bg-gradient-to-b from-[var(--ink-deep)] via-[var(--ink-deep)]/85 to-transparent pointer-events-none">
         <Link
           href="/"
           className="pointer-events-auto flex items-center gap-4 text-bone-dim hover:text-bone transition-colors duration-500 group"
@@ -165,17 +166,17 @@ export default function ReadingPage() {
           })}
         </div>
 
-        <div className="flex items-center gap-6 md:gap-9 pointer-events-auto">
+        <div className="flex items-center gap-5 md:gap-9 pointer-events-auto">
           <Link
             href="/library"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             牌 典
           </Link>
           <Link
             href="/history"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500 hidden sm:inline"
+            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
             style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
           >
             轨 迹
@@ -336,7 +337,7 @@ export default function ReadingPage() {
             </div>
 
             {/* 牌桌 · 极细边框 · 留白驱动 */}
-            <div className="relative w-full min-h-[600px] flex items-center justify-center p-12 ink-panel-quiet">
+            <div className="relative w-full min-h-[600px] flex items-center justify-center px-2 py-10 md:p-12 ink-panel-quiet">
               {spread.id === 'celtic-cross' ? (
                 <CelticCrossLayout
                   drawnCards={drawnCards}
@@ -347,15 +348,13 @@ export default function ReadingPage() {
                 />
               ) : (
               <div
-                className="flex flex-wrap justify-center items-center gap-10 md:gap-14 transition-all duration-1000"
+                className="flex flex-wrap justify-center items-center gap-x-10 gap-y-16 md:gap-x-14 transition-all duration-1000"
                 style={{ transitionTimingFunction: 'var(--ease-veil)' }}
               >
                 {drawnCards.map((drawn, index) => (
-                  <div key={drawn.position.id} className="flex flex-col items-center gap-4 group relative">
-                    <span
-                      className="absolute -top-8 cn-label text-bone-faint opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                      style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-                    >
+                  <div key={drawn.position.id} className="flex flex-col items-center gap-4">
+                    {/* 阵位名 · 常驻显示（触屏无 hover，这是唯一的阵位信息来源） */}
+                    <span className="cn-label text-bone-faint">
                       {drawn.position.nameCn}
                     </span>
                     <TarotCardComponent
@@ -426,6 +425,7 @@ export default function ReadingPage() {
               content={interpretation}
               isLoading={isInterpreting}
               error={error}
+              notice={notice}
               cardTerms={baseCardTerms}
               positionTerms={basePositionTerms}
             />
