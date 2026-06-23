@@ -8,9 +8,8 @@ import { useApiConfig } from '@/hooks/useApiConfig';
 import { getDailyDraw } from '@/lib/tarot/daily';
 
 export default function Home() {
-  const { config, isLoaded, isConfigured, saveConfig } = useApiConfig();
+  const { config, isLoaded, isConfigured, fallbackAvailable, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
-  const [fallbackAvailable, setFallbackAvailable] = useState(false);
 
   /* 今日一牌 · 确定性派生，需要在客户端计算以使用本地时区
      queueMicrotask 避开 React 19 的 set-state-in-effect 告警，与 useApiConfig 使用同一约定 */
@@ -19,13 +18,6 @@ export default function Home() {
     queueMicrotask(() => setToday(new Date()));
   }, []);
   const dailyDraw = useMemo(() => (today ? getDailyDraw(today) : null), [today]);
-
-  useEffect(() => {
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => setFallbackAvailable(data.fallbackAvailable))
-      .catch(() => setFallbackAvailable(false));
-  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col">

@@ -17,7 +17,7 @@ import type { DrawnCard, Spread } from '@/lib/tarot/types';
 export default function AgentPage() {
   const { messages, isRunning, sendQuestion, askFollowUp, cancel, reset } =
     useAgentChat();
-  const { config, isLoaded, isConfigured, saveConfig } = useApiConfig();
+  const { config, isLoaded, canUseApi, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -33,7 +33,7 @@ export default function AgentPage() {
 
   const handleSend = (): void => {
     const text = draft.trim();
-    if (!text || isRunning || !isConfigured) return;
+    if (!text || isRunning || !canUseApi) return;
     // 有首轮解读后，输入视为追问；否则视为首轮提问
     const lastAgent = [...messages].reverse().find((m) => m.role === 'agent');
     if (lastAgent && lastAgent.role === 'agent' && lastAgent.status === 'done') {
@@ -100,7 +100,7 @@ export default function AgentPage() {
           {!hasConversation && (
             <WelcomeBlock
               isLoaded={isLoaded}
-              isConfigured={isConfigured}
+              canUseApi={canUseApi}
               onPick={(q) => {
                 setDraft(q);
               }}
@@ -121,7 +121,7 @@ export default function AgentPage() {
       {/* ─── 输入区 ─── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-[var(--ink-deep)] via-[var(--ink-deep)]/95 to-transparent pt-10 pb-6 px-4 md:px-8">
         <div className="w-full max-w-3xl mx-auto">
-          {isLoaded && !isConfigured && (
+          {isLoaded && !canUseApi && (
             <p className="text-center cn-hint text-gold-dim mb-3">
               <span className="mr-2">◇</span>
               请先于「配置」中设置 API 密钥
@@ -151,7 +151,7 @@ export default function AgentPage() {
               ) : (
                 <button
                   onClick={handleSend}
-                  disabled={!draft.trim() || !isConfigured}
+                  disabled={!draft.trim() || !canUseApi}
                   className="btn-ink-primary px-8 py-3 inline-flex items-center gap-3"
                 >
                   <span>问</span>
@@ -191,11 +191,11 @@ export default function AgentPage() {
 
 interface WelcomeBlockProps {
   isLoaded: boolean;
-  isConfigured: boolean;
+  canUseApi: boolean;
   onPick: (question: string) => void;
 }
 
-function WelcomeBlock({ isLoaded, isConfigured, onPick }: WelcomeBlockProps) {
+function WelcomeBlock({ isLoaded, canUseApi, onPick }: WelcomeBlockProps) {
   const suggestions = [
     '我最近的事业发展会顺利吗？',
     '我和 Ta 的关系未来会怎样？',
@@ -216,7 +216,7 @@ function WelcomeBlock({ isLoaded, isConfigured, onPick }: WelcomeBlockProps) {
         无需选牌、无需洗牌。只管提出疑问，神谕自会为你选阵、抽牌、解读。
       </p>
 
-      {isLoaded && !isConfigured ? null : (
+      {isLoaded && !canUseApi ? null : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
           {suggestions.map((q) => (
             <button

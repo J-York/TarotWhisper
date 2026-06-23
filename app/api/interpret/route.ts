@@ -243,11 +243,8 @@ export async function POST(request: NextRequest): Promise<Response> {
     return jsonError('无效的配置', 403);
   }
 
-  if (body.agent && !apiConfig.apiKey) {
-    return jsonError('Agent 模式需要配置 API Key', 401);
-  }
-
   // 4. 决定使用用户配置还是后备配置
+  //    Agent 与常规模式一致：无用户 key 时若有后备配置则走后备，否则下方返回 401
   let effectiveConfig = apiConfig;
   let usingFallback = false;
 

@@ -14,6 +14,17 @@ const defaultConfig: ApiConfig = {
 export function useApiConfig() {
   const [config, setConfig] = useState<ApiConfig>(defaultConfig);
   const [isLoaded, setIsLoaded] = useState(false);
+  // 服务端是否配置了可用的后备 LLM（无用户 key 时也能占卜）
+  const [fallbackAvailable, setFallbackAvailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setFallbackAvailable(!!data.fallbackAvailable); })
+      .catch(() => { if (!cancelled) setFallbackAvailable(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -46,11 +57,15 @@ export function useApiConfig() {
   }, []);
 
   const isConfigured = config.apiKey.length > 0;
+  // 能否发起占卜：用户配了 key，或服务端有后备配置
+  const canUseApi = isConfigured || fallbackAvailable;
 
   return {
     config,
     isLoaded,
     isConfigured,
+    fallbackAvailable,
+    canUseApi,
     saveConfig,
     updateConfig,
   };
