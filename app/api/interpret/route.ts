@@ -28,6 +28,10 @@ interface FollowUpPayload {
   additionalCards?: DrawnCard[];
 }
 
+interface AgentPayload {
+  prompt: string;
+}
+
 interface InterpretRequest {
   question: string;
   spread: Spread;
@@ -35,6 +39,10 @@ interface InterpretRequest {
   apiConfig: ApiConfig;
   followUp?: FollowUpPayload;
   daily?: DailyPayload;
+  /** Agent 决策模式：直接携带 prompt，路由透传给 LLM。
+   *  供 Agent 的非解读决策步（如选牌阵）复用本路由的全部基建
+   *  （认证 / 后备 / 限流 / 流式 / 超时），不参与 buildPrompt 分发。 */
+  agent?: AgentPayload;
 }
 
 // ─── 常量配置 ────────────────────────────────────────────────
@@ -111,6 +119,15 @@ function validateRequest(body: unknown): ValidationResult {
     return { valid: true };
   }
 
+  // agent 模式只需 agent.prompt（直接 prompt 透传）
+  if (req.agent) {
+    const agent = req.agent as Record<string, unknown>;
+    if (typeof agent.prompt !== 'string' || !agent.prompt.trim()) {
+      return { valid: false, error: 'agent.prompt 不能为空' };
+    }
+    return { valid: true };
+  }
+
   // 常规模式需要 question, spread, drawnCards
   if (typeof req.question !== 'string') {
     return { valid: false, error: '缺少 question 字段' };
@@ -128,7 +145,12 @@ function validateRequest(body: unknown): ValidationResult {
 // ─── Prompt 构建 ─────────────────────────────────────────────
 
 function buildPrompt(req: InterpretRequest): string {
-  const { question, spread, drawnCards, followUp, daily } = req;
+  const { question, spread, drawnCards, followUp, daily, agent } = req;
+
+  // agent 模式：直接透传 prompt，不参与牌阵解读分发
+  if (agent) {
+    return agent.prompt;
+  }
 
   if (daily) {
     return buildDailyInterpretationPrompt(
@@ -219,6 +241,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     apiConfig.endpoint === FALLBACK_CONFIG.endpoint
   ) {
     return jsonError('无效的配置', 403);
+  }
+
+  if (body.agent && !apiConfig.apiKey) {
+    return jsonError('Agent 模式需要配置 API Key', 401);
   }
 
   // 4. 决定使用用户配置还是后备配置

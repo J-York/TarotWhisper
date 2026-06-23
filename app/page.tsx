@@ -95,10 +95,10 @@ export default function Home() {
 
           {/* 主 CTA */}
           <Link
-            href="/reading"
+            href="/agent"
             className="btn-ink-primary px-12 py-4 inline-flex items-center gap-4"
           >
-            <span>开始占卜</span>
+            <span>与神谕对话</span>
             <span className="text-xs">✦</span>
           </Link>
 
