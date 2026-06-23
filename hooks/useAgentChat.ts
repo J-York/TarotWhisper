@@ -14,6 +14,7 @@ import { Reading } from '@/lib/tarot/types';
 import { saveReading, updateReadingFollowUps } from '@/lib/readingStorage';
 import { runAgentTurn, runFollowUpTurn } from '@/lib/agent/agentTurn';
 import { LLMError, classifyError } from '@/lib/api/errors';
+import { genId } from '@/lib/id';
 
 // ─── 消息模型 ───────────────────────────────────────────────
 
@@ -65,12 +66,12 @@ export type ChatMessage = UserMessage | AgentMessage;
 // ─── 工厂 ───────────────────────────────────────────────────
 
 function makeUserMessage(content: string): UserMessage {
-  return { id: crypto.randomUUID(), role: 'user', content };
+  return { id: genId(), role: 'user', content };
 }
 
 function makeAgentMessage(): AgentMessage {
   return {
-    id: crypto.randomUUID(),
+    id: genId(),
     role: 'agent',
     content: '',
     status: 'running',
@@ -86,7 +87,7 @@ function makeAgentMessage(): AgentMessage {
 
 function makeFollowUpMessage(question: string): FollowUpMessage {
   return {
-    id: crypto.randomUUID(),
+    id: genId(),
     question,
     status: 'running',
     decision: null,
@@ -237,7 +238,7 @@ export function useAgentChat() {
         });
 
         // 持久化
-        const readingId = crypto.randomUUID();
+        const readingId = genId();
         patchLastAgent({
           status: 'done',
           readingId,

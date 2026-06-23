@@ -76,7 +76,16 @@ export async function streamInterpret(
   callbacks: StreamCallbacks,
   config?: StreamClientConfig,
 ): Promise<StreamResult> {
-  const cfg = { ...DEFAULT_CONFIG, ...config };
+  // 逐字段合并：显式传入的 undefined 不应覆盖默认值
+  // （调用方常解构出 { maxRetries } 再透传，缺省时即为 undefined，
+  //  若直接展开会把默认的 2 抹成 undefined，导致 `attempt <= undefined` 恒为 false，
+  //  重试循环一次都不跑、直接抛 UNKNOWN）
+  const cfg: Required<Omit<StreamClientConfig, 'signal'>> = {
+    connectTimeoutMs: config?.connectTimeoutMs ?? DEFAULT_CONFIG.connectTimeoutMs,
+    streamIdleTimeoutMs: config?.streamIdleTimeoutMs ?? DEFAULT_CONFIG.streamIdleTimeoutMs,
+    maxRetries: config?.maxRetries ?? DEFAULT_CONFIG.maxRetries,
+    retryBaseMs: config?.retryBaseMs ?? DEFAULT_CONFIG.retryBaseMs,
+  };
   const externalSignal = config?.signal;
 
   let lastError: LLMErrorInfo | null = null;

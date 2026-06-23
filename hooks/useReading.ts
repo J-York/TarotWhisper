@@ -15,6 +15,7 @@ import { saveReading, updateReadingFollowUps } from '@/lib/readingStorage';
 import { extractDecisionJson as extractDecisionJsonUtil } from '@/lib/tarot/sseUtils';
 import { streamInterpret } from '@/lib/api/stream-client';
 import { LLMError, classifyError } from '@/lib/api/errors';
+import { genId } from '@/lib/id';
 
 export type ReadingPhase = 'question' | 'spread' | 'shuffle' | 'draw' | 'reveal' | 'interpret';
 
@@ -159,7 +160,7 @@ export function useReading() {
       }
 
       if (result.fullText) {
-        const id = crypto.randomUUID();
+        const id = genId();
         setReadingId(id);
         const reading: Reading = {
           id,
@@ -282,7 +283,7 @@ export function useReading() {
     const trimmed = followUpQuestion.trim();
     if (!trimmed || !interpretation) return;
 
-    const id = crypto.randomUUID();
+    const id = genId();
     const draft: FollowUp = {
       id,
       question: trimmed,
