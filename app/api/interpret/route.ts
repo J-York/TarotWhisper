@@ -51,7 +51,7 @@ interface InterpretRequest {
 const UPSTREAM_TIMEOUT_MS = 120_000;
 
 /** LLM 输出的最大 token 数 */
-const MAX_OUTPUT_TOKENS = 8192;
+const MAX_OUTPUT_TOKENS = 65_536;
 
 /** 从环境变量获取后备配置 */
 const FALLBACK_CONFIG = {
