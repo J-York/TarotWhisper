@@ -71,6 +71,11 @@ export interface AgentTurnResult {
   usingFallback: boolean;
 }
 
+export interface InterpretationRerunResult {
+  interpretation: string;
+  truncated: boolean;
+}
+
 // ─── 编排主函数 ─────────────────────────────────────────────
 
 export interface RunAgentTurnParams {
@@ -130,6 +135,47 @@ export async function runAgentTurn(
     interpretation: result.fullText,
     truncated: result.truncated,
     usingFallback: result.usingFallback,
+  };
+}
+
+export interface RerunAgentInterpretationParams {
+  question: string;
+  spread: Spread;
+  drawnCards: DrawnCard[];
+  previousInterpretation?: string;
+  apiConfig: ApiConfig;
+  signal: AbortSignal;
+  callbacks: AgentTurnCallbacks;
+}
+
+/** 复用既定牌阵与牌面，只重新生成首轮解读。 */
+export async function rerunAgentInterpretation(
+  params: RerunAgentInterpretationParams,
+): Promise<InterpretationRerunResult> {
+  const {
+    question,
+    spread,
+    drawnCards,
+    previousInterpretation,
+    apiConfig,
+    signal,
+    callbacks,
+  } = params;
+  const prompt = appendRegenerationInstruction(
+    buildInterpretationPrompt(question, spread, drawnCards),
+    previousInterpretation,
+  );
+
+  const result = await streamRaw(prompt, apiConfig, signal, {
+    onContent: callbacks.onContent,
+    onThinking: callbacks.onThinking,
+    onStreamError: callbacks.onStreamError,
+    onRetry: callbacks.onRetry,
+  });
+
+  return {
+    interpretation: result.fullText,
+    truncated: result.truncated,
   };
 }
 
@@ -276,6 +322,74 @@ export async function runFollowUpTurn(
   };
 }
 
+export interface RerunFollowUpInterpretationParams {
+  originalQuestion: string;
+  spread: Spread;
+  drawnCards: DrawnCard[];
+  previousInterpretation: string;
+  followUpQuestion: string;
+  decision: 'direct' | 'draw';
+  additionalCards: DrawnCard[];
+  previousFollowUpInterpretation?: string;
+  apiConfig: ApiConfig;
+  signal: AbortSignal;
+  callbacks: FollowUpTurnCallbacks;
+}
+
+/** 复用追问的决策与补充牌，只重新生成追问解读。 */
+export async function rerunFollowUpInterpretation(
+  params: RerunFollowUpInterpretationParams,
+): Promise<InterpretationRerunResult> {
+  const {
+    originalQuestion,
+    spread,
+    drawnCards,
+    previousInterpretation,
+    followUpQuestion,
+    decision,
+    additionalCards,
+    previousFollowUpInterpretation,
+    apiConfig,
+    signal,
+    callbacks,
+  } = params;
+
+  const basePrompt =
+    decision === 'draw'
+      ? buildFollowUpWithExtrasPrompt(
+          originalQuestion,
+          spread,
+          drawnCards,
+          previousInterpretation,
+          followUpQuestion,
+          additionalCards,
+        )
+      : buildFollowUpDirectPrompt(
+          originalQuestion,
+          spread,
+          drawnCards,
+          previousInterpretation,
+          followUpQuestion,
+        );
+
+  const result = await streamRaw(
+    appendRegenerationInstruction(basePrompt, previousFollowUpInterpretation),
+    apiConfig,
+    signal,
+    {
+      onContent: callbacks.onContent,
+      onThinking: callbacks.onThinking,
+      onStreamError: callbacks.onStreamError,
+      onRetry: callbacks.onRetry,
+    },
+  );
+
+  return {
+    interpretation: result.fullText,
+    truncated: result.truncated,
+  };
+}
+
 // ─── 通用 prompt 透传调用（内部） ──────────────────────────
 
 interface StreamRawCallbacks {
@@ -283,6 +397,19 @@ interface StreamRawCallbacks {
   onThinking?: (chunk: string) => void;
   onStreamError?: (msg: string) => void;
   onRetry?: (attempt: number, maxRetries: number) => void;
+}
+
+function appendRegenerationInstruction(prompt: string, previousResponse?: string): string {
+  const trimmedPrevious = previousResponse?.trim();
+  if (!trimmedPrevious) return prompt;
+
+  return `${prompt}
+
+## 上一版回复
+${trimmedPrevious}
+
+## 重新生成要求
+请重新生成一版回复。保持问题、牌阵、牌面事实不变，但避免复用上一版表达；给出更清晰、更具体、更有行动感的解读。`;
 }
 
 /** 以 agent 模式透传任意 prompt 调用 /api/interpret */

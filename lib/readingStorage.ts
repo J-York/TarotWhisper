@@ -33,6 +33,28 @@ export function saveReading(reading: Reading): void {
   }
 }
 
+export function updateReadingInterpretation(readingId: string, interpretation: string): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+
+    const readings: StoredReading[] = JSON.parse(stored);
+    const idx = readings.findIndex((reading) => reading.id === readingId);
+    if (idx === -1) return;
+
+    readings[idx] = {
+      ...readings[idx],
+      interpretation,
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(readings));
+  } catch (error) {
+    console.error('Failed to update interpretation:', error);
+  }
+}
+
 export function getReadings(): Reading[] {
   if (typeof window === 'undefined') return [];
 

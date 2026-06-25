@@ -15,8 +15,16 @@ import type {
 import type { DrawnCard, Spread } from '@/lib/tarot/types';
 
 export default function AgentPage() {
-  const { messages, isRunning, sendQuestion, askFollowUp, cancel, reset } =
-    useAgentChat();
+  const {
+    messages,
+    isRunning,
+    sendQuestion,
+    askFollowUp,
+    regenerateAgentMessage,
+    regenerateFollowUp,
+    cancel,
+    reset,
+  } = useAgentChat();
   const { config, isLoaded, canUseApi, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
   const [draft, setDraft] = useState('');
@@ -111,6 +119,14 @@ export default function AgentPage() {
             <MessageBubble
               key={msg.id}
               message={msg}
+              isRunning={isRunning}
+              canUseApi={canUseApi}
+              onRegenerateAgent={(agentId) => {
+                regenerateAgentMessage(agentId, config);
+              }}
+              onRegenerateFollowUp={(agentId, followUpId) => {
+                regenerateFollowUp(agentId, followUpId, config);
+              }}
             />
           ))}
 
@@ -237,7 +253,21 @@ function WelcomeBlock({ isLoaded, canUseApi, onPick }: WelcomeBlockProps) {
 
 // ─── 消息气泡 ─────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+interface MessageBubbleProps {
+  message: ChatMessage;
+  isRunning: boolean;
+  canUseApi: boolean;
+  onRegenerateAgent: (agentId: string) => void;
+  onRegenerateFollowUp: (agentId: string, followUpId: string) => void;
+}
+
+function MessageBubble({
+  message,
+  isRunning,
+  canUseApi,
+  onRegenerateAgent,
+  onRegenerateFollowUp,
+}: MessageBubbleProps) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end anim-veil-rise">
@@ -250,15 +280,41 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     );
   }
 
-  return <AgentBubble message={message} />;
+  return (
+    <AgentBubble
+      message={message}
+      isRunning={isRunning}
+      canUseApi={canUseApi}
+      onRegenerate={onRegenerateAgent}
+      onRegenerateFollowUp={onRegenerateFollowUp}
+    />
+  );
 }
 
 // ─── Agent 气泡 ───────────────────────────────────────────
 
-function AgentBubble({ message }: { message: AgentMessage }) {
+interface AgentBubbleProps {
+  message: AgentMessage;
+  isRunning: boolean;
+  canUseApi: boolean;
+  onRegenerate: (agentId: string) => void;
+  onRegenerateFollowUp: (agentId: string, followUpId: string) => void;
+}
+
+function AgentBubble({
+  message,
+  isRunning,
+  canUseApi,
+  onRegenerate,
+  onRegenerateFollowUp,
+}: AgentBubbleProps) {
   // 术语提取必须在组件顶层无条件调用（rules-of-hooks）
   const cardTerms = useCardTerms(message.drawnCards);
   const positionTerms = usePositionTerms(message.spread);
+  const canRegenerate =
+    !isRunning &&
+    canUseApi &&
+    (message.status === 'done' || message.status === 'error');
 
   return (
     <div className="flex flex-col gap-6 anim-veil-rise">
@@ -306,9 +362,29 @@ function AgentBubble({ message }: { message: AgentMessage }) {
         />
       )}
 
+      {canRegenerate && (
+        <div className="flex justify-end -mt-3">
+          <button
+            type="button"
+            onClick={() => onRegenerate(message.id)}
+            className="cn-hint text-bone-whisper hover:text-gold-dim transition-colors duration-500"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+          >
+            重 新 生 成
+          </button>
+        </div>
+      )}
+
       {/* 追问列表 */}
       {message.followUps.map((fu) => (
-        <FollowUpBlock key={fu.id} followUp={fu} />
+        <FollowUpBlock
+          key={fu.id}
+          agentId={message.id}
+          followUp={fu}
+          isRunning={isRunning}
+          canUseApi={canUseApi}
+          onRegenerate={onRegenerateFollowUp}
+        />
       ))}
     </div>
   );
@@ -339,7 +415,26 @@ function CardAutoReveal({ drawn, delay }: { drawn: DrawnCard; delay: number }) {
 
 // ─── 追问块 ───────────────────────────────────────────────
 
-function FollowUpBlock({ followUp: fu }: { followUp: FollowUpMessage }) {
+interface FollowUpBlockProps {
+  agentId: string;
+  followUp: FollowUpMessage;
+  isRunning: boolean;
+  canUseApi: boolean;
+  onRegenerate: (agentId: string, followUpId: string) => void;
+}
+
+function FollowUpBlock({
+  agentId,
+  followUp: fu,
+  isRunning,
+  canUseApi,
+  onRegenerate,
+}: FollowUpBlockProps) {
+  const canRegenerate =
+    !isRunning &&
+    canUseApi &&
+    (fu.status === 'done' || fu.status === 'error');
+
   return (
     <div className="flex flex-col gap-4 hairline-top pt-8 mt-2">
       {/* 追问问题 */}
@@ -375,6 +470,19 @@ function FollowUpBlock({ followUp: fu }: { followUp: FollowUpMessage }) {
           notice={fu.notice}
           staggerOnMount={false}
         />
+      )}
+
+      {canRegenerate && (
+        <div className="flex justify-end -mt-1">
+          <button
+            type="button"
+            onClick={() => onRegenerate(agentId, fu.id)}
+            className="cn-hint text-bone-whisper hover:text-gold-dim transition-colors duration-500"
+            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+          >
+            重 新 生 成
+          </button>
+        </div>
       )}
     </div>
   );

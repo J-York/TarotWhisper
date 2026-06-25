@@ -9,10 +9,18 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { ApiConfig, DrawnCard, Spread } from '@/lib/tarot/types';
-import { Reading } from '@/lib/tarot/types';
-import { saveReading, updateReadingFollowUps } from '@/lib/readingStorage';
-import { runAgentTurn, runFollowUpTurn } from '@/lib/agent/agentTurn';
+import { ApiConfig, DrawnCard, FollowUp, Reading, Spread } from '@/lib/tarot/types';
+import {
+  saveReading,
+  updateReadingFollowUps,
+  updateReadingInterpretation,
+} from '@/lib/readingStorage';
+import {
+  rerunAgentInterpretation,
+  rerunFollowUpInterpretation,
+  runAgentTurn,
+  runFollowUpTurn,
+} from '@/lib/agent/agentTurn';
 import { LLMError, classifyError } from '@/lib/api/errors';
 import { genId } from '@/lib/id';
 
@@ -107,6 +115,23 @@ function getErrorMessage(err: unknown): string {
   return classifyError(err).message;
 }
 
+function toStoredFollowUps(agent: AgentMessage): FollowUp[] {
+  return agent.followUps
+    .filter((fu) => fu.status === 'done')
+    .map((fu) => ({
+      id: fu.id,
+      question: fu.question,
+      status: 'done' as const,
+      decision: fu.decision ?? undefined,
+      drawCount: fu.drawCount,
+      reason: fu.reason,
+      additionalCards: fu.additionalCards,
+      revealedCount: fu.additionalCards.length,
+      interpretation: fu.interpretation,
+      error: fu.error,
+    }));
+}
+
 // ─── Hook ───────────────────────────────────────────────────
 
 export function useAgentChat() {
@@ -156,6 +181,26 @@ export function useAgentChat() {
     [commit],
   );
 
+  const patchAgent = useCallback(
+    (
+      agentId: string,
+      patch: Partial<AgentMessage> | ((prev: AgentMessage) => Partial<AgentMessage>),
+    ) => {
+      commit((prev) => {
+        let changed = false;
+        const next = prev.map((message) => {
+          if (message.role !== 'agent' || message.id !== agentId) return message;
+          changed = true;
+          const p = typeof patch === 'function' ? patch(message) : patch;
+          return { ...message, ...p };
+        });
+
+        return changed ? next : prev;
+      });
+    },
+    [commit],
+  );
+
   const patchFollowUp = useCallback(
     (
       followUpId: string,
@@ -200,6 +245,16 @@ export function useAgentChat() {
     }
 
     return '';
+  }, []);
+
+  const persistFollowUpsForAgent = useCallback((agentId: string): void => {
+    queueMicrotask(() => {
+      const agent = messagesRef.current.find(
+        (message) => message.role === 'agent' && message.id === agentId,
+      );
+      if (!agent || agent.role !== 'agent' || !agent.readingId) return;
+      updateReadingFollowUps(agent.readingId, toStoredFollowUps(agent));
+    });
   }, []);
 
   // ── 发起首轮提问 ───────────────────────────────────────
@@ -335,7 +390,7 @@ export function useAgentChat() {
                 interpretation: prev.interpretation + chunk,
               })),
             onStreamError: (msg) =>
-              patchFollowUp(followUp.id, { error: msg }),
+              patchFollowUp(followUp.id, (prev) => ({ error: prev.error ?? msg })),
             onRetry: (attempt, max) => {
               console.info(`追问重试 ${attempt}/${max}`);
             },
@@ -349,27 +404,7 @@ export function useAgentChat() {
 
         // 持久化追问
         if (lastAgent.readingId) {
-          queueMicrotask(() => {
-            const current = messagesRef.current;
-            const lastAgentNow = [...current].reverse().find((m) => m.role === 'agent');
-            if (lastAgentNow && lastAgentNow.role === 'agent' && lastAgentNow.readingId) {
-              const completed = lastAgentNow.followUps
-                .filter((fu) => fu.status === 'done')
-                .map((fu) => ({
-                  id: fu.id,
-                  question: fu.question,
-                  status: 'done' as const,
-                  decision: fu.decision ?? undefined,
-                  drawCount: fu.drawCount,
-                  reason: fu.reason,
-                  additionalCards: fu.additionalCards,
-                  revealedCount: fu.additionalCards.length,
-                  interpretation: fu.interpretation,
-                  error: fu.error,
-                }));
-              updateReadingFollowUps(lastAgentNow.readingId, completed);
-            }
-          });
+          persistFollowUpsForAgent(targetAgentId);
         }
       } catch (err) {
         if (err instanceof LLMError && err.info.code === 'ABORTED') {
@@ -384,7 +419,286 @@ export function useAgentChat() {
         }
       }
     },
-    [isRunning, createController, patchFollowUp, commit, findOriginalQuestion],
+    [
+      isRunning,
+      createController,
+      patchFollowUp,
+      commit,
+      findOriginalQuestion,
+      persistFollowUpsForAgent,
+    ],
+  );
+
+  // ── 重新生成首轮回复 ─────────────────────────────────────
+
+  const regenerateAgentMessage = useCallback(
+    async (agentId: string, apiConfig: ApiConfig): Promise<void> => {
+      if (isRunning) return;
+
+      const target = messagesRef.current.find(
+        (message) => message.role === 'agent' && message.id === agentId,
+      );
+      if (!target || target.role !== 'agent') return;
+
+      const originalQuestion = findOriginalQuestion(agentId);
+      if (!originalQuestion) return;
+
+      const previousContent = target.content;
+      const existingReadingId = target.readingId;
+      const canReuseReading = Boolean(target.spread && target.drawnCards.length > 0);
+
+      patchAgent(agentId, {
+        content: '',
+        status: 'running',
+        error: null,
+        notice: null,
+        ...(canReuseReading ? {} : {
+          spread: null,
+          spreadReason: '',
+          drawnCards: [],
+          readingId: null,
+        }),
+      });
+      setIsRunning(true);
+
+      const controller = createController();
+
+      try {
+        if (target.spread && target.drawnCards.length > 0) {
+          const result = await rerunAgentInterpretation({
+            question: originalQuestion,
+            spread: target.spread,
+            drawnCards: target.drawnCards,
+            previousInterpretation: previousContent,
+            apiConfig,
+            signal: controller.signal,
+            callbacks: {
+              onContent: (chunk) =>
+                patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
+              onThinking: (chunk) =>
+                patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
+              onStreamError: (msg) =>
+                patchAgent(agentId, (prev) => ({ error: prev.error ?? msg })),
+              onRetry: (attempt, max) => {
+                console.info(`重新生成重试 ${attempt}/${max}`);
+              },
+            },
+          });
+
+          if (existingReadingId) {
+            updateReadingInterpretation(existingReadingId, result.interpretation);
+            patchAgent(agentId, {
+              status: 'done',
+              notice: result.truncated ? '回复因输出长度限制被截断。' : null,
+            });
+          } else {
+            const readingId = genId();
+            const reading: Reading = {
+              id: readingId,
+              question: originalQuestion,
+              spread: target.spread,
+              drawnCards: target.drawnCards,
+              interpretation: result.interpretation,
+              createdAt: new Date(),
+            };
+            saveReading(reading);
+            patchAgent(agentId, {
+              status: 'done',
+              readingId,
+              notice: result.truncated ? '回复因输出长度限制被截断。' : null,
+            });
+          }
+          return;
+        }
+
+        const result = await runAgentTurn({
+          question: originalQuestion,
+          apiConfig,
+          signal: controller.signal,
+          callbacks: {
+            onSpreadChosen: ({ spread, reason }) =>
+              patchAgent(agentId, { spread, spreadReason: reason }),
+            onCardsDrawn: ({ drawnCards }) => patchAgent(agentId, { drawnCards }),
+            onContent: (chunk) =>
+              patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
+            onThinking: (chunk) =>
+              patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
+            onStreamError: (msg) =>
+              patchAgent(agentId, (prev) => ({ error: prev.error ?? msg })),
+            onRetry: (attempt, max) => {
+              console.info(`重新生成重试 ${attempt}/${max}`);
+            },
+          },
+        });
+
+        const readingId = genId();
+        const reading: Reading = {
+          id: readingId,
+          question: originalQuestion,
+          spread: result.spread,
+          drawnCards: result.drawnCards,
+          interpretation: result.interpretation,
+          createdAt: new Date(),
+        };
+        saveReading(reading);
+        patchAgent(agentId, {
+          status: 'done',
+          readingId,
+          notice: result.truncated
+            ? '解读内容因模型输出长度限制被截断，已显示部分内容。'
+            : null,
+        });
+      } catch (err) {
+        if (err instanceof LLMError && err.info.code === 'ABORTED') {
+          patchAgent(agentId, { status: 'error', error: '已停止生成' });
+          return;
+        }
+        patchAgent(agentId, { status: 'error', error: getErrorMessage(err) });
+      } finally {
+        setIsRunning(false);
+        if (activeAbortRef.current === controller) {
+          activeAbortRef.current = null;
+        }
+      }
+    },
+    [isRunning, createController, findOriginalQuestion, patchAgent],
+  );
+
+  // ── 重新生成追问回复 ─────────────────────────────────────
+
+  const regenerateFollowUp = useCallback(
+    async (agentId: string, followUpId: string, apiConfig: ApiConfig): Promise<void> => {
+      if (isRunning) return;
+
+      const agent = messagesRef.current.find(
+        (message) => message.role === 'agent' && message.id === agentId,
+      );
+      if (
+        !agent ||
+        agent.role !== 'agent' ||
+        !agent.spread ||
+        !agent.content
+      ) {
+        return;
+      }
+
+      const followUp = agent.followUps.find((fu) => fu.id === followUpId);
+      const originalQuestion = findOriginalQuestion(agentId);
+      if (!followUp || !originalQuestion) return;
+
+      const previousFollowUpInterpretation = followUp.interpretation;
+      const canReuseDecision =
+        followUp.decision !== null &&
+        (followUp.decision === 'direct' || followUp.additionalCards.length > 0);
+
+      patchFollowUp(followUpId, {
+        status: 'running',
+        error: null,
+        notice: null,
+        interpretation: '',
+        ...(canReuseDecision ? {} : {
+          decision: null,
+          drawCount: 0,
+          reason: '',
+          additionalCards: [],
+        }),
+      });
+      setIsRunning(true);
+
+      const controller = createController();
+
+      try {
+        if (canReuseDecision && followUp.decision) {
+          const result = await rerunFollowUpInterpretation({
+            originalQuestion,
+            spread: agent.spread,
+            drawnCards: agent.drawnCards,
+            previousInterpretation: agent.content,
+            followUpQuestion: followUp.question,
+            decision: followUp.decision,
+            additionalCards: followUp.additionalCards,
+            previousFollowUpInterpretation,
+            apiConfig,
+            signal: controller.signal,
+            callbacks: {
+              onContent: (chunk) =>
+                patchFollowUp(followUpId, (prev) => ({
+                  interpretation: prev.interpretation + chunk,
+                })),
+              onThinking: (chunk) =>
+                patchFollowUp(followUpId, (prev) => ({
+                  interpretation: prev.interpretation + chunk,
+                })),
+              onStreamError: (msg) =>
+                patchFollowUp(followUpId, (prev) => ({ error: prev.error ?? msg })),
+              onRetry: (attempt, max) => {
+                console.info(`追问重新生成重试 ${attempt}/${max}`);
+              },
+            },
+          });
+
+          patchFollowUp(followUpId, {
+            status: 'done',
+            notice: result.truncated ? '回复因输出长度限制被截断。' : null,
+          });
+          persistFollowUpsForAgent(agentId);
+          return;
+        }
+
+        const result = await runFollowUpTurn({
+          originalQuestion,
+          spread: agent.spread,
+          drawnCards: agent.drawnCards,
+          previousInterpretation: agent.content,
+          followUpQuestion: followUp.question,
+          apiConfig,
+          signal: controller.signal,
+          callbacks: {
+            onDecided: (decision, drawCount, reason) =>
+              patchFollowUp(followUpId, { decision, drawCount, reason }),
+            onSupplementaryCards: (cards) =>
+              patchFollowUp(followUpId, { additionalCards: cards }),
+            onContent: (chunk) =>
+              patchFollowUp(followUpId, (prev) => ({
+                interpretation: prev.interpretation + chunk,
+              })),
+            onThinking: (chunk) =>
+              patchFollowUp(followUpId, (prev) => ({
+                interpretation: prev.interpretation + chunk,
+              })),
+            onStreamError: (msg) =>
+              patchFollowUp(followUpId, (prev) => ({ error: prev.error ?? msg })),
+            onRetry: (attempt, max) => {
+              console.info(`追问重新生成重试 ${attempt}/${max}`);
+            },
+          },
+        });
+
+        patchFollowUp(followUpId, {
+          status: 'done',
+          notice: result.truncated ? '回复因输出长度限制被截断。' : null,
+        });
+        persistFollowUpsForAgent(agentId);
+      } catch (err) {
+        if (err instanceof LLMError && err.info.code === 'ABORTED') {
+          patchFollowUp(followUpId, { status: 'error', error: '已停止生成' });
+          return;
+        }
+        patchFollowUp(followUpId, { status: 'error', error: getErrorMessage(err) });
+      } finally {
+        setIsRunning(false);
+        if (activeAbortRef.current === controller) {
+          activeAbortRef.current = null;
+        }
+      }
+    },
+    [
+      isRunning,
+      createController,
+      findOriginalQuestion,
+      patchFollowUp,
+      persistFollowUpsForAgent,
+    ],
   );
 
   // ── 重置 ───────────────────────────────────────────────
@@ -400,6 +714,8 @@ export function useAgentChat() {
     isRunning,
     sendQuestion,
     askFollowUp,
+    regenerateAgentMessage,
+    regenerateFollowUp,
     cancel,
     reset,
   };
