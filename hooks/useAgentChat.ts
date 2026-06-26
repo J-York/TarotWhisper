@@ -22,6 +22,7 @@ import {
   runFollowUpTurn,
 } from '@/lib/agent/agentTurn';
 import { LLMError, classifyError } from '@/lib/api/errors';
+import type { RetryState } from '@/lib/api/stream-client';
 import { genId } from '@/lib/id';
 
 // ─── 消息模型 ───────────────────────────────────────────────
@@ -51,6 +52,8 @@ export interface AgentMessage {
   notice: string | null;
   /** 关联的 Reading id，用于持久化 */
   readingId: string | null;
+  /** 自动重试的瞬时状态（连接中断重试时非空） */
+  retry: RetryState | null;
   /** 追问列表 */
   followUps: FollowUpMessage[];
 }
@@ -67,6 +70,8 @@ export interface FollowUpMessage {
   interpretation: string;
   error: string | null;
   notice: string | null;
+  /** 自动重试的瞬时状态 */
+  retry: RetryState | null;
 }
 
 export type ChatMessage = UserMessage | AgentMessage;
@@ -89,6 +94,7 @@ function makeAgentMessage(): AgentMessage {
     drawnCards: [],
     notice: null,
     readingId: null,
+    retry: null,
     followUps: [],
   };
 }
@@ -105,6 +111,7 @@ function makeFollowUpMessage(question: string): FollowUpMessage {
     interpretation: '',
     error: null,
     notice: null,
+    retry: null,
   };
 }
 
@@ -286,9 +293,8 @@ export function useAgentChat() {
               patchLastAgent((prev) => ({ content: prev.content + chunk })),
             onStreamError: (msg) =>
               patchLastAgent((prev) => ({ error: prev.error ?? msg })),
-            onRetry: (attempt, max) => {
-              console.info(`Agent 重试 ${attempt}/${max}`);
-            },
+            onRetry: (attempt, max) =>
+              patchLastAgent({ retry: { attempt, max } }),
           },
         });
 
@@ -297,6 +303,7 @@ export function useAgentChat() {
         patchLastAgent({
           status: 'done',
           readingId,
+          retry: null,
           notice: result.truncated
             ? '解读内容因模型输出长度限制被截断，已显示部分内容。'
             : null,
@@ -313,10 +320,10 @@ export function useAgentChat() {
         saveReading(reading);
       } catch (err) {
         if (err instanceof LLMError && err.info.code === 'ABORTED') {
-          patchLastAgent({ status: 'error', error: '已停止生成' });
+          patchLastAgent({ status: 'error', error: '已停止生成', retry: null });
           return;
         }
-        patchLastAgent({ status: 'error', error: getErrorMessage(err) });
+        patchLastAgent({ status: 'error', error: getErrorMessage(err), retry: null });
       } finally {
         setIsRunning(false);
         if (activeAbortRef.current === controller) {
@@ -391,14 +398,14 @@ export function useAgentChat() {
               })),
             onStreamError: (msg) =>
               patchFollowUp(followUp.id, (prev) => ({ error: prev.error ?? msg })),
-            onRetry: (attempt, max) => {
-              console.info(`追问重试 ${attempt}/${max}`);
-            },
+            onRetry: (attempt, max) =>
+              patchFollowUp(followUp.id, { retry: { attempt, max } }),
           },
         });
 
         patchFollowUp(followUp.id, {
           status: 'done',
+          retry: null,
           notice: result.truncated ? '回复因输出长度限制被截断。' : null,
         });
 
@@ -408,10 +415,10 @@ export function useAgentChat() {
         }
       } catch (err) {
         if (err instanceof LLMError && err.info.code === 'ABORTED') {
-          patchFollowUp(followUp.id, { status: 'error', error: '已停止生成' });
+          patchFollowUp(followUp.id, { status: 'error', error: '已停止生成', retry: null });
           return;
         }
-        patchFollowUp(followUp.id, { status: 'error', error: getErrorMessage(err) });
+        patchFollowUp(followUp.id, { status: 'error', error: getErrorMessage(err), retry: null });
       } finally {
         setIsRunning(false);
         if (activeAbortRef.current === controller) {
@@ -452,6 +459,7 @@ export function useAgentChat() {
         status: 'running',
         error: null,
         notice: null,
+        retry: null,
         ...(canReuseReading ? {} : {
           spread: null,
           spreadReason: '',
@@ -479,9 +487,8 @@ export function useAgentChat() {
                 patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
               onStreamError: (msg) =>
                 patchAgent(agentId, (prev) => ({ error: prev.error ?? msg })),
-              onRetry: (attempt, max) => {
-                console.info(`重新生成重试 ${attempt}/${max}`);
-              },
+              onRetry: (attempt, max) =>
+                patchAgent(agentId, { retry: { attempt, max } }),
             },
           });
 
@@ -525,9 +532,8 @@ export function useAgentChat() {
               patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
             onStreamError: (msg) =>
               patchAgent(agentId, (prev) => ({ error: prev.error ?? msg })),
-            onRetry: (attempt, max) => {
-              console.info(`重新生成重试 ${attempt}/${max}`);
-            },
+            onRetry: (attempt, max) =>
+              patchAgent(agentId, { retry: { attempt, max } }),
           },
         });
 
@@ -555,6 +561,7 @@ export function useAgentChat() {
         }
         patchAgent(agentId, { status: 'error', error: getErrorMessage(err) });
       } finally {
+        patchAgent(agentId, { retry: null });
         setIsRunning(false);
         if (activeAbortRef.current === controller) {
           activeAbortRef.current = null;
@@ -595,6 +602,7 @@ export function useAgentChat() {
         status: 'running',
         error: null,
         notice: null,
+        retry: null,
         interpretation: '',
         ...(canReuseDecision ? {} : {
           decision: null,
@@ -631,9 +639,8 @@ export function useAgentChat() {
                 })),
               onStreamError: (msg) =>
                 patchFollowUp(followUpId, (prev) => ({ error: prev.error ?? msg })),
-              onRetry: (attempt, max) => {
-                console.info(`追问重新生成重试 ${attempt}/${max}`);
-              },
+              onRetry: (attempt, max) =>
+                patchFollowUp(followUpId, { retry: { attempt, max } }),
             },
           });
 
@@ -668,9 +675,8 @@ export function useAgentChat() {
               })),
             onStreamError: (msg) =>
               patchFollowUp(followUpId, (prev) => ({ error: prev.error ?? msg })),
-            onRetry: (attempt, max) => {
-              console.info(`追问重新生成重试 ${attempt}/${max}`);
-            },
+            onRetry: (attempt, max) =>
+              patchFollowUp(followUpId, { retry: { attempt, max } }),
           },
         });
 
@@ -686,6 +692,7 @@ export function useAgentChat() {
         }
         patchFollowUp(followUpId, { status: 'error', error: getErrorMessage(err) });
       } finally {
+        patchFollowUp(followUpId, { retry: null });
         setIsRunning(false);
         if (activeAbortRef.current === controller) {
           activeAbortRef.current = null;

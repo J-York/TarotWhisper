@@ -3,6 +3,7 @@
 import { Fragment, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
+import type { RetryState } from '@/lib/api/stream-client';
 
 interface InterpretationProps {
   content: string;
@@ -28,6 +29,10 @@ interface InterpretationProps {
    * 需要高亮为月雾色阵位标签的阵位名。
    */
   positionTerms?: string[];
+  /**
+   * 自动重试的瞬时状态。非空时在加载态显示「正在重试 N/M」。
+   */
+  retry?: RetryState | null;
 }
 
 type InterpretationSegmentType = 'answer' | 'thinking';
@@ -258,6 +263,7 @@ export function Interpretation({
   staggerOnMount = false,
   cardTerms,
   positionTerms,
+  retry,
 }: InterpretationProps) {
   /* ─── 错误态 ─── */
   if (error) {
@@ -336,7 +342,7 @@ export function Interpretation({
                 <span className="absolute inset-0 anim-glow-pulse rounded-full" aria-hidden />
               </div>
               <p className="cn-label text-bone-dim">
-                正 在 通 灵
+                {retry ? '与 以 太 重 新 连 接' : '正 在 通 灵'}
               </p>
               <div className="flex gap-2.5">
                 <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '0ms' }} />
@@ -344,7 +350,9 @@ export function Interpretation({
                 <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
               </div>
               <p className="font-body italic-soft text-bone-faint text-sm mt-2">
-                星辰需要时间才能开口
+                {retry
+                  ? `连接中断，正在重试（第 ${retry.attempt} / ${retry.max} 次）`
+                  : '星辰需要时间才能开口'}
               </p>
             </div>
           ) : (

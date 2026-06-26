@@ -35,6 +35,16 @@ const DEFAULT_CONFIG: Required<Omit<StreamClientConfig, 'signal'>> = {
   retryBaseMs: 1000,
 };
 
+// ─── 重试状态 ─────────────────────────────────────────────────
+
+/** 一次自动重试的瞬时状态 · 供 UI 显示「正在重试 N/M」 */
+export interface RetryState {
+  /** 当前第几次重试（从 1 开始） */
+  attempt: number;
+  /** 最大重试次数 */
+  max: number;
+}
+
 // ─── 回调接口 ─────────────────────────────────────────────────
 
 export interface StreamCallbacks {

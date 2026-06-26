@@ -13,7 +13,7 @@ import { allCards } from '@/lib/tarot/cards';
 import { getDefaultSpread } from '@/lib/tarot/spreads';
 import { saveReading, updateReadingFollowUps } from '@/lib/readingStorage';
 import { extractDecisionJson as extractDecisionJsonUtil } from '@/lib/tarot/sseUtils';
-import { streamInterpret } from '@/lib/api/stream-client';
+import { streamInterpret, type RetryState } from '@/lib/api/stream-client';
 import { LLMError, classifyError } from '@/lib/api/errors';
 import { genId } from '@/lib/id';
 
@@ -68,6 +68,10 @@ export function useReading() {
   const [error, setError] = useState<string | null>(null);
   // 非致命警示（如输出被截断）· 与 error 分离，不遮蔽已生成的正文
   const [notice, setNotice] = useState<string | null>(null);
+  // 主解读自动重试的瞬时状态（连接中断重试时非空）
+  const [retryInfo, setRetryInfo] = useState<RetryState | null>(null);
+  // 各追问的自动重试状态 · 以 followUpId 为键
+  const [followUpRetries, setFollowUpRetries] = useState<Record<string, RetryState | null>>({});
 
   // ── 追问状态 ─────────────────────────────────────────────
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -136,6 +140,7 @@ export function useReading() {
     setInterpretation('');
     setError(null);
     setNotice(null);
+    setRetryInfo(null);
     setFollowUps([]);
     setPhase('interpret');
 
@@ -149,7 +154,7 @@ export function useReading() {
           onThinking: (chunk) => setInterpretation((prev) => prev + chunk),
           onStreamError: (msg) => setError(msg),
           onRetry: (attempt, max) => {
-            console.info(`LLM 请求重试 ${attempt}/${max}`);
+            setRetryInfo({ attempt, max });
           },
         },
         { signal: controller.signal },
@@ -187,6 +192,7 @@ export function useReading() {
       setError(getErrorMessage(err));
     } finally {
       setIsInterpreting(false);
+      setRetryInfo(null);
       if (activeAbortRef.current === controller) {
         activeAbortRef.current = null;
       }
@@ -232,9 +238,8 @@ export function useReading() {
             })),
           onStreamError: (msg) =>
             patchFollowUp(followUpId, { error: msg }),
-          onRetry: (attempt, max) => {
-            console.info(`追问解读重试 ${attempt}/${max}`);
-          },
+          onRetry: (attempt, max) =>
+            setFollowUpRetries((prev) => ({ ...prev, [followUpId]: { attempt, max } })),
         },
         { signal: controller.signal },
       );
@@ -268,6 +273,12 @@ export function useReading() {
         error: getErrorMessage(err),
       });
     } finally {
+      setFollowUpRetries((prev) => {
+        if (!(followUpId in prev)) return prev;
+        const next = { ...prev };
+        delete next[followUpId];
+        return next;
+      });
       if (activeAbortRef.current === controller) {
         activeAbortRef.current = null;
       }
@@ -426,6 +437,8 @@ export function useReading() {
     setIsInterpreting(false);
     setError(null);
     setNotice(null);
+    setRetryInfo(null);
+    setFollowUpRetries({});
     setFollowUps([]);
     setReadingId(null);
   }, [cancelRequest]);
@@ -444,6 +457,8 @@ export function useReading() {
     isInterpreting,
     error,
     notice,
+    retryInfo,
+    followUpRetries,
     followUps,
     hasInFlightFollowUp,
     setQuestion,

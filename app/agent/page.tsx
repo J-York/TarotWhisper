@@ -356,6 +356,7 @@ function AgentBubble({
           isLoading={message.status === 'running' && !message.content}
           error={message.error}
           notice={message.notice}
+          retry={message.retry}
           staggerOnMount={false}
           cardTerms={cardTerms}
           positionTerms={positionTerms}
@@ -468,6 +469,7 @@ function FollowUpBlock({
           isLoading={fu.status === 'running' && !fu.interpretation}
           error={fu.error}
           notice={fu.notice}
+          retry={fu.retry}
           staggerOnMount={false}
         />
       )}

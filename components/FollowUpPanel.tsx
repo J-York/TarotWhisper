@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { FollowUp, ApiConfig } from '@/lib/tarot/types';
 import { TarotCardComponent } from '@/components/TarotCard';
 import { InterpretationBody } from '@/components/Interpretation';
+import type { RetryState } from '@/lib/api/stream-client';
 
 interface FollowUpPanelProps {
   followUp: FollowUp;
@@ -12,6 +13,8 @@ interface FollowUpPanelProps {
   baseCardTerms?: string[];
   /** 主占卜阵位名称，供月雾色关键词高亮 */
   basePositionTerms?: string[];
+  /** 自动重试的瞬时状态。非空时在等待态显示「正在重试 N/M」 */
+  retry?: RetryState | null;
   onRevealNext: (id: string, config: ApiConfig) => void;
   onRevealAll: (id: string, config: ApiConfig) => void;
   onRetry: (id: string, config: ApiConfig) => void;
@@ -22,6 +25,7 @@ export function FollowUpPanel({
   apiConfig,
   baseCardTerms,
   basePositionTerms,
+  retry,
   onRevealNext,
   onRevealAll,
   onRetry,
@@ -145,9 +149,18 @@ export function FollowUpPanel({
 
       {/* ─── 解读等待态 ─── */}
       {status === 'interpreting' && !interpretation && (
-        <div className="ink-panel-quiet p-12 flex items-center justify-center gap-4 mb-4">
-          <span className="text-gold-dim anim-whisper">✦</span>
-          <span className="cn-label text-bone-dim">正 在 通 灵</span>
+        <div className="ink-panel-quiet p-12 flex flex-col items-center justify-center gap-4 mb-4">
+          <div className="flex items-center gap-4">
+            <span className="text-gold-dim anim-whisper">✦</span>
+            <span className="cn-label text-bone-dim">
+              {retry ? '连 接 中 断 · 正 在 重 试' : '正 在 通 灵'}
+            </span>
+          </div>
+          {retry && (
+            <span className="cn-hint text-bone-faint">
+              第 {retry.attempt} ╱ {retry.max} 次
+            </span>
+          )}
         </div>
       )}
 

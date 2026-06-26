@@ -23,6 +23,8 @@ export default function ReadingPage() {
     isInterpreting,
     error,
     notice,
+    retryInfo,
+    followUpRetries,
     followUps,
     hasInFlightFollowUp,
     setQuestion,
@@ -426,6 +428,7 @@ export default function ReadingPage() {
               isLoading={isInterpreting}
               error={error}
               notice={notice}
+              retry={retryInfo}
               cardTerms={baseCardTerms}
               positionTerms={basePositionTerms}
             />
@@ -440,6 +443,7 @@ export default function ReadingPage() {
                     apiConfig={config}
                     baseCardTerms={baseCardTerms}
                     basePositionTerms={basePositionTerms}
+                    retry={followUpRetries[fu.id] ?? null}
                     onRevealNext={revealNextFollowUpCard}
                     onRevealAll={revealAllFollowUpCards}
                     onRetry={retryFollowUp}
