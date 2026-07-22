@@ -3,12 +3,13 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * AmbientField · 全站环境氛围层
+ * AmbientField · 全站环境氛围层 — 沉浸式神秘剧场
  *
- * 三层叠加：
- *   1. 粒子 canvas  — 稀疏金色尘埃，缓慢漂浮
- *   2. 雾气 div     — 极慢漂移的紫红/月雾色斑
- *   3. 烛火光晕     — 跟随鼠标的金色径向渐变
+ * 四层叠加：
+ *   1. 粒子 canvas  — 金色与星辰蓝双色尘埃 + 星座连线
+ *   2. 雾气 div     — 极慢漂移的紫红/月雾/靛蓝色斑
+ *   3. 烛火光晕     — 跟随鼠标的金色+微蓝径向渐变
+ *   4. 颗粒覆层     — 由 layout.tsx 的 .grain-overlay 提供
  *
  * 设计原则：
  *   · 任何一层都不应「抢眼」；离开页面看才察觉
@@ -25,11 +26,14 @@ interface Particle {
   phase: number;        // 闪烁相位
   speed: number;        // 闪烁速度
   baseAlpha: number;    // 透明度基线
+  hue: 'gold' | 'celestial'; // 色相
 }
 
-const PARTICLE_DENSITY = 0.000045;   // 每像素粒子数；1080p ≈ ~94 颗
-const MAX_PARTICLES = 110;
-const MIN_PARTICLES = 24;
+const PARTICLE_DENSITY = 0.00005;    // 每像素粒子数；1080p ≈ ~104 颗
+const MAX_PARTICLES = 120;
+const MIN_PARTICLES = 28;
+const CONSTELLATION_DIST = 0.12;     // 星座连线阈值（占视口宽度的比例）
+const CONSTELLATION_ALPHA = 0.06;    // 连线最大透明度
 
 export function AmbientField(): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,7 +44,6 @@ export function AmbientField(): React.ReactElement {
     const aura = auraRef.current;
     if (!aura) return;
 
-    // 初始位置：屏幕上方 1/3，符合 hero 视觉重心
     aura.style.setProperty('--mx', '50%');
     aura.style.setProperty('--my', '32%');
 
@@ -60,7 +63,6 @@ export function AmbientField(): React.ReactElement {
     };
 
     const handleLeave = (): void => {
-      // 鼠标离开窗口时，光晕回到中央偏上
       aura.style.setProperty('--mx', '50%');
       aura.style.setProperty('--my', '32%');
     };
@@ -74,7 +76,7 @@ export function AmbientField(): React.ReactElement {
     };
   }, []);
 
-  /* ─── 粒子 canvas：金色尘埃 ─── */
+  /* ─── 粒子 canvas：双色星尘 + 星座连线 ─── */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -104,12 +106,13 @@ export function AmbientField(): React.ReactElement {
     const makeParticle = (): Particle => ({
       x: Math.random(),
       y: Math.random(),
-      r: 0.4 + Math.random() * 1.2,
-      vx: (Math.random() - 0.5) * 0.00006,   // 缓慢横向漂移
-      vy: -0.00003 - Math.random() * 0.00007, // 整体微微上升
+      r: 0.4 + Math.random() * 1.3,
+      vx: (Math.random() - 0.5) * 0.00006,
+      vy: -0.00003 - Math.random() * 0.00007,
       phase: Math.random() * Math.PI * 2,
       speed: 0.4 + Math.random() * 0.8,
       baseAlpha: 0.12 + Math.random() * 0.5,
+      hue: Math.random() < 0.72 ? 'gold' : 'celestial',
     });
 
     const resize = (): void => {
@@ -130,27 +133,57 @@ export function AmbientField(): React.ReactElement {
 
       ctx.clearRect(0, 0, width, height);
 
+      // ─── 星座连线 · 距离内的粒子间绘制极淡线段 ───
+      const linkDist = CONSTELLATION_DIST * width;
+      for (let i = 0; i < particles.length; i++) {
+        const a = particles[i];
+        const ax = a.x * width;
+        const ay = a.y * height;
+        for (let j = i + 1; j < particles.length; j++) {
+          const b = particles[j];
+          const bx = b.x * width;
+          const by = b.y * height;
+          const dx = ax - bx;
+          const dy = ay - by;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < linkDist) {
+            const alpha = CONSTELLATION_ALPHA * (1 - dist / linkDist);
+            ctx.strokeStyle = `rgba(178, 168, 214, ${alpha})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // ─── 粒子本体 ───
       for (const p of particles) {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.phase += dt * 0.0006 * p.speed;
 
-        // wrap 环绕
         if (p.x < -0.02) p.x = 1.02;
         if (p.x > 1.02) p.x = -0.02;
         if (p.y < -0.02) p.y = 1.02;
         if (p.y > 1.02) p.y = -0.02;
 
-        const twinkle = (Math.sin(p.phase) + 1) / 2;          // 0..1
+        const twinkle = (Math.sin(p.phase) + 1) / 2;
         const alpha = p.baseAlpha * (0.55 + twinkle * 0.45);
         const px = p.x * width;
         const py = p.y * height;
 
-        // 金色微光：内核 + 柔晕
         const grad = ctx.createRadialGradient(px, py, 0, px, py, p.r * 3.2);
-        grad.addColorStop(0, `rgba(232, 226, 208, ${alpha})`);
-        grad.addColorStop(0.4, `rgba(212, 184, 115, ${alpha * 0.5})`);
-        grad.addColorStop(1, 'rgba(212, 184, 115, 0)');
+        if (p.hue === 'gold') {
+          grad.addColorStop(0, `rgba(234, 228, 212, ${alpha})`);
+          grad.addColorStop(0.4, `rgba(212, 184, 115, ${alpha * 0.5})`);
+          grad.addColorStop(1, 'rgba(212, 184, 115, 0)');
+        } else {
+          grad.addColorStop(0, `rgba(200, 210, 240, ${alpha * 0.9})`);
+          grad.addColorStop(0.4, `rgba(139, 159, 212, ${alpha * 0.45})`);
+          grad.addColorStop(1, 'rgba(139, 159, 212, 0)');
+        }
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(px, py, p.r * 3.2, 0, Math.PI * 2);
@@ -190,10 +223,10 @@ export function AmbientField(): React.ReactElement {
 
   return (
     <>
-      {/* 雾气层 — 纯 CSS · 不消耗主线程 */}
+      {/* 雾幕层 — 纯 CSS · 不消耗主线程 */}
       <div className="mist-veil" aria-hidden />
 
-      {/* 粒子 canvas */}
+      {/* 星尘 canvas · 含星座连线 */}
       <canvas
         ref={canvasRef}
         className="particle-field"

@@ -58,7 +58,7 @@ export function CardDetail({ card, onClose }: CardDetailProps) {
             <h2 className="cn-nav text-bone">
               {typeLabelCn}
             </h2>
-            <span className="font-display text-[11px] tracking-veil text-bone-whisper uppercase">
+            <span className="font-heading text-[11px] tracking-veil text-bone-whisper uppercase">
               ╱ {typeLabelEn}
             </span>
           </div>
@@ -95,10 +95,10 @@ export function CardDetail({ card, onClose }: CardDetailProps) {
           <div className="flex flex-col gap-9">
             {/* 名称 */}
             <div>
-              <h3 className="font-display text-3xl md:text-4xl text-bone tracking-[0.2em] mb-3">
+              <h3 className="font-heading text-3xl md:text-4xl text-bone tracking-[0.2em] mb-3">
                 {card.nameCn}
               </h3>
-              <p className="font-display text-[11px] tracking-veil text-gold-dim uppercase">
+              <p className="font-heading text-[11px] tracking-veil text-gold-dim uppercase">
                 {card.name}
               </p>
               <div className="rule-h-gold w-20 mt-5" />
@@ -147,7 +147,7 @@ function Section({ symbol, titleCn, titleEn, keywords, meaning, accent }: Sectio
       <div className="flex items-center gap-3 mb-4">
         <span className={`${accentClass} text-base`}>{symbol}</span>
         <span className="cn-nav text-bone">{titleCn}</span>
-        <span className="font-display text-[10px] tracking-veil text-bone-whisper uppercase">
+        <span className="font-heading text-[10px] tracking-veil text-bone-whisper uppercase">
           ╱ {titleEn}
         </span>
       </div>
@@ -198,10 +198,10 @@ function CardFace({ card, fallbackSymbol }: CardFaceProps) {
             {card.type === 'major' ? '✦' : fallbackSymbol}
           </div>
           <div className="rule-h-gold w-12 mb-5" />
-          <div className="font-display text-lg text-bone mb-2 tracking-[0.18em]">
+          <div className="font-heading text-lg text-bone mb-2 tracking-[0.18em]">
             {card.nameCn}
           </div>
-          <div className="font-display text-[11px] tracking-veil text-bone-faint uppercase">
+          <div className="font-heading text-[11px] tracking-veil text-bone-faint uppercase">
             {card.name}
           </div>
         </div>

@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <div className="min-h-screen flex items-center justify-center p-8">
           <div className="ink-panel-quiet p-16 md:p-20 text-center max-w-lg anim-veil-rise">
             <div className="text-gold-dim text-3xl mb-8">◇</div>
-            <h1 className="font-display text-2xl text-bone mb-5 tracking-[0.2em] uppercase">
+            <h1 className="font-heading text-2xl text-bone mb-5 tracking-[0.2em] uppercase">
               以 太 连 接 断 裂
             </h1>
             <div className="rule-h-gold w-16 mx-auto mb-6" />

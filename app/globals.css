@@ -1,76 +1,99 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════
-   Arcane Elegance — Design Tokens
-   仪式感 · 精简克制 · 留白驱动
+   Arcane Theater — Design Tokens
+   沉浸式神秘剧场 · 层叠光影 · 仪式叙事
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ─── Ink palette · 暗夜墨色 ─── */
-  --ink-void:      #06060A;   /* 最深处的虚空 */
-  --ink-deep:      #0A0810;   /* 主背景 · 午夜带一丝紫调 */
-  --ink-veil:      #11101A;   /* 表面层 */
-  --ink-burgundy:  #1A0E1A;   /* 深紫红 · 仅作氛围渐变 */
+  /* ─── Abyss palette · 深渊层叠 ─── */
+  --ink-void:      #040308;   /* 绝对虚空 */
+  --ink-deep:      #08060F;   /* 主背景 · 深紫夜幕 */
+  --ink-veil:      #0E0B18;   /* 表面层 · 帷幕 */
+  --ink-surface:   #131022;   /* 浮起面板 */
+  --ink-burgundy:  #1C0E20;   /* 深紫红 · 氛围渐变 */
+  --ink-indigo:    #0D1226;   /* 靛蓝 · 星图底色 */
 
   /* ─── Hairlines · 极细分隔线 ─── */
-  --ink-line:        rgba(232, 228, 216, 0.07);
-  --ink-line-soft:   rgba(232, 228, 216, 0.035);
-  --ink-line-strong: rgba(232, 228, 216, 0.14);
+  --ink-line:        rgba(226, 220, 240, 0.07);
+  --ink-line-soft:   rgba(226, 220, 240, 0.035);
+  --ink-line-strong: rgba(226, 220, 240, 0.15);
 
   /* ─── Bone · 羊皮纸文字 ─── */
-  --bone:         #E8E2D0;                          /* 主文字 · 略偏暖的羊皮纸 */
-  --bone-dim:     rgba(232, 226, 208, 0.62);
-  --bone-faint:   rgba(232, 226, 208, 0.36);
-  --bone-whisper: rgba(232, 226, 208, 0.18);
+  --bone:         #EAE4D4;                          /* 主文字 · 暖象牙 */
+  --bone-dim:     rgba(234, 228, 212, 0.64);
+  --bone-faint:   rgba(234, 228, 212, 0.38);
+  --bone-whisper: rgba(234, 228, 212, 0.18);
 
   /* ─── Moon-mist · 月雾紫（柔和冷调） ─── */
-  --mist:         rgba(184, 176, 204, 0.55);
-  --mist-faint:   rgba(184, 176, 204, 0.22);
+  --mist:         rgba(178, 168, 214, 0.6);
+  --mist-faint:   rgba(178, 168, 214, 0.24);
 
-  /* ─── Gold leaf · 金叶（唯一强调色） ─── */
+  /* ─── Celestial · 星辰蓝（第二强调色 · 月光） ─── */
+  --celestial:       #8B9FD4;
+  --celestial-dim:   rgba(139, 159, 212, 0.5);
+  --celestial-faint: rgba(139, 159, 212, 0.16);
+  --celestial-glow:  rgba(139, 159, 212, 0.28);
+
+  /* ─── Gold leaf · 金叶（主强调色） ─── */
   --gold:         #C9A961;                          /* 主金 */
-  --gold-warm:    #D4B873;                          /* 高光金 */
+  --gold-warm:    #DBBF7A;                          /* 高光金 · 更暖 */
+  --gold-pale:    #E8D5A3;                          /* 极亮金 · 箔面反光 */
   --gold-dim:     rgba(201, 169, 97, 0.55);
   --gold-faint:   rgba(201, 169, 97, 0.22);
-  --gold-glow:    rgba(212, 184, 115, 0.35);        /* 光晕 */
+  --gold-glow:    rgba(212, 184, 115, 0.38);        /* 光晕 */
+  --gold-ember:   rgba(201, 138, 67, 0.4);          /* 余烬 · 警示金 */
 
   /* ─── Surfaces ─── */
   --background: var(--ink-deep);
   --foreground: var(--bone);
 
   /* ─── Type ─── */
-  --font-display: var(--font-cinzel);               /* 标题 / 标签 */
-  --font-body:    var(--font-cormorant);            /* 正文 / 副标题 */
+  --font-display: var(--font-cinzel-decorative);    /* 英雄标题 · 装饰碑刻 */
+  --font-heading: var(--font-marcellus);            /* 章节标题 / 标签 */
+  --font-body:    var(--font-spectral);             /* 正文 / 副标题 */
 
-  /* ─── Easing · 仪式揭幕的柔缓曲线 ─── */
+  /* ─── Easing · 剧场幕布的运动曲线 ─── */
   --ease-ritual: cubic-bezier(0.4, 0, 0.2, 1);      /* 标准缓动 */
   --ease-veil:   cubic-bezier(0.16, 1, 0.3, 1);     /* 揭幕缓动 · 长尾舒展 */
   --ease-deep:   cubic-bezier(0.65, 0, 0.35, 1);    /* 深沉缓动 */
+  --ease-curtain: cubic-bezier(0.77, 0, 0.175, 1);  /* 幕布缓动 · 对称戏剧 */
 
   /* ─── Durations ─── */
-  --dur-quick:  240ms;
-  --dur-soft:   500ms;
+  --dur-quick:  200ms;
+  --dur-soft:   450ms;
   --dur-ritual: 700ms;
-  --dur-veil:   900ms;
+  --dur-veil:   950ms;
+  --dur-curtain: 1300ms;
+
+  /* ─── Texture · 材质 ─── */
+  --grain-opacity: 0.028;
+  --noise-url: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --font-sans:   var(--font-cormorant);             /* 默认 sans 也指向衬线，保持气质 */
-  --font-serif:  var(--font-cormorant);
-  --font-display: var(--font-cinzel);
+  --font-sans:   var(--font-spectral);
+  --font-serif:  var(--font-spectral);
+  --font-display: var(--font-cinzel-decorative);
+  --font-heading: var(--font-marcellus);
   --font-mono:   var(--font-geist-mono);
 
   --color-ink-void:     var(--ink-void);
   --color-ink-deep:     var(--ink-deep);
   --color-ink-veil:     var(--ink-veil);
+  --color-ink-surface:  var(--ink-surface);
   --color-ink-burgundy: var(--ink-burgundy);
+  --color-ink-indigo:   var(--ink-indigo);
 
-  --color-bone:    var(--bone);
-  --color-mist:    var(--mist);
-  --color-gold:    var(--gold);
+  --color-bone:      var(--bone);
+  --color-mist:      var(--mist);
+  --color-gold:      var(--gold);
+  --color-gold-warm: var(--gold-warm);
+  --color-gold-pale: var(--gold-pale);
+  --color-celestial: var(--celestial);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -80,14 +103,13 @@
 html, body {
   background: var(--ink-deep);
   color: var(--bone);
-  /* 正文：Cormorant Garamond + 中文衬线回落 */
   font-family:
-    var(--font-cormorant),
+    var(--font-spectral),
     "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC",
     "Times New Roman", serif;
   font-weight: 300;
   font-feature-settings: "liga" 1, "kern" 1;
-  letter-spacing: 0.012em;
+  letter-spacing: 0.014em;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -95,42 +117,83 @@ html, body {
 
 body { overflow-x: hidden; }
 
-/* 背景氛围：中央微弱烛光 + 深紫红晕染 */
+/* 背景氛围：多层深空渐变 — 顶部星图靛蓝 + 中央烛金 + 底部紫红深渊 */
 .bg-vignette {
   background:
-    radial-gradient(ellipse 80% 60% at 50% 30%,
-      rgba(201, 169, 97, 0.04) 0%,
+    radial-gradient(ellipse 90% 50% at 50% -5%,
+      rgba(13, 18, 38, 0.7) 0%,
       transparent 60%),
-    radial-gradient(ellipse 100% 80% at 50% 110%,
-      rgba(60, 20, 50, 0.18) 0%,
-      transparent 70%),
-    radial-gradient(ellipse 60% 100% at 0% 50%,
-      rgba(26, 14, 26, 0.5) 0%,
-      transparent 60%);
+    radial-gradient(ellipse 70% 50% at 50% 35%,
+      rgba(201, 169, 97, 0.035) 0%,
+      transparent 55%),
+    radial-gradient(ellipse 120% 70% at 50% 115%,
+      rgba(28, 14, 32, 0.5) 0%,
+      transparent 65%),
+    radial-gradient(ellipse 50% 90% at -5% 50%,
+      rgba(13, 18, 38, 0.4) 0%,
+      transparent 55%),
+    radial-gradient(ellipse 50% 90% at 105% 50%,
+      rgba(28, 14, 32, 0.35) 0%,
+      transparent 55%);
 }
 
-/* 标题：Cinzel + 中文衬线 */
+/* 颗粒噪点覆层 · 赋予画面胶片质感 */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: var(--grain-opacity);
+  background-image: var(--noise-url);
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+
+/* 标题：Marcellus 古典 + 中文衬线 */
 h1, h2, h3, h4, h5, h6 {
   font-family:
-    var(--font-cinzel),
+    var(--font-marcellus),
     "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC",
     serif;
   font-weight: 400;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Surfaces & Hairlines
+   Surfaces & Hairlines · 层叠帷幕
    ═══════════════════════════════════════════════════════════════ */
 
 .ink-panel {
-  background: var(--ink-veil);
+  background:
+    linear-gradient(175deg,
+      rgba(19, 16, 34, 0.9) 0%,
+      rgba(14, 11, 24, 0.95) 100%);
   border: 1px solid var(--ink-line);
+  box-shadow:
+    0 1px 0 0 rgba(226, 220, 240, 0.04) inset,
+    0 24px 48px -24px rgba(4, 3, 8, 0.8);
 }
 
 .ink-panel-quiet {
-  background: transparent;
+  background: rgba(14, 11, 24, 0.45);
   border: 1px solid var(--ink-line);
+  box-shadow: 0 1px 0 0 rgba(226, 220, 240, 0.03) inset;
+  backdrop-filter: blur(8px);
+}
+
+/* 仪式面板 · 带顶部金线的高阶容器 */
+.ink-panel-ritual {
+  background:
+    linear-gradient(178deg,
+      rgba(201, 169, 97, 0.03) 0%,
+      rgba(14, 11, 24, 0.6) 3%,
+      rgba(14, 11, 24, 0.5) 100%);
+  border: 1px solid var(--ink-line);
+  border-top-color: var(--gold-faint);
+  box-shadow:
+    0 1px 0 0 rgba(201, 169, 97, 0.08) inset,
+    0 32px 64px -32px rgba(4, 3, 8, 0.9);
+  backdrop-filter: blur(12px);
 }
 
 /* Hairline · 0.5px 极细边框（用 box-shadow inset 在高 DPI 屏幕渲染） */
@@ -146,6 +209,10 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: inset 0 0 0 0.5px var(--gold-dim);
   border: 0;
 }
+.hairline-celestial {
+  box-shadow: inset 0 0 0 0.5px var(--celestial-dim);
+  border: 0;
+}
 .hairline-bottom {
   box-shadow: inset 0 -0.5px 0 0 var(--ink-line);
   border: 0;
@@ -155,7 +222,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 0;
 }
 
-/* ─── Lines ─── */
+/* ─── Lines & Ornaments ─── */
 .rule-h {
   height: 1px;
   background: var(--ink-line);
@@ -175,13 +242,50 @@ h1, h2, h3, h4, h5, h6 {
     var(--gold-dim) 50%,
     transparent);
 }
+.rule-h-celestial {
+  height: 1px;
+  background: linear-gradient(to right,
+    transparent,
+    var(--celestial-dim) 50%,
+    transparent);
+}
 .rule-v {
   width: 1px;
   background: var(--ink-line);
 }
 
+/* 装饰分隔线 · 中央菱形纹章 */
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.ornament-divider::before,
+.ornament-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to var(--orn-dir, right), transparent, var(--gold-faint));
+}
+.ornament-divider::before { --orn-dir: right; }
+.ornament-divider::after  { --orn-dir: left; }
+.ornament-divider > .ornament-gem {
+  width: 7px;
+  height: 7px;
+  border: 0.5px solid var(--gold-dim);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  transition: border-color var(--dur-soft) var(--ease-ritual),
+              box-shadow var(--dur-soft) var(--ease-ritual);
+}
+.group:hover .ornament-divider > .ornament-gem,
+.ornament-divider:hover > .ornament-gem {
+  border-color: var(--gold);
+  box-shadow: 0 0 8px -2px var(--gold-glow);
+}
+
 /* ═══════════════════════════════════════════════════════════════
-   Buttons · 矩形 · 极细边框 · 慢速过渡
+   Buttons · 仪式触发器
    ═══════════════════════════════════════════════════════════════ */
 
 .btn-ink {
@@ -193,11 +297,12 @@ h1, h2, h3, h4, h5, h6 {
     border-color var(--dur-soft) var(--ease-ritual),
     color        var(--dur-soft) var(--ease-ritual),
     background   var(--dur-soft) var(--ease-ritual),
+    box-shadow   var(--dur-soft) var(--ease-ritual),
     letter-spacing var(--dur-ritual) var(--ease-veil);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  font-family: var(--font-cinzel), "Songti SC", "STSong", serif;
-  font-size: 0.9375rem;     /* 15px · 中文按钮可读 */
+  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
+  font-size: 0.9375rem;
   font-weight: 400;
   position: relative;
 }
@@ -205,7 +310,8 @@ h1, h2, h3, h4, h5, h6 {
 .btn-ink:hover:not(:disabled) {
   border-color: var(--gold-dim);
   color: var(--gold);
-  letter-spacing: 0.26em;
+  letter-spacing: 0.24em;
+  box-shadow: 0 0 20px -10px var(--gold-glow);
 }
 
 .btn-ink:disabled {
@@ -214,7 +320,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-ink-primary {
-  background: transparent;
+  background: linear-gradient(178deg,
+    rgba(201, 169, 97, 0.08) 0%,
+    rgba(201, 169, 97, 0.02) 100%);
   border: 1px solid var(--gold-dim);
   color: var(--gold);
   border-radius: 0;
@@ -224,22 +332,47 @@ h1, h2, h3, h4, h5, h6 {
     background   var(--dur-soft) var(--ease-ritual),
     box-shadow   var(--dur-ritual) var(--ease-veil),
     letter-spacing var(--dur-ritual) var(--ease-veil);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  font-family: var(--font-cinzel), "Songti SC", "STSong", serif;
-  font-size: 0.9375rem;     /* 15px · 中文按钮可读 */
+  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
+  font-size: 0.9375rem;
   font-weight: 400;
   position: relative;
+  overflow: hidden;
+}
+
+/* 金箔扫光 · hover 时从左至右 */
+.btn-ink-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(105deg,
+    transparent 0%,
+    rgba(232, 213, 163, 0.06) 45%,
+    rgba(232, 213, 163, 0.12) 50%,
+    rgba(232, 213, 163, 0.06) 55%,
+    transparent 100%);
+  transition: left 800ms var(--ease-veil);
+  pointer-events: none;
 }
 
 .btn-ink-primary:hover:not(:disabled) {
   border-color: var(--gold);
   color: var(--gold-warm);
-  background: rgba(201, 169, 97, 0.05);
+  background: linear-gradient(178deg,
+    rgba(201, 169, 97, 0.12) 0%,
+    rgba(201, 169, 97, 0.04) 100%);
   box-shadow:
-    0 0 24px -8px var(--gold-glow),
+    0 0 28px -8px var(--gold-glow),
     inset 0 0 24px -16px var(--gold-faint);
-  letter-spacing: 0.26em;
+  letter-spacing: 0.24em;
+}
+
+.btn-ink-primary:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .btn-ink-primary:disabled {
@@ -253,16 +386,16 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--bone-faint);
   transition: color var(--dur-soft) var(--ease-ritual),
               letter-spacing var(--dur-ritual) var(--ease-veil);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  font-family: var(--font-cinzel), "Songti SC", "STSong", serif;
-  font-size: 0.875rem;      /* 14px · ghost 按钮也保持可读 */
+  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
+  font-size: 0.875rem;
   border-radius: 0;
 }
 
 .btn-ink-ghost:hover:not(:disabled) {
   color: var(--bone);
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -277,40 +410,63 @@ h1, h2, h3, h4, h5, h6 {
 .text-mist-faint { color: var(--mist-faint); }
 .text-gold { color: var(--gold); }
 .text-gold-warm { color: var(--gold-warm); }
+.text-gold-pale { color: var(--gold-pale); }
 .text-gold-dim { color: var(--gold-dim); }
+.text-celestial { color: var(--celestial); }
+.text-celestial-dim { color: var(--celestial-dim); }
 
 .tracking-mystic { letter-spacing: 0.32em; }
 .tracking-quiet  { letter-spacing: 0.2em; }
 .tracking-veil   { letter-spacing: 0.45em; }
 
-/* ─── 中文小标签 · 字号充足 / 字间距收敛 ─── */
-/* 西文小标签可继续用 text-[10px] tracking-veil；
-   中文请用下列类，避免笔画在大间距小字号下不可辨 */
+/* 金箔文字 · 用于英雄标题 */
+.text-gold-foil {
+  background: linear-gradient(
+    168deg,
+    var(--gold-pale) 0%,
+    var(--gold) 30%,
+    var(--gold-warm) 50%,
+    var(--gold) 70%,
+    rgba(201, 169, 97, 0.7) 100%
+  );
+  background-size: 100% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: foil-shift 8s var(--ease-deep) infinite alternate;
+}
 
+@keyframes foil-shift {
+  from { background-position: 0% 0%; }
+  to   { background-position: 0% 60%; }
+}
+
+/* ─── 中文小标签 ─── */
 .cn-nav {
-  font-family: var(--font-cinzel), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
-  font-size: 0.8125rem;     /* 13px */
+  font-family: var(--font-marcellus), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  font-size: 0.8125rem;
   letter-spacing: 0.22em;
   font-weight: 400;
 }
 
 .cn-label {
-  font-family: var(--font-cinzel), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
-  font-size: 0.75rem;       /* 12px */
+  font-family: var(--font-marcellus), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  font-size: 0.75rem;
   letter-spacing: 0.18em;
   font-weight: 400;
 }
 
 .cn-hint {
-  font-family: var(--font-cinzel), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
-  font-size: 0.6875rem;     /* 11px */
+  font-family: var(--font-marcellus), "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  font-size: 0.6875rem;
   letter-spacing: 0.16em;
   font-weight: 400;
 }
 
 /* 字体类 */
-.font-display { font-family: var(--font-cinzel), "Songti SC", "STSong", serif; }
-.font-body    { font-family: var(--font-cormorant), "Songti SC", "STSong", serif; }
+.font-display { font-family: var(--font-cinzel-decorative), "Songti SC", "STSong", serif; }
+.font-heading { font-family: var(--font-marcellus), "Songti SC", "STSong", serif; }
+.font-body    { font-family: var(--font-spectral), "Songti SC", "STSong", serif; }
 
 /* 装饰性细节 */
 .italic-soft  { font-style: italic; font-weight: 300; }
@@ -320,20 +476,24 @@ h1, h2, h3, h4, h5, h6 {
    ═══════════════════════════════════════════════════════════════ */
 
 .input-ink {
-  background: transparent;
+  background: rgba(14, 11, 24, 0.3);
   border: none;
   border-bottom: 1px solid var(--ink-line);
   color: var(--bone);
-  padding: 0.85rem 0;
-  transition: border-color var(--dur-soft) var(--ease-ritual);
+  padding: 0.85rem 0.75rem;
+  transition: border-color var(--dur-soft) var(--ease-ritual),
+              background var(--dur-soft) var(--ease-ritual),
+              box-shadow var(--dur-soft) var(--ease-ritual);
   width: 100%;
-  font-family: var(--font-cormorant), "Songti SC", serif;
+  font-family: var(--font-spectral), "Songti SC", serif;
   border-radius: 0;
 }
 
 .input-ink:focus {
   outline: none;
   border-bottom-color: var(--gold-dim);
+  background: rgba(14, 11, 24, 0.5);
+  box-shadow: 0 1px 0 0 var(--gold-faint);
 }
 
 .input-ink::placeholder {
@@ -345,7 +505,7 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   border: none;
   color: var(--bone);
-  font-family: var(--font-cormorant), "Songti SC", serif;
+  font-family: var(--font-spectral), "Songti SC", serif;
   border-radius: 0;
 }
 
@@ -359,7 +519,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Animations · 仪式揭幕 · 节奏偏慢 · cubic-bezier 柔缓
+   Animations · 剧场揭幕 · 层次节奏
    ═══════════════════════════════════════════════════════════════ */
 
 @keyframes fade-in {
@@ -368,18 +528,25 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes veil-rise {
-  from { opacity: 0; transform: translateY(16px); filter: blur(2px); }
+  from { opacity: 0; transform: translateY(18px); filter: blur(3px); }
   to   { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
+/* 幕布揭幕 · 从 scaleY 展开，用于大区块 */
+@keyframes curtain-open {
+  from { opacity: 0; transform: scaleY(0.92) translateY(10px); transform-origin: top center; filter: blur(4px); }
+  to   { opacity: 1; transform: scaleY(1) translateY(0); transform-origin: top center; filter: blur(0); }
+}
+
 @keyframes drift {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33%      { transform: translateY(-7px) rotate(1deg); }
+  66%      { transform: translateY(-3px) rotate(-0.5deg); }
 }
 
 @keyframes whisper {
@@ -389,7 +556,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @keyframes glow-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 97, 0); }
-  50%      { box-shadow: 0 0 32px -4px var(--gold-glow); }
+  50%      { box-shadow: 0 0 36px -4px var(--gold-glow); }
 }
 
 @keyframes word-reveal {
@@ -397,12 +564,27 @@ h1, h2, h3, h4, h5, h6 {
   to   { opacity: 1; filter: blur(0); }
 }
 
+/* 星辰闪烁 · 用于装饰符号 */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.15); }
+}
+
+/* 月相旋转 · 极慢 */
+@keyframes lunar-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 .anim-fade-in    { animation: fade-in     var(--dur-veil) var(--ease-veil) forwards; }
 .anim-fade-in-up { animation: fade-in-up  var(--dur-veil) var(--ease-veil) forwards; }
 .anim-veil-rise  { animation: veil-rise   var(--dur-veil) var(--ease-veil) forwards; }
-.anim-drift      { animation: drift 9s var(--ease-deep) infinite; }
+.anim-curtain    { animation: curtain-open var(--dur-curtain) var(--ease-curtain) forwards; }
+.anim-drift      { animation: drift 11s var(--ease-deep) infinite; }
 .anim-whisper    { animation: whisper 4s var(--ease-deep) infinite; }
-.anim-glow-pulse { animation: glow-pulse 4s var(--ease-deep) infinite; }
+.anim-glow-pulse { animation: glow-pulse 4.5s var(--ease-deep) infinite; }
+.anim-twinkle    { animation: star-twinkle 3.2s var(--ease-deep) infinite; }
+.anim-lunar      { animation: lunar-spin 120s linear infinite; }
 
 /* Stagger reveal · 用于段落、列表项 */
 .anim-stagger > * {
@@ -410,16 +592,16 @@ h1, h2, h3, h4, h5, h6 {
   animation: veil-rise var(--dur-veil) var(--ease-veil) forwards;
 }
 .anim-stagger > *:nth-child(1)  { animation-delay: 80ms; }
-.anim-stagger > *:nth-child(2)  { animation-delay: 200ms; }
-.anim-stagger > *:nth-child(3)  { animation-delay: 320ms; }
-.anim-stagger > *:nth-child(4)  { animation-delay: 440ms; }
-.anim-stagger > *:nth-child(5)  { animation-delay: 560ms; }
-.anim-stagger > *:nth-child(6)  { animation-delay: 680ms; }
-.anim-stagger > *:nth-child(7)  { animation-delay: 800ms; }
-.anim-stagger > *:nth-child(8)  { animation-delay: 920ms; }
-.anim-stagger > *:nth-child(9)  { animation-delay: 1040ms; }
-.anim-stagger > *:nth-child(10) { animation-delay: 1160ms; }
-.anim-stagger > *:nth-child(n+11) { animation-delay: 1280ms; }
+.anim-stagger > *:nth-child(2)  { animation-delay: 220ms; }
+.anim-stagger > *:nth-child(3)  { animation-delay: 360ms; }
+.anim-stagger > *:nth-child(4)  { animation-delay: 500ms; }
+.anim-stagger > *:nth-child(5)  { animation-delay: 640ms; }
+.anim-stagger > *:nth-child(6)  { animation-delay: 780ms; }
+.anim-stagger > *:nth-child(7)  { animation-delay: 920ms; }
+.anim-stagger > *:nth-child(8)  { animation-delay: 1060ms; }
+.anim-stagger > *:nth-child(9)  { animation-delay: 1200ms; }
+.anim-stagger > *:nth-child(10) { animation-delay: 1340ms; }
+.anim-stagger > *:nth-child(n+11) { animation-delay: 1480ms; }
 
 /* ═══════════════════════════════════════════════════════════════
    3D Tarot Card · 翻牌仪式
@@ -431,7 +613,7 @@ h1, h2, h3, h4, h5, h6 {
 .rotate-y-180       { transform: rotateY(180deg); }
 
 .card-flip {
-  transition: transform 800ms var(--ease-veil);
+  transition: transform 850ms var(--ease-curtain);
 }
 
 /* 牌面光晕 · 揭示后的金色辉光 */
@@ -439,7 +621,8 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow:
     0 0 0 0.5px var(--gold-dim),
     0 0 32px -8px var(--gold-glow),
-    0 0 80px -32px var(--gold-glow);
+    0 0 80px -32px var(--gold-glow),
+    0 20px 40px -20px rgba(4, 3, 8, 0.9);
   transition: box-shadow var(--dur-veil) var(--ease-veil);
 }
 
@@ -470,7 +653,6 @@ h1, h2, h3, h4, h5, h6 {
   outline-offset: 2px;
 }
 
-/* “点击”不显示 outline，“键盘 Tab”才显示 */
 :focus:not(:focus-visible) {
   outline: none;
 }
@@ -488,7 +670,7 @@ h1, h2, h3, h4, h5, h6 {
   margin-left: 0.3rem;
   vertical-align: text-bottom;
   animation: cursor-pulse 1.4s var(--ease-deep) infinite;
-  box-shadow: 0 0 8px var(--gold-glow);
+  box-shadow: 0 0 10px var(--gold-glow);
 }
 
 @keyframes cursor-pulse {
@@ -511,19 +693,16 @@ h1, h2, h3, h4, h5, h6 {
 .interpretation-reveal > *:nth-child(8)  { animation-delay: 1180ms; }
 .interpretation-reveal > *:nth-child(n+9){ animation-delay: 1340ms; }
 
-/* 流式过程中保持稳定，仅由光标提示进度 ——
-   实际「逐词显现」由 LLM token 流式自然产生 */
+/* 流式过程中保持稳定 */
 .interpretation-streaming {
   animation: fade-in var(--dur-soft) var(--ease-veil);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Ambient field · 环境氛围层（烛火 / 雾气 / 粒子）
-   仅做"几乎不被察觉"的氛围补足，不要喧宾夺主
+   Ambient field · 环境氛围层（星尘 / 雾幕 / 烛光 / 星座连线）
    ═══════════════════════════════════════════════════════════════ */
 
-/* 烛火光晕 · 跟随鼠标的柔和金色径向渐变
-   --mx / --my 由 JS 实时写入；transition 让它在停止时缓缓追上 */
+/* 烛火光晕 · 跟随鼠标的柔和金色径向渐变 */
 .candle-aura {
   position: fixed;
   inset: 0;
@@ -531,10 +710,11 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 0;
   background:
     radial-gradient(
-      420px circle at var(--mx, 50%) var(--my, 35%),
-      rgba(212, 184, 115, 0.07) 0%,
-      rgba(212, 184, 115, 0.035) 25%,
-      transparent 60%
+      480px circle at var(--mx, 50%) var(--my, 35%),
+      rgba(212, 184, 115, 0.08) 0%,
+      rgba(212, 184, 115, 0.04) 25%,
+      rgba(139, 159, 212, 0.02) 45%,
+      transparent 65%
     );
   transition: background 900ms var(--ease-veil);
   mix-blend-mode: screen;
@@ -546,7 +726,7 @@ h1, h2, h3, h4, h5, h6 {
   to { opacity: 1; }
 }
 
-/* 雾气层 · 极慢的水平漂移，几乎不可见 */
+/* 雾幕层 · 双色漂移（紫红 + 靛蓝星辰） */
 .mist-veil {
   position: fixed;
   inset: -10% -20%;
@@ -554,12 +734,14 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 0;
   background:
     radial-gradient(ellipse 50% 30% at 20% 60%,
-      rgba(184, 176, 204, 0.05) 0%, transparent 70%),
+      rgba(178, 168, 214, 0.05) 0%, transparent 70%),
     radial-gradient(ellipse 40% 25% at 80% 40%,
-      rgba(60, 20, 50, 0.08) 0%, transparent 70%),
+      rgba(28, 14, 32, 0.1) 0%, transparent 70%),
     radial-gradient(ellipse 35% 20% at 50% 90%,
-      rgba(201, 169, 97, 0.04) 0%, transparent 70%);
-  animation: mist-drift 48s var(--ease-deep) infinite alternate;
+      rgba(201, 169, 97, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 35% at 70% 15%,
+      rgba(13, 18, 38, 0.12) 0%, transparent 70%);
+  animation: mist-drift 52s var(--ease-deep) infinite alternate;
   will-change: transform;
 }
 
@@ -569,7 +751,7 @@ h1, h2, h3, h4, h5, h6 {
   100% { transform: translate3d(2%, 1.5%, 0)    scale(1.02); opacity: 0.9; }
 }
 
-/* 粒子 canvas · 全屏低 z-index，靠 JS 绘制 */
+/* 粒子 canvas · 全屏低 z-index */
 .particle-field {
   position: fixed;
   inset: 0;
@@ -583,14 +765,13 @@ h1, h2, h3, h4, h5, h6 {
    Tarot card · 增强（视差 / shimmer / 呼吸 halo）
    ═══════════════════════════════════════════════════════════════ */
 
-/* 视差容器：让卡片获得真正的 3D 触感 */
 .card-parallax {
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition: transform 600ms var(--ease-veil);
   will-change: transform;
 }
 .card-parallax.is-tracking {
-  transition: transform 120ms linear;   /* 跟手时缩短 transition */
+  transition: transform 120ms linear;
 }
 
 /* 翻牌时的金箔反光 · 一次性扫过 */
@@ -602,7 +783,7 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0;
 }
 .card-shimmer.is-active {
-  animation: shimmer-sweep 1200ms var(--ease-veil) forwards;
+  animation: shimmer-sweep 1300ms var(--ease-veil) forwards;
 }
 .card-shimmer::before {
   content: '';
@@ -615,16 +796,18 @@ h1, h2, h3, h4, h5, h6 {
     115deg,
     transparent 0%,
     transparent 35%,
-    rgba(212, 184, 115, 0.18) 50%,
-    rgba(232, 226, 208, 0.28) 52%,
-    rgba(212, 184, 115, 0.18) 54%,
+    rgba(232, 213, 163, 0.14) 46%,
+    rgba(212, 184, 115, 0.22) 50%,
+    rgba(234, 228, 212, 0.3) 52%,
+    rgba(212, 184, 115, 0.22) 54%,
+    rgba(232, 213, 163, 0.14) 58%,
     transparent 70%,
     transparent 100%
   );
   transform: translateX(0);
 }
 .card-shimmer.is-active::before {
-  animation: shimmer-translate 1200ms var(--ease-veil) forwards;
+  animation: shimmer-translate 1300ms var(--ease-veil) forwards;
 }
 
 @keyframes shimmer-sweep {
@@ -639,7 +822,7 @@ h1, h2, h3, h4, h5, h6 {
   to   { transform: translateX(320%) skewX(-8deg); }
 }
 
-/* 揭示后 halo 升级：在原有金光基础上加微弱呼吸 */
+/* 揭示后 halo 呼吸 */
 .card-halo-breathe {
   animation: halo-breathe 5.6s var(--ease-deep) infinite;
 }
@@ -649,13 +832,15 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow:
       0 0 0 0.5px var(--gold-dim),
       0 0 24px -10px var(--gold-glow),
-      0 0 60px -28px var(--gold-glow);
+      0 0 60px -28px var(--gold-glow),
+      0 20px 40px -20px rgba(4, 3, 8, 0.9);
   }
   50% {
     box-shadow:
       0 0 0 0.5px var(--gold),
-      0 0 40px -8px var(--gold-glow),
-      0 0 100px -28px var(--gold-glow);
+      0 0 44px -8px var(--gold-glow),
+      0 0 110px -28px var(--gold-glow),
+      0 20px 40px -20px rgba(4, 3, 8, 0.9);
   }
 }
 
@@ -676,37 +861,39 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: inset 0 0 0 0.5px var(--gold-faint);
   background: linear-gradient(180deg,
     rgba(201, 169, 97, 0.02) 0%,
-    rgba(201, 169, 97, 0.06) 100%);
+    rgba(201, 169, 97, 0.07) 100%);
   transition: box-shadow var(--dur-soft) var(--ease-ritual),
               color      var(--dur-soft) var(--ease-ritual),
               background var(--dur-soft) var(--ease-ritual);
 }
 .glyph-card:hover,
 .glyph-position:hover {
-  color: var(--gold);
+  color: var(--gold-pale);
   box-shadow: inset 0 0 0 0.5px var(--gold-dim),
-              0 0 12px -4px var(--gold-glow);
-  background: rgba(201, 169, 97, 0.08);
+              0 0 14px -4px var(--gold-glow);
+  background: rgba(201, 169, 97, 0.1);
 }
 .glyph-position {
-  color: var(--mist);
-  box-shadow: inset 0 0 0 0.5px rgba(184, 176, 204, 0.18);
-  background: transparent;
+  color: var(--celestial);
+  box-shadow: inset 0 0 0 0.5px var(--celestial-faint);
+  background: linear-gradient(180deg,
+    rgba(139, 159, 212, 0.02) 0%,
+    rgba(139, 159, 212, 0.06) 100%);
 }
 .glyph-position:hover {
   color: var(--bone);
-  box-shadow: inset 0 0 0 0.5px rgba(184, 176, 204, 0.4);
+  box-shadow: inset 0 0 0 0.5px var(--celestial-dim),
+              0 0 14px -4px var(--celestial-glow);
 }
 
-/* 墨迹揭幕 · 替换 word-reveal 的逐段动画
-   用 mask-image 让文本像被墨水从左浸染过来 */
+/* 墨迹揭幕 · mask-image 让文本像被墨水从左浸染过来 */
 .interpretation-reveal > * {
   -webkit-mask-image: linear-gradient(90deg,
     #000 0%, #000 var(--mp, 0%), transparent calc(var(--mp, 0%) + 18%));
           mask-image: linear-gradient(90deg,
     #000 0%, #000 var(--mp, 0%), transparent calc(var(--mp, 0%) + 18%));
   animation: ink-bleed var(--dur-veil) var(--ease-veil) forwards;
-  opacity: 1; /* 覆盖原来的 opacity: 0，由 mask 接管显现 */
+  opacity: 1;
   filter: none;
 }
 
@@ -750,10 +937,10 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   color: var(--gold);
-  font-family: var(--font-cinzel), serif;
+  font-family: var(--font-marcellus), serif;
   font-size: 1.25rem;
   letter-spacing: 0;
-  text-shadow: 0 0 12px var(--gold-glow);
+  text-shadow: 0 0 14px var(--gold-glow);
 }
 .sigil-seal > .sigil-ring-tick {
   position: absolute;
@@ -808,8 +995,6 @@ h1, h2, h3, h4, h5, h6 {
   pointer-events: none;
 }
 
-/* 使用者可按需覆盖颜色 · 默认 ink-veil；需要颜色差异时传 style/className */
-
 /* ═══════════════════════════════════════════════════════════════
    Reduced motion · 尊重系统设置
    ═══════════════════════════════════════════════════════════════ */
@@ -818,13 +1003,16 @@ h1, h2, h3, h4, h5, h6 {
   .anim-drift,
   .anim-whisper,
   .anim-glow-pulse,
+  .anim-twinkle,
+  .anim-lunar,
   .card-halo-breathe,
   .mist-veil,
   .particle-field,
   .card-shimmer.is-active,
   .card-shimmer.is-active::before,
   .skeleton-base,
-  .skeleton-base::after {
+  .skeleton-base::after,
+  .text-gold-foil {
     animation: none !important;
   }
   .skeleton-base { opacity: 0.72; }
@@ -845,9 +1033,6 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ═══════════════════════════════════════════════════════════════
    Celtic Cross Grid · 凯尔特十字空间布局
-   移动端：3列紧凑十字（上）+ 2×2 牌柱（下）
-   桌面（≥768px）：7列 x 5行，左侧十字 + 右侧四牌柱
-   各牌坐标由 .celtic-pos-N 按断点定义（grid-area: 行 / 列）
    ═══════════════════════════════════════════════════════════════ */
 
 .celtic-cross-grid {
@@ -859,17 +1044,16 @@ h1, h2, h3, h4, h5, h6 {
   padding: 1.5rem 0;
 }
 
-/* 移动端坐标 · 十字 3×3 + 牌柱 2×2 */
-.celtic-pos-0 { grid-area: 2 / 2; } /* 现状 · 中央 */
-.celtic-pos-1 { grid-area: 2 / 2; } /* 挑战 · 横置覆盖中央 */
-.celtic-pos-2 { grid-area: 2 / 1; } /* 过去 · 左 */
-.celtic-pos-3 { grid-area: 2 / 3; } /* 未来 · 右 */
-.celtic-pos-4 { grid-area: 1 / 2; } /* 目标 · 上 */
-.celtic-pos-5 { grid-area: 3 / 2; } /* 潜意识 · 下 */
-.celtic-pos-6 { grid-area: 4 / 1; } /* 建议 */
-.celtic-pos-7 { grid-area: 4 / 3; } /* 外部影响 */
-.celtic-pos-8 { grid-area: 5 / 1; } /* 希望与恐惧 */
-.celtic-pos-9 { grid-area: 5 / 3; } /* 最终结果 */
+.celtic-pos-0 { grid-area: 2 / 2; }
+.celtic-pos-1 { grid-area: 2 / 2; }
+.celtic-pos-2 { grid-area: 2 / 1; }
+.celtic-pos-3 { grid-area: 2 / 3; }
+.celtic-pos-4 { grid-area: 1 / 2; }
+.celtic-pos-5 { grid-area: 3 / 2; }
+.celtic-pos-6 { grid-area: 4 / 1; }
+.celtic-pos-7 { grid-area: 4 / 3; }
+.celtic-pos-8 { grid-area: 5 / 1; }
+.celtic-pos-9 { grid-area: 5 / 3; }
 
 @media (min-width: 768px) {
   .celtic-cross-grid {
@@ -889,7 +1073,6 @@ h1, h2, h3, h4, h5, h6 {
   .celtic-pos-9 { grid-area: 1 / 7; }
 }
 
-/* 十字中心的挑战牌 (index 1) 旋转 90°，需要额外的空间 */
 .celtic-cross-cell {
   min-height: 120px;
   display: flex;
@@ -905,4 +1088,212 @@ h1, h2, h3, h4, h5, h6 {
   .card-name-overlay {
     opacity: 1 !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Bold Layout · 非对称构图工具
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 垂直文字 · 用于侧边导航和装饰标签 */
+.text-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+.text-vertical-up {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+
+/* 出血容器 · 元素突破父容器边界 */
+.bleed-right {
+  margin-right: calc(-50vw + 50%);
+  padding-right: calc(50vw - 50%);
+}
+.bleed-left {
+  margin-left: calc(-50vw + 50%);
+  padding-left: calc(50vw - 50%);
+}
+
+/* 巨型字号 · 戏剧性对比 */
+.text-colossal {
+  font-size: clamp(4rem, 12vw, 10rem);
+  line-height: 0.85;
+  letter-spacing: -0.02em;
+}
+.text-massive {
+  font-size: clamp(2.5rem, 7vw, 6rem);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+}
+.text-tiny {
+  font-size: 0.625rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+/* 非对称网格 · 首页主布局 */
+.grid-asymmetric {
+  display: grid;
+  grid-template-columns: 1fr 1.618fr;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  gap: 0;
+}
+@media (max-width: 768px) {
+  .grid-asymmetric {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto;
+  }
+}
+
+/* 悬浮卡片 · 带深度阴影和微倾斜 */
+.float-card {
+  transform: perspective(1200px) rotateY(-3deg) rotateX(2deg);
+  transition: transform 800ms var(--ease-veil),
+              box-shadow 800ms var(--ease-veil);
+  box-shadow:
+    0 32px 64px -16px rgba(4, 3, 8, 0.8),
+    0 0 0 0.5px var(--gold-faint),
+    -8px 8px 32px -8px rgba(201, 169, 97, 0.1);
+}
+.float-card:hover {
+  transform: perspective(1200px) rotateY(0deg) rotateX(0deg) translateY(-8px);
+  box-shadow:
+    0 48px 96px -16px rgba(4, 3, 8, 0.9),
+    0 0 0 0.5px var(--gold-dim),
+    0 0 60px -12px var(--gold-glow);
+}
+
+/* 侧边导航条 */
+.side-nav {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  z-index: 40;
+  border-right: 0.5px solid var(--ink-line);
+  background: rgba(4, 3, 8, 0.6);
+  backdrop-filter: blur(12px);
+}
+@media (max-width: 768px) {
+  .side-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    height: 56px;
+    flex-direction: row;
+    border-right: none;
+    border-top: 0.5px solid var(--ink-line);
+    gap: 0;
+    justify-content: space-around;
+  }
+}
+
+/* 视差滚动层 */
+.parallax-layer {
+  will-change: transform;
+  transition: transform 100ms linear;
+}
+
+/* 光弧装饰 · 用于大型背景装饰 */
+.arc-glow {
+  position: absolute;
+  border-radius: 50%;
+  border: 0.5px solid var(--gold-faint);
+  opacity: 0.3;
+  animation: arc-rotate 60s linear infinite;
+}
+@keyframes arc-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* 散射符号 · 绝对定位装饰元素 */
+.scatter-symbol {
+  position: absolute;
+  color: var(--gold-faint);
+  pointer-events: none;
+  user-select: none;
+  transition: color 600ms var(--ease-veil),
+              text-shadow 600ms var(--ease-veil);
+}
+.scatter-symbol:hover {
+  color: var(--gold-dim);
+  text-shadow: 0 0 12px var(--gold-glow);
+}
+
+/* 全屏分幕 · 用于 reading 等流程页 */
+.act-fullscreen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 4rem 2rem;
+}
+
+/* 画廊网格 · library 用 */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 2rem 1.5rem;
+}
+@media (min-width: 768px) {
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 3rem 2rem;
+  }
+}
+@media (min-width: 1280px) {
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+/* 时间线 · history 用 */
+.timeline-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom,
+    transparent,
+    var(--gold-faint) 10%,
+    var(--gold-faint) 90%,
+    transparent);
+}
+@media (max-width: 768px) {
+  .timeline-line {
+    left: 24px;
+  }
+}
+
+/* 对话气泡 · agent 用 */
+.chat-bubble-oracle {
+  background: linear-gradient(175deg,
+    rgba(201, 169, 97, 0.04) 0%,
+    rgba(14, 11, 24, 0.7) 8%,
+    rgba(14, 11, 24, 0.5) 100%);
+  border: 0.5px solid var(--gold-faint);
+  border-left: 2px solid var(--gold-dim);
+  backdrop-filter: blur(8px);
+}
+.chat-bubble-user {
+  background: rgba(13, 18, 38, 0.5);
+  border: 0.5px solid var(--celestial-faint);
+  border-right: 2px solid var(--celestial-dim);
+  backdrop-filter: blur(8px);
 }

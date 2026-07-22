@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Link from 'next/link';
+
 import { TarotCardComponent } from '@/components/TarotCard';
 import { InterpretationBody } from '@/components/Interpretation';
 import { DailyCardSkeleton } from '@/components/Skeletons';
@@ -31,11 +32,34 @@ function formatHumanWeekday(date: Date): string {
   return `星 期 ${WEEKDAYS_CN[date.getDay()]}`;
 }
 
+/** MM.DD · 时间线上的短日期 */
+function formatShortDate(date: Date): string {
+  return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/* ─── 关键词散落位 · 环绕主卡漂浮 ─── */
+interface KeywordSpot {
+  pos: string;
+  driftDelay: string;
+  twinkleDelay: string;
+  symbol: string;
+}
+
+const KEYWORD_SPOTS: ReadonlyArray<KeywordSpot> = [
+  { pos: 'left-[4%] top-[21%] sm:left-[12%] lg:left-[19%]', driftDelay: '0ms', twinkleDelay: '-0.6s', symbol: '✦' },
+  { pos: 'right-[3%] top-[27%] sm:right-[10%] lg:right-[17%]', driftDelay: '-3.8s', twinkleDelay: '-1.9s', symbol: '◇' },
+  { pos: 'left-[7%] bottom-[27%] sm:left-[15%] lg:left-[22%]', driftDelay: '-7.2s', twinkleDelay: '-2.7s', symbol: '✧' },
+  { pos: 'right-[6%] bottom-[21%] sm:right-[13%] lg:right-[21%]', driftDelay: '-1.6s', twinkleDelay: '-0.2s', symbol: '⊹' },
+  { pos: 'left-[24%] top-[10%] hidden md:flex lg:left-[30%]', driftDelay: '-5.4s', twinkleDelay: '-1.2s', symbol: '✦' },
+  { pos: 'right-[22%] bottom-[9%] hidden md:flex lg:right-[28%]', driftDelay: '-9.1s', twinkleDelay: '-2.2s', symbol: '◇' },
+];
+
 export default function DailyCardPage() {
   /* ─── 当前查看的日期（默认今天）
      初创为 null 避免 SSR/CSR 时区不一致造成的 hydration mismatch ─── */
   const [activeDateKey, setActiveDateKey] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<Date | null>(null);
+  const [todayKey, setTodayKey] = useState<string | null>(null);
 
   // 挂载后才取本地日期
   useEffect(() => {
@@ -43,6 +67,7 @@ export default function DailyCardPage() {
     queueMicrotask(() => {
       setActiveDate(now);
       setActiveDateKey(formatDateKey(now));
+      setTodayKey(formatDateKey(now));
     });
   }, []);
 
@@ -99,7 +124,7 @@ export default function DailyCardPage() {
     return () => window.clearTimeout(saveTimer.current);
   }, []);
 
-  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+  const handleNoteChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
     setNote(e.target.value);
     scheduleSave(e.target.value);
   };
@@ -184,12 +209,11 @@ export default function DailyCardPage() {
     [activeDate]
   );
 
-  /* ─── 计算"今天"与"是否在看过去" ─── */
-  const todayKey = useMemo(
-    () => (activeDate ? formatDateKey(activeDate) : null),
-    [activeDate]
-  );
-  const isToday = activeDateKey === todayKey;
+  // 时间线从左到右按时间正序排列（最右为结束日）
+  const timeline = useMemo(() => [...recent].reverse(), [recent]);
+
+  /* ─── 是否在看今天 ─── */
+  const isToday = activeDateKey !== null && activeDateKey === todayKey;
 
   const handleSelectDate = (draw: DailyDraw): void => {
     const d = parseDateKey(draw.dateKey);
@@ -209,90 +233,194 @@ export default function DailyCardPage() {
     return <DailyCardSkeleton />;
   }
 
+  const keywords = dailyDraw.isReversed
+    ? dailyDraw.card.keywords.reversed
+    : dailyDraw.card.keywords.upright;
+  const meaning = dailyDraw.isReversed
+    ? dailyDraw.card.meaning.reversed
+    : dailyDraw.card.meaning.upright;
+  const directionCn = dailyDraw.isReversed ? '逆 位' : '正 位';
+  const directionEn = dailyDraw.isReversed ? 'Reversed' : 'Upright';
+
   return (
-    <div className="relative min-h-screen flex flex-col px-6 md:px-10 py-10 md:py-12">
-      {/* ─── Header ─── */}
-      <header className="relative z-20 max-w-5xl w-full mx-auto mb-12">
-        <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-bone-dim hover:text-bone transition-colors duration-500 flex items-center gap-4 group"
-            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+    <div className="relative">
+      <main id="main-content">
+        {/* ═══ 第一幕 · 揭示之厅 ─── 牌是绝对主角 ─══ */}
+        <section
+          className="act-fullscreen overflow-hidden"
+          aria-label={isToday ? '今日一牌' : '昔日之牌'}
+        >
+          {/* ─── 导航 · 仅一枚返回链接，栖于左上 ─── */}
+          <header className="absolute inset-x-0 top-0 z-30 p-6 md:p-10">
+            <div className="flex items-start justify-between">
+              <div className="anim-fade-in">
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-3 text-bone-dim transition-colors duration-500 hover:text-gold-dim"
+                  style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+                >
+                  <span
+                    className="text-base transition-transform duration-700 group-hover:-translate-x-1"
+                    style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+                  >
+                    ←
+                  </span>
+                  <span className="cn-nav">返 回</span>
+                </Link>
+
+                {/* 标题 · 小而克制，让位给牌 */}
+                <h1 className="mt-8 font-heading text-sm tracking-[0.32em] text-bone md:text-base">
+                  {isToday ? '今 日 一 牌' : '昔 日 之 牌'}
+                </h1>
+                <p className="mt-3 font-heading text-tiny text-bone-whisper">
+                  {formatHumanDate(activeDate)} · {formatHumanWeekday(activeDate)}
+                </p>
+              </div>
+
+              {!isToday && (
+                <button type="button" onClick={handleBackToToday} className="btn-ink-ghost anim-fade-in">
+                  回 到 今 日
+                </button>
+              )}
+            </div>
+          </header>
+
+          {/* ─── 右缘竖排侧标 · 仪式场记 ─── */}
+          <div
+            aria-hidden
+            className="absolute right-8 top-1/2 z-20 hidden -translate-y-1/2 lg:block"
           >
-            <span
-              className="text-base group-hover:-translate-x-1 transition-transform duration-700"
-              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-            >
-              ←
+            <span className="text-vertical font-heading text-tiny text-bone-whisper">
+              {isToday ? 'CARD OF THE DAY' : 'CARD OF THE PAST'} — {formatHumanDate(activeDate)}
             </span>
-            <span className="cn-nav">返 回</span>
-          </Link>
-
-          {!isToday && (
-            <button onClick={handleBackToToday} className="btn-ink-ghost">
-              回 到 今 日
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* ─── Main ─── */}
-      <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto">
-        {/* 标题 / 日期 */}
-        <div className="text-center mb-14 anim-veil-rise">
-          <span className="text-gold text-xl anim-drift">✦</span>
-          <h1 className="font-display text-4xl md:text-5xl text-bone mt-6 mb-3 tracking-[0.22em]">
-            {isToday ? '今 日 一 牌' : '昔 日 之 牌'}
-          </h1>
-          <p className="font-display text-[11px] tracking-veil text-bone-faint uppercase mt-3">
-            Card of the Day
-          </p>
-          <div className="rule-h-gold w-20 mx-auto mt-6" />
-          <div className="mt-6 flex items-center justify-center gap-4 cn-label text-bone-dim">
-            <span className="text-gold-dim">◇</span>
-            <span>{formatHumanDate(activeDate)}</span>
-            <span className="w-3 h-px bg-[var(--ink-line)]" />
-            <span>{formatHumanWeekday(activeDate)}</span>
-          </div>
-          {isToday && (
-            <p className="font-body italic-soft text-bone-whisper text-sm mt-5">
-              星辰为今日揭下的那一张
-            </p>
-          )}
-        </div>
-
-        {/* ─── 当日牌 ─── */}
-        <div className="flex flex-col items-center mb-20 anim-veil-rise" key={activeDateKey}>
-          <div className="mb-10">
-            <TarotCardComponent
-              card={dailyDraw.card}
-              isReversed={dailyDraw.isReversed}
-              isRevealed={revealed}
-              onClick={() => setRevealed(true)}
-              size="md"
-            />
           </div>
 
-          {/* 牌名 */}
-          <div className="text-center mb-8">
-            <h2 className="font-display text-2xl md:text-3xl text-bone tracking-[0.2em] mb-2">
-              {dailyDraw.card.nameCn}
-            </h2>
-            <p className="font-display text-[11px] tracking-veil text-gold-dim uppercase">
-              {dailyDraw.card.name}
-            </p>
+          {/* ─── 星尘散点 ─── */}
+          <span aria-hidden className="scatter-symbol left-[11%] top-[16%] text-base anim-twinkle" style={{ animationDelay: '-0.8s' }}>✦</span>
+          <span aria-hidden className="scatter-symbol right-[13%] top-[13%] text-sm anim-twinkle" style={{ animationDelay: '-2.1s' }}>✧</span>
+          <span aria-hidden className="scatter-symbol left-[6%] top-[56%] text-lg anim-twinkle" style={{ animationDelay: '-1.4s' }}>◇</span>
+          <span aria-hidden className="scatter-symbol right-[7%] top-[62%] text-base anim-twinkle" style={{ animationDelay: '-2.9s' }}>⊹</span>
+          <span aria-hidden className="scatter-symbol left-[21%] bottom-[10%] text-sm anim-twinkle" style={{ animationDelay: '-0.3s' }}>✧</span>
+          <span aria-hidden className="scatter-symbol right-[19%] bottom-[8%] text-base anim-twinkle" style={{ animationDelay: '-1.8s' }}>✦</span>
+
+          {/* ─── 关键词 · 散落漂浮于牌的四周 ─── */}
+          {revealed && <ScatteredKeywords keywords={keywords} />}
+
+          {/* ─── 中央：光晕 + 轨道环 + 主卡 ─── */}
+          <div key={activeDateKey} className="anim-veil-rise relative z-10 flex flex-col items-center">
+            <div className="relative">
+              {/* 径向金辉 · 由中心向外熄灭 */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-1/2 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 md:h-[48rem] md:w-[48rem]"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(212,184,115,0.16) 0%, rgba(201,169,97,0.07) 30%, rgba(201,169,97,0.025) 52%, transparent 72%)',
+                }}
+              />
+              {/* 内层烛芯 · 缓慢呼吸 */}
+              <div
+                aria-hidden
+                className="anim-whisper pointer-events-none absolute left-1/2 top-1/2 h-[16rem] w-[16rem] -translate-x-1/2 -translate-y-1/2 md:h-[24rem] md:w-[24rem]"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(232,213,163,0.12) 0%, rgba(212,184,115,0.05) 45%, transparent 70%)',
+                  animationDuration: '7s',
+                }}
+              />
+              {/* 轨道环 · 内环缓转 */}
+              <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <div className="relative h-[22rem] w-[22rem] md:h-[34rem] md:w-[34rem]">
+                  <span className="arc-glow inset-0" />
+                </div>
+              </div>
+              {/* 轨道环 · 外环逆行虚线 */}
+              <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <div className="relative h-[27rem] w-[27rem] md:h-[44rem] md:w-[44rem]">
+                  <span
+                    className="arc-glow inset-0"
+                    style={{ borderStyle: 'dashed', animationDuration: '95s', animationDirection: 'reverse' }}
+                  />
+                </div>
+              </div>
+
+              {/* 主卡 · 悬浮于光晕之上 */}
+              <div className="float-card relative z-10">
+                <TarotCardComponent
+                  card={dailyDraw.card}
+                  isReversed={dailyDraw.isReversed}
+                  isRevealed={revealed}
+                  onClick={() => setRevealed(true)}
+                  className="w-64 md:w-80 lg:w-96 aspect-[2/3]"
+                />
+              </div>
+            </div>
+
+            {/* ─── 牌名 · 揭示的戏剧时刻 ─── */}
+            <div className="mt-12 min-h-[13rem] text-center md:mt-16 md:min-h-[15rem]">
+              {revealed ? (
+                <div className="anim-veil-rise">
+                  <div className="mb-6 flex items-center justify-center gap-3">
+                    <span aria-hidden className={`text-sm ${dailyDraw.isReversed ? 'text-mist' : 'text-gold-dim'}`}>
+                      {dailyDraw.isReversed ? '◇' : '✦'}
+                    </span>
+                    <span className="cn-nav text-bone">{directionCn}</span>
+                    <span className="font-heading text-tiny text-bone-whisper">{directionEn}</span>
+                  </div>
+                  <h2 className="font-heading text-massive text-bone">
+                    {dailyDraw.card.nameCn}
+                  </h2>
+                  <p className="font-display text-gold-foil mt-4 text-base uppercase tracking-[0.3em] md:text-xl">
+                    {dailyDraw.card.name}
+                  </p>
+                  <p className="font-body italic-soft mx-auto mt-7 max-w-md px-4 text-sm leading-relaxed text-bone-dim md:text-base">
+                    {meaning}
+                  </p>
+                </div>
+              ) : (
+                <div className="anim-fade-in pt-10">
+                  <p className="cn-hint anim-whisper text-bone-whisper">
+                    轻 触 牌 面 · 揭 示 神 谕
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* 正/逆位 关键词 + 释义 */}
-          <DailyMeaning draw={dailyDraw} />
+          {/* ─── 底部指引 ─── */}
+          <a
+            href="#oracle"
+            aria-hidden
+            className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2.5 text-bone-whisper transition-colors duration-500 hover:text-gold-dim"
+          >
+            <span className="cn-hint">神 谕 · 札 记 · 轨 迹</span>
+            <span className="anim-whisper text-xs text-gold-dim">↓</span>
+          </a>
+        </section>
 
-          {/* AI 解读 */}
-          <div className="w-full max-w-2xl mt-12">
+        {/* ═══ 第二幕 · 神谕 ─── 羊皮卷自上方徐徐展开 ═══ */}
+        <section id="oracle" className="relative z-10 px-6 pb-24 pt-10 md:px-10 md:pb-32">
+          <div className="mx-auto max-w-2xl">
+            <div className="ornament-divider mb-12">
+              <span className="ornament-gem" />
+            </div>
+
+            <div className="mb-9 flex items-center gap-3">
+              <span aria-hidden className="text-base text-gold-dim">◆</span>
+              <h3 className="cn-label text-gold-dim">神 谕 指 引</h3>
+              <div className="rule-h-fade flex-1" />
+              <span className="font-heading text-tiny text-bone-whisper">Oracle</span>
+            </div>
+
             {!aiInterpretation && !aiLoading && !aiError && (
-              <div className="flex justify-center">
+              <div className="anim-fade-in flex flex-col items-center gap-6">
+                <p className="font-body italic-soft text-sm text-bone-faint">
+                  让星辰为你展开这一日的低语
+                </p>
                 <button
+                  type="button"
                   onClick={requestAiInterpretation}
-                  className="btn-ink-primary px-10 py-3 inline-flex items-center gap-3"
+                  className="btn-ink-primary inline-flex items-center gap-3 px-12 py-3.5"
                 >
                   <span>请 求 神 谕</span>
                   <span className="text-xs">✦</span>
@@ -301,28 +429,22 @@ export default function DailyCardPage() {
             )}
 
             {aiError && (
-              <div className="ink-panel-quiet p-8 text-center">
-                <span className="text-gold-dim text-lg">◇</span>
-                <p className="font-body italic-soft text-bone-faint text-base mt-4 mb-6">
+              <div className="anim-curtain ink-panel-quiet p-9 text-center">
+                <span aria-hidden className="text-lg text-gold-dim">◇</span>
+                <p className="font-body italic-soft mt-4 mb-7 text-base text-bone-faint">
                   {aiError}
                 </p>
-                <button
-                  onClick={requestAiInterpretation}
-                  className="btn-ink-ghost"
-                >
+                <button type="button" onClick={requestAiInterpretation} className="btn-ink-ghost">
                   重 试
                 </button>
               </div>
             )}
 
             {(aiLoading || aiInterpretation) && (
-              <div className="mt-4">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="text-gold-dim text-base">◆</span>
-                  <span className="cn-label text-gold-dim">神 谕 指 引</span>
-                  <div className="rule-h-fade flex-1" />
-                </div>
-                <div className="ink-panel-quiet p-8 md:p-12">
+              <div className="anim-curtain">
+                {/* 卷轴上缘 · 一道金线如轴杆 */}
+                <div aria-hidden className="rule-h-gold" />
+                <div className="chat-bubble-oracle p-8 md:p-12">
                   {aiInterpretation ? (
                     <InterpretationBody
                       content={aiInterpretation}
@@ -331,13 +453,13 @@ export default function DailyCardPage() {
                       showSigil={!aiLoading}
                     />
                   ) : (
-                    <div className="flex items-center justify-center gap-4 py-8">
-                      <span className="text-gold anim-whisper">✦</span>
+                    <div className="flex items-center justify-center gap-4 py-10">
+                      <span className="anim-whisper text-gold">✦</span>
                       <span className="cn-label text-bone-dim">正 在 通 灵</span>
                       <span className="flex gap-2">
-                        <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '0ms' }} />
-                        <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '400ms' }} />
-                        <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
+                        <span className="anim-whisper h-1 w-1 rounded-full bg-[var(--gold-dim)]" style={{ animationDelay: '0ms' }} />
+                        <span className="anim-whisper h-1 w-1 rounded-full bg-[var(--gold-dim)]" style={{ animationDelay: '400ms' }} />
+                        <span className="anim-whisper h-1 w-1 rounded-full bg-[var(--gold-dim)]" style={{ animationDelay: '800ms' }} />
                       </span>
                     </div>
                   )}
@@ -345,146 +467,230 @@ export default function DailyCardPage() {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* ─── 笔记区 ─── */}
-        <section className="max-w-2xl mx-auto mb-20 anim-veil-rise">
-          <div className="flex items-center gap-3 mb-5">
-            <span className="text-gold-dim text-base">◆</span>
-            <span className="cn-label text-gold-dim">心 之 札 记</span>
-            <div className="rule-h-fade flex-1" />
-            <span
-              className={`cn-hint transition-opacity duration-700 ${
-                saveState === 'idle' ? 'opacity-0' : 'opacity-100'
-              }`}
-              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-              aria-live="polite"
-            >
-              {saveState === 'saving' ? (
-                <span className="text-bone-faint">书 写 中</span>
-              ) : saveState === 'saved' ? (
-                <span className="text-gold-dim">✦ 已 录</span>
-              ) : null}
-            </span>
+        {/* ═══ 第三幕 · 札记 ─── 金顶仪式面板 ═══ */}
+        <section id="journal" className="relative z-10 px-6 pb-24 md:px-10 md:pb-32">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-9 flex items-center gap-3">
+              <span aria-hidden className="text-base text-gold-dim">◆</span>
+              <h3 className="cn-label text-gold-dim">心 之 札 记</h3>
+              <div className="rule-h-fade flex-1" />
+              <span
+                className={`cn-hint transition-opacity duration-700 ${
+                  saveState === 'idle' ? 'opacity-0' : 'opacity-100'
+                }`}
+                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+                aria-live="polite"
+              >
+                {saveState === 'saving' ? (
+                  <span className="text-bone-faint">书 写 中</span>
+                ) : saveState === 'saved' ? (
+                  <span className="text-gold-dim">✦ 已 录</span>
+                ) : null}
+              </span>
+            </div>
+
+            <div className="ink-panel-ritual">
+              <textarea
+                value={note}
+                onChange={handleNoteChange}
+                placeholder={
+                  isToday
+                    ? '今日所感、所思、所应。所写仅留于此处。'
+                    : '可补记当日所感。'
+                }
+                className="input-ink-bare font-body h-44 w-full resize-none px-8 py-6 text-base leading-loose text-bone"
+                spellCheck={false}
+              />
+            </div>
+            {savedNote && (
+              <p className="cn-hint mt-3.5 text-right text-bone-whisper">
+                最 后 一 笔 · {new Date(savedNote.updatedAt).toLocaleString('zh-CN', {
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            )}
           </div>
-          <div className="ink-panel-quiet">
-            <textarea
-              value={note}
-              onChange={handleNoteChange}
-              placeholder={
-                isToday
-                  ? '今日所感、所思、所应。所写仅留于此处。'
-                  : '可补记当日所感。'
-              }
-              className="input-ink-bare w-full h-40 px-7 py-5 text-base text-bone resize-none font-body leading-loose"
-              spellCheck={false}
+        </section>
+
+        {/* ═══ 第四幕 · 轨迹 ─── 十四日星轨时间线 ═══ */}
+        <section id="trail" className="relative z-10 px-6 pb-20 md:px-10">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-4 flex items-center gap-3">
+              <span aria-hidden className="text-base text-gold-dim">◆</span>
+              <h3 className="cn-label text-gold-dim">近 期 轨 迹</h3>
+              <div className="rule-h-fade flex-1" />
+              <span className="font-heading text-tiny text-bone-whisper">XIV Days</span>
+            </div>
+            <p className="font-body italic-soft mb-12 text-sm text-bone-whisper">
+              过去 {recent.length} 日 · 星辰为你揭下的每一张
+            </p>
+
+            <HistoryTimeline
+              draws={timeline}
+              activeDateKey={activeDateKey}
+              todayKey={todayKey}
+              onSelect={handleSelectDate}
             />
+
+            {/* 图例 */}
+            <div className="cn-hint mt-10 flex items-center justify-center gap-6 text-bone-whisper">
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />
+                正 位
+              </span>
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full border border-[var(--mist)]" />
+                逆 位
+              </span>
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="text-[9px] text-gold-dim">◆</span>
+                有 札 记
+              </span>
+            </div>
           </div>
-          {savedNote && (
-            <p className="cn-hint text-bone-whisper mt-3 text-right">
-              最 后 一 笔 · {new Date(savedNote.updatedAt).toLocaleString('zh-CN', {
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          )}
         </section>
 
-        {/* ─── 近期轨迹 · 14 天小卡墙 ─── */}
-        <section className="max-w-5xl mx-auto pb-16 anim-veil-rise">
-          <div className="text-center mb-10">
-            <span className="text-gold text-lg anim-drift">✦</span>
-            <h3 className="font-display text-xl md:text-2xl text-bone mt-5 mb-3 tracking-[0.22em] uppercase">
-              近 期 轨 迹
-            </h3>
-            <div className="rule-h-gold w-16 mx-auto mt-3" />
-            <p className="font-body italic-soft text-bone-whisper text-sm mt-5">
-              过去 {recent.length} 日，星辰为你揭下的每一张
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3 md:gap-4">
-            {recent.map((draw) => {
-              const date = parseDateKey(draw.dateKey);
-              if (!date) return null;
-              const isActive = draw.dateKey === activeDateKey;
-              const isThisToday = draw.dateKey === todayKey;
-              const noted = !!getDailyNote(draw.dateKey);
-              return (
-                <button
-                  key={draw.dateKey}
-                  onClick={() => handleSelectDate(draw)}
-                  className={`group flex flex-col items-center p-3 transition-all duration-500 ${
-                    isActive
-                      ? 'bg-[var(--ink-veil)] hairline-gold'
-                      : 'hairline hover:bg-[var(--ink-veil)]'
-                  }`}
-                  style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-                >
-                  <div className="font-display text-[10px] tracking-veil text-bone-whisper uppercase mb-2">
-                    {String(date.getMonth() + 1).padStart(2, '0')}.
-                    {String(date.getDate()).padStart(2, '0')}
-                  </div>
-                  <div
-                    className={`cn-hint mb-3 transition-colors duration-500 ${
-                      isActive ? 'text-gold' : isThisToday ? 'text-bone' : 'text-bone-dim group-hover:text-bone'
-                    }`}
-                  >
-                    {draw.card.nameCn}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {draw.isReversed && (
-                      <span className="cn-hint text-bone-whisper">逆</span>
-                    )}
-                    {noted && <span className="text-gold-dim text-xs">◆</span>}
-                    {isThisToday && <span className="text-gold text-xs">✦</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        {/* ─── 终章 ─── */}
+        <footer className="relative z-10 flex flex-col items-center gap-5 pb-16 pt-4">
+          <div className="rule-h-gold w-24" />
+          <span aria-hidden className="anim-drift text-sm text-gold-dim">✦</span>
+          <p className="font-heading text-tiny text-bone-whisper">Tarot Whisper · Daily Ritual</p>
+        </footer>
       </main>
     </div>
   );
 }
 
 /* ───────────────────────────────────────────────────────────────
-   含义展示 · 突出当日的方向（正/逆）
+   关键词星尘 · 散落于主卡四周，各自漂移闪烁
    ─────────────────────────────────────────────────────────────── */
 
-function DailyMeaning({ draw }: { draw: DailyDraw }) {
-  const { card, isReversed } = draw;
-  const keywords = isReversed ? card.keywords.reversed : card.keywords.upright;
-  const meaning = isReversed ? card.meaning.reversed : card.meaning.upright;
-  const directionCn = isReversed ? '逆 位' : '正 位';
-  const directionEn = isReversed ? 'Reversed' : 'Upright';
-  const accent = isReversed ? 'text-mist' : 'text-gold-dim';
-  const accentSymbol = isReversed ? '◇' : '✦';
+interface ScatteredKeywordsProps {
+  keywords: ReadonlyArray<string>;
+}
 
+function ScatteredKeywords({ keywords }: ScatteredKeywordsProps) {
   return (
-    <div className="w-full max-w-2xl">
-      <div className="flex items-center justify-center gap-3 mb-6">
-        <span className={`${accent} text-base`}>{accentSymbol}</span>
-        <span className="cn-nav text-bone">{directionCn}</span>
-        <span className="font-display text-[10px] tracking-veil text-bone-whisper uppercase">
-          ╱ {directionEn}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap justify-center gap-2 mb-7">
-        {keywords.map((kw) => (
-          <span key={kw} className="cn-hint text-bone-dim px-3 py-1.5 hairline">
-            {kw}
+    <div className="anim-stagger pointer-events-none absolute inset-0 z-20">
+      {keywords.map((kw, i) => {
+        const spot = KEYWORD_SPOTS[i % KEYWORD_SPOTS.length];
+        return (
+          <span key={`${i}-${kw}`} className={`absolute ${spot.pos}`}>
+            <span
+              className="anim-drift flex items-center gap-2"
+              style={{ animationDelay: spot.driftDelay }}
+            >
+              <span
+                aria-hidden
+                className="anim-twinkle text-[10px] text-gold-dim"
+                style={{ animationDelay: spot.twinkleDelay }}
+              >
+                {spot.symbol}
+              </span>
+              <span className="cn-label text-bone-faint">{kw}</span>
+            </span>
           </span>
-        ))}
-      </div>
+        );
+      })}
+    </div>
+  );
+}
 
-      <p className="font-body text-bone-dim text-base md:text-lg leading-loose text-center italic-soft px-2">
-        {meaning}
-      </p>
+/* ───────────────────────────────────────────────────────────────
+   十四日星轨 · 横向时间线：点即一日，悬停浮现牌名
+   ─────────────────────────────────────────────────────────────── */
+
+interface HistoryTimelineProps {
+  /** 按时间正序排列的每日牌 */
+  draws: DailyDraw[];
+  activeDateKey: string;
+  todayKey: string | null;
+  onSelect: (draw: DailyDraw) => void;
+}
+
+function HistoryTimeline({ draws, activeDateKey, todayKey, onSelect }: HistoryTimelineProps) {
+  return (
+    <div className="relative">
+      {/* 贯穿的星轨线 */}
+      <div
+        aria-hidden
+        className="absolute left-1 right-1 top-2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-[var(--gold-faint)] to-transparent"
+      />
+
+      <ol className="relative flex items-start justify-between">
+        {draws.map((draw) => {
+          const date = parseDateKey(draw.dateKey);
+          if (!date) return null;
+          const isActive = draw.dateKey === activeDateKey;
+          const isThisToday = draw.dateKey === todayKey;
+          const noted = !!getDailyNote(draw.dateKey);
+
+          const dotTone = isActive
+            ? draw.isReversed
+              ? 'h-3 w-3 border border-[var(--gold)] bg-[var(--gold-faint)] shadow-[0_0_14px_var(--gold-glow)]'
+              : 'h-3 w-3 bg-[var(--gold)] shadow-[0_0_14px_var(--gold-glow)]'
+            : draw.isReversed
+              ? 'h-2 w-2 border border-[var(--mist-faint)] bg-transparent group-hover:border-[var(--mist)]'
+              : 'h-2 w-2 bg-[var(--bone-whisper)] group-hover:bg-[var(--bone-dim)]';
+
+          return (
+            <li key={draw.dateKey} className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => onSelect(draw)}
+                aria-current={isActive ? 'date' : undefined}
+                aria-label={`${formatShortDate(date)} · ${draw.card.nameCn}${draw.isReversed ? ' · 逆位' : ''}${noted ? ' · 有札记' : ''}`}
+                className="group relative flex flex-col items-center px-0.5"
+              >
+                {/* 悬停浮签 */}
+                <span
+                  className="cn-hint hairline-gold pointer-events-none absolute bottom-full z-30 mb-2.5 translate-y-1 whitespace-nowrap bg-[var(--ink-veil)] px-3 py-1.5 text-bone-dim opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100"
+                  style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+                >
+                  {formatShortDate(date)} · {draw.card.nameCn}
+                  {draw.isReversed && <span className="text-mist"> 逆</span>}
+                  {noted && <span className="text-gold-dim"> ◆</span>}
+                </span>
+
+                {/* 星点 */}
+                <span className="relative flex h-4 w-4 items-center justify-center">
+                  {isActive && (
+                    <span
+                      aria-hidden
+                      className="anim-glow-pulse absolute inset-0 rounded-full border border-[var(--gold-dim)]"
+                    />
+                  )}
+                  <span
+                    className={`rounded-full transition-all duration-500 ${dotTone}`}
+                    style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+                  />
+                </span>
+
+                {/* 标签 · 固定高度避免跳动 */}
+                <span className="mt-2.5 flex h-9 flex-col items-center gap-0.5">
+                  {isActive ? (
+                    <>
+                      <span className="cn-hint text-gold">{draw.card.nameCn}</span>
+                      <span className="font-heading text-[9px] tracking-[0.2em] text-bone-whisper">
+                        {formatShortDate(date)}
+                      </span>
+                    </>
+                  ) : isThisToday ? (
+                    <span aria-hidden className="anim-twinkle text-[10px] text-gold">✦</span>
+                  ) : noted ? (
+                    <span aria-hidden className="text-[8px] text-gold-dim">◆</span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

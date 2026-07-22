@@ -14,7 +14,7 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
       {/* ─── 标题 ─── */}
       <div className="text-center mb-14">
         <span className="text-gold text-lg" aria-hidden>✦</span>
-        <h3 className="font-display text-2xl text-bone mt-5 mb-3 tracking-[0.22em] uppercase">
+        <h3 className="font-heading text-2xl text-bone mt-5 mb-3 tracking-[0.22em] uppercase">
           选 择 牌 阵
         </h3>
         <div className="rule-h-gold w-20 mx-auto mt-4" />
@@ -67,7 +67,7 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
                   {isSelected ? '✦' : '◇'}
                 </span>
                 <span
-                  className={`font-display text-[11px] tracking-veil uppercase transition-colors duration-700 ${
+                  className={`font-heading text-[11px] tracking-veil uppercase transition-colors duration-700 ${
                     isSelected ? 'text-gold' : 'text-bone-dim'
                   }`}
                 >
@@ -77,7 +77,7 @@ export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps
 
               {/* 中文名 · 主标题 */}
               <h4
-                className={`font-display text-xl mb-4 tracking-[0.18em] transition-colors duration-700 ${
+                className={`font-heading text-xl mb-4 tracking-[0.18em] transition-colors duration-700 ${
                   isSelected
                     ? 'text-bone'
                     : 'text-bone-dim group-hover:text-bone'

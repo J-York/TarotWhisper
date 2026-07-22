@@ -51,22 +51,22 @@ const THINKING_TAG_PATTERN = /<\/?(think|thinking)>/gi;
  */
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => (
-    <h1 className="font-display text-2xl text-bone mt-12 mb-6 first:mt-0 tracking-[0.18em] pb-4 hairline-bottom">
+    <h1 className="font-heading text-2xl text-bone mt-12 mb-6 first:mt-0 tracking-[0.18em] pb-4 hairline-bottom">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-display text-xl text-bone mt-10 mb-5 first:mt-0 tracking-[0.16em]">
+    <h2 className="font-heading text-xl text-bone mt-10 mb-5 first:mt-0 tracking-[0.16em]">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="font-display text-lg text-bone mt-8 mb-4 first:mt-0 tracking-[0.14em]">
+    <h3 className="font-heading text-lg text-bone mt-8 mb-4 first:mt-0 tracking-[0.14em]">
       {children}
     </h3>
   ),
   h4: ({ children }) => (
-    <h4 className="font-display text-base text-bone mt-6 mb-3 first:mt-0 tracking-[0.12em]">
+    <h4 className="font-heading text-base text-bone mt-6 mb-3 first:mt-0 tracking-[0.12em]">
       {children}
     </h4>
   ),
@@ -271,7 +271,7 @@ export function Interpretation({
       <div className="w-full max-w-4xl p-12 ink-panel-quiet anim-veil-rise">
         <div className="flex items-center gap-4 mb-5">
           <span className="text-gold-dim text-lg">◇</span>
-          <h3 className="font-display text-xl text-bone tracking-[0.18em]">
+          <h3 className="font-heading text-xl text-bone tracking-[0.18em]">
             连 接 已 断
           </h3>
         </div>
@@ -297,7 +297,7 @@ export function Interpretation({
       {/* ─── 标题 ─── */}
       <div className="flex flex-col items-center gap-4 mb-12 anim-fade-in">
         <span className="text-gold text-xl anim-drift">✦</span>
-        <h3 className="font-display text-2xl text-bone tracking-[0.32em] uppercase">
+        <h3 className="font-heading text-2xl text-bone tracking-[0.32em] uppercase">
           神 谕
         </h3>
         <div className="rule-h-gold w-20" />

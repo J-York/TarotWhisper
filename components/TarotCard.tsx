@@ -15,10 +15,18 @@ interface TarotCardProps {
    * 解读页底部的「迷你回顾」可关闭以避免过度。
    */
   enableInteractions?: boolean;
+  /**
+   * 自定义尺寸类 · 提供时覆盖内置 size 的固定宽高。
+   * 例如每日页的大卡："w-64 md:w-80 lg:w-96 aspect-[2/3]"。
+   */
+  className?: string;
 }
 
 // 视差最大角度（°）— ±8 是触觉上「轻端在手里」的感觉，不致眩晕
 const PARALLAX_MAX = 8;
+
+// 卡背月相刻度环的刻痕数量 · 24 道 = 每 15° 一道，正位四方向为金色主刻
+const LUNAR_TICK_COUNT = 24;
 
 export function TarotCardComponent({
   card,
@@ -27,6 +35,7 @@ export function TarotCardComponent({
   onClick,
   size = 'md',
   enableInteractions = true,
+  className,
 }: TarotCardProps) {
   const [imageError, setImageError] = useState(false);
 
@@ -113,7 +122,7 @@ export function TarotCardComponent({
 
   return (
     <div
-      className={`relative ${sizeClasses[size]} cursor-pointer perspective-1000 group`}
+      className={`relative ${className ?? sizeClasses[size]} cursor-pointer perspective-1000 group`}
       onClick={onClick}
       onKeyDown={(e) => {
         if (onClick && (e.key === 'Enter' || e.key === ' ')) {
@@ -137,29 +146,84 @@ export function TarotCardComponent({
             isRevealed ? 'rotate-y-180' : ''
           }`}
         >
-          {/* ─── 背面 · 极简墨色 ─── */}
+          {/* ─── 背面 · 秘仪剧场 ─── */}
           <div
             className={`absolute w-full h-full backface-hidden overflow-hidden bg-[var(--ink-void)] hairline ${
               !isRevealed ? 'group-hover:shadow-[0_0_24px_-12px_var(--gold-glow)]' : ''
             }`}
             style={{ transition: 'box-shadow 700ms var(--ease-veil)' }}
           >
+            {/* 中央烛金径向辉光 · 极淡，悬停时微微苏醒 */}
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none opacity-55 group-hover:opacity-85 transition-opacity duration-700"
+              style={{
+                background:
+                  'radial-gradient(ellipse 72% 50% at 50% 46%, var(--gold-glow) 0%, var(--gold-faint) 36%, transparent 74%)',
+                transitionTimingFunction: 'var(--ease-veil)',
+              }}
+            />
+
+            {/* 旋转外环 · 月相刻度 · 120s 极慢公转（anim-lunar） */}
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-70 group-hover:opacity-100 transition-opacity duration-700"
+              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+            >
+              <div className="relative w-full aspect-square anim-lunar">
+                {/* 环体细线 · 刻度骑线而生 */}
+                <span className="absolute inset-1 rounded-full border border-[var(--ink-line-strong)]" />
+                {Array.from({ length: LUNAR_TICK_COUNT }, (_, i) => {
+                  const isCardinal = i % 6 === 0;
+                  const tone = isCardinal
+                    ? 'bg-[var(--gold-dim)]'
+                    : i % 2 === 0
+                      ? 'bg-[var(--bone-whisper)]'
+                      : 'bg-[var(--celestial-faint)]';
+                  return (
+                    <div
+                      key={i}
+                      className="absolute inset-0"
+                      style={{ transform: `rotate(${i * (360 / LUNAR_TICK_COUNT)}deg)` }}
+                    >
+                      <span
+                        className={`absolute left-1/2 -translate-x-1/2 w-px ${
+                          isCardinal ? 'h-2' : 'h-1'
+                        } ${tone}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="w-full h-full relative flex items-center justify-center">
               {/* 内框 · 0.5px 双层 */}
               <div className="absolute inset-2 hairline" />
               <div className="absolute inset-3.5 hairline-strong" />
 
-              {/* 中央徽记 */}
-              <div className="relative flex flex-col items-center gap-3 transition-transform duration-700 group-hover:scale-105"
-                   style={{ transitionTimingFunction: 'var(--ease-veil)' }}>
-                <span className="text-gold-dim text-2xl">✦</span>
+              {/* 中央徽记 · ✦ 外加一圈缓转的虚线星环 */}
+              <div
+                className="relative flex flex-col items-center gap-3 transition-transform duration-700 group-hover:scale-105"
+                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+              >
+                <div className="relative flex items-center justify-center">
+                  <span
+                    aria-hidden
+                    className="absolute w-12 h-12 rounded-full border border-dashed border-[var(--gold-faint)] anim-lunar"
+                  >
+                    {/* 环顶星珠 · 令旋转可被感知 */}
+                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--celestial-dim)]" />
+                  </span>
+                  <span className="text-gold-dim text-2xl">✦</span>
+                </div>
                 <span className="h-px w-10 bg-[var(--gold-faint)]" />
-                <span className="font-display text-bone-faint text-[10px] tracking-veil uppercase">
+                <span className="font-heading text-bone-faint text-[10px] tracking-veil uppercase">
                   Tarot
                 </span>
               </div>
 
-              {/* 角部刻痕 */}
+              {/* 角部刻痕 · 骨白与星蓝交替 */}
               <CornerTicks />
             </div>
           </div>
@@ -179,10 +243,18 @@ export function TarotCardComponent({
                   src={card.image}
                   alt={card.name}
                   fill
-                  sizes={size === 'lg' ? '256px' : size === 'md' ? '192px' : '96px'}
+                  sizes={
+                    className
+                      ? '(min-width: 1024px) 384px, (min-width: 768px) 320px, 256px'
+                      : size === 'lg'
+                        ? '256px'
+                        : size === 'md'
+                          ? '192px'
+                          : '96px'
+                  }
                   className="object-cover"
                   onError={() => setImageError(true)}
-                  priority={size === 'lg'}
+                  priority={size === 'lg' || !!className}
                 />
                 {/* 底部渐隐 · 跟随牌图翻转，视觉合理 */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/85 via-transparent to-[var(--ink-void)]/30 pointer-events-none" />
@@ -205,10 +277,10 @@ export function TarotCardComponent({
             {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
           </span>
           <div className="rule-h-gold w-12 mb-4" />
-          <div className="font-display text-lg text-bone mb-2 tracking-[0.18em]">
+          <div className="font-heading text-lg text-bone mb-2 tracking-[0.18em]">
             {card.nameCn}
           </div>
-          <div className="font-display text-[11px] tracking-veil text-bone-dim uppercase">
+          <div className="font-heading text-[11px] tracking-veil text-bone-dim uppercase">
             {card.name}
           </div>
         </div>
@@ -224,10 +296,10 @@ export function TarotCardComponent({
           }}
         >
           <div className="rule-h-gold w-8 mx-auto mb-2" />
-          <h3 className="font-display text-bone text-base tracking-[0.2em]">
+          <h3 className="font-heading text-bone text-base tracking-[0.2em]">
             {card.nameCn}
           </h3>
-          <p className="font-display text-[10px] tracking-veil text-gold-dim uppercase mt-1">
+          <p className="font-heading text-[10px] tracking-veil text-gold-dim uppercase mt-1">
             {card.name}
           </p>
         </div>
@@ -245,17 +317,23 @@ export function TarotCardComponent({
   );
 }
 
+/* 角部刻痕 · 对角同色：左上/右下 骨白，右上/左下 极淡星蓝 */
 function CornerTicks() {
+  const corners: ReadonlyArray<{ at: string; tone: string }> = [
+    { at: 'top-3 left-3', tone: 'bg-[var(--bone-whisper)]' },
+    { at: 'top-3 right-3', tone: 'bg-[var(--celestial-faint)]' },
+    { at: 'bottom-3 left-3', tone: 'bg-[var(--celestial-faint)]' },
+    { at: 'bottom-3 right-3', tone: 'bg-[var(--bone-whisper)]' },
+  ];
+
   return (
     <>
-      <span className="absolute top-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
-      <span className="absolute top-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
-      <span className="absolute top-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
-      <span className="absolute top-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
-      <span className="absolute bottom-3 left-3 w-2 h-px bg-[var(--bone-whisper)]" />
-      <span className="absolute bottom-3 left-3 h-2 w-px bg-[var(--bone-whisper)]" />
-      <span className="absolute bottom-3 right-3 w-2 h-px bg-[var(--bone-whisper)]" />
-      <span className="absolute bottom-3 right-3 h-2 w-px bg-[var(--bone-whisper)]" />
+      {corners.map(({ at, tone }) => (
+        <span key={at} className={`absolute ${at}`} aria-hidden>
+          <span className={`absolute w-2 h-px ${tone}`} />
+          <span className={`absolute h-2 w-px ${tone}`} />
+        </span>
+      ))}
     </>
   );
 }
