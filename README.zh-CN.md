@@ -113,5 +113,6 @@ npm run lint
 
 ## 许可证
 
-项目代码许可证请按仓库实际设置为准。  
-牌面资源来源于公开可用 Rider–Waite–Smith（1909）相关资源，请在商用前自行确认素材授权范围。
+源代码以 [MIT License](./LICENSE) 发布。
+
+该许可仅覆盖代码，**不包含** `public/cards/` 下的牌面素材。这些图片源自 Rider–Waite–Smith 牌组（Pamela Colman Smith，1909），在美国及多数司法辖区已进入公有领域，但具体扫描件取自第三方档案站点，请在再分发或商用前自行确认其授权范围。

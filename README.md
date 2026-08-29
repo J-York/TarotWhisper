@@ -180,6 +180,6 @@ Run `npm run lint && npm run test` before opening a PR.
 
 ## License
 
-No license file is currently present; treat the code as all rights reserved unless the repository owner states otherwise.
+Source code is released under the [MIT License](./LICENSE).
 
-Card imagery comes from publicly available Rider–Waite–Smith (1909) scans. Verify the licensing of those assets yourself before any commercial use.
+That covers the code only — **not** the card imagery under `public/cards/`. Those files are derived from the Rider–Waite–Smith deck (Pamela Colman Smith, 1909), public domain in the US and most jurisdictions, but the specific scans come from a third-party archive. Confirm the terms applying to them yourself before redistributing or using them commercially.
