@@ -45,3 +45,7 @@ next-env.d.ts
 
 # local tool settings
 .claude/
+
+# agent instructions (local only, never published)
+AGENTS.md
+CLAUDE.md
