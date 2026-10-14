@@ -58,6 +58,13 @@ const UPSTREAM_TIMEOUT_MS = 180_000;
 /** LLM 输出的最大 token 数 */
 const MAX_OUTPUT_TOKENS = 65_536;
 
+/**
+ * 上游因 max_tokens 超出模型上限而拒绝时的错误特征（如 gpt-4o-mini 上限 16384）。
+ * 命中后去掉 max_tokens 重试一次，交由服务商使用模型自身的默认上限。
+ */
+const TOKEN_LIMIT_ERROR_PATTERN =
+  /max_tokens|max_completion_tokens|max_output_tokens|maximum.{0,40}tokens|context.?length/i;
+
 /** 从环境变量获取后备配置 */
 const FALLBACK_CONFIG = {
   endpoint: process.env.FALLBACK_LLM_ENDPOINT || '',
@@ -203,11 +210,41 @@ function buildPrompt(req: InterpretRequest): string {
 
 // ─── 错误响应工厂 ────────────────────────────────────────────
 
-function jsonError(message: string, status: number): Response {
+/**
+ * source 区分错误出处，供前端决定展示方式：
+ * - route：本路由自身的判断（未配置 Key、限流、校验失败等），error 即面向用户的中文文案
+ * - upstream：LLM 服务商返回的错误，upstreamMessage 为服务商原话（已脱敏）
+ */
+function jsonError(
+  message: string,
+  status: number,
+  extra: { source: 'route' } | { source: 'upstream'; upstreamMessage?: string } = { source: 'route' },
+): Response {
   return new Response(
-    JSON.stringify({ error: message }),
+    JSON.stringify({ error: message, ...extra }),
     { status, headers: { 'Content-Type': 'application/json' } },
   );
+}
+
+/** 从上游错误响应体中提取服务商给出的原因 */
+function extractUpstreamMessage(text: string): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') {
+      const record = parsed as Record<string, unknown>;
+      const err = record.error;
+      if (typeof err === 'string' && err) return err;
+      if (err && typeof err === 'object') {
+        const msg = (err as Record<string, unknown>).message;
+        if (typeof msg === 'string' && msg) return msg;
+      }
+      if (typeof record.message === 'string' && record.message) return record.message;
+    }
+  } catch {
+    // 非 JSON 响应体（如网关 HTML 错误页）
+  }
+  const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return plain ? plain.slice(0, 200) : undefined;
 }
 
 // ─── 敏感信息清理 ────────────────────────────────────────────
@@ -284,9 +321,8 @@ export async function POST(request: NextRequest): Promise<Response> {
   const upstreamController = new AbortController();
   const timeoutId = setTimeout(() => upstreamController.abort(), UPSTREAM_TIMEOUT_MS);
 
-  let response: globalThis.Response;
-  try {
-    response = await fetch(requestUrl, {
+  const callUpstream = (maxTokens?: number): Promise<globalThis.Response> =>
+    fetch(requestUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -295,11 +331,24 @@ export async function POST(request: NextRequest): Promise<Response> {
       body: JSON.stringify({
         model: effectiveConfig.model,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: MAX_OUTPUT_TOKENS,
+        ...(maxTokens !== undefined && { max_tokens: maxTokens }),
         stream: true,
       }),
       signal: upstreamController.signal,
     });
+
+  let response: globalThis.Response;
+  // 400 时已读取的错误体（响应体只能读一次）
+  let errorText = '';
+  try {
+    response = await callUpstream(MAX_OUTPUT_TOKENS);
+    if (response.status === 400) {
+      errorText = await response.text().catch(() => '');
+      if (TOKEN_LIMIT_ERROR_PATTERN.test(errorText)) {
+        response = await callUpstream();
+        errorText = '';
+      }
+    }
   } catch (err) {
     clearTimeout(timeoutId);
 
@@ -316,14 +365,16 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   // 8. 处理上游 HTTP 错误
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
+    if (!errorText) errorText = await response.text().catch(() => '');
     const sanitized = sanitizeError(errorText, effectiveConfig.apiKey);
+    const upstreamMessage = extractUpstreamMessage(sanitized);
 
     // 透传有意义的状态码给前端
     const clientStatus = mapUpstreamStatus(response.status);
     return jsonError(
       `API 请求失败 (${response.status}): ${sanitized}`,
       clientStatus,
+      { source: 'upstream', upstreamMessage },
     );
   }
 
@@ -380,6 +431,9 @@ function createGuardedStream(
   const heartbeatBytes = encoder.encode(': keepalive\n\n');
   const timeoutBytes = encoder.encode(
     'data: {"error":{"message":"流传输超时，连接已中断"}}\n\ndata: [DONE]\n\n',
+  );
+  const interruptedBytes = encoder.encode(
+    'data: {"error":{"message":"上游连接中断"}}\n\n',
   );
 
   // 供 cancel() 与 start() 共享的清理句柄
@@ -450,7 +504,9 @@ function createGuardedStream(
           if (!safeEnqueue(value)) break;
         }
       } catch {
-        // 上游读取失败 / abort / cancel：尽力平静关闭
+        // 上游读取失败：告知客户端流未正常结束，避免残缺解读被当作完整结果
+        // （cancel / 空闲超时路径已置 stopped，safeEnqueue 不会重复写入）
+        safeEnqueue(interruptedBytes);
       } finally {
         safeClose();
       }

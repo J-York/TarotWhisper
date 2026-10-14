@@ -60,7 +60,8 @@ export default function AgentPage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Enter 发送，Shift+Enter 换行
+    // Enter 发送，Shift+Enter 换行；输入法选词时的 Enter 不算（Safari 下 isComposing 可能已为 false，需看 keyCode 229）
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();

@@ -14,6 +14,8 @@ interface InterpretationProps {
    * 与 error 不同：正文照常显示，仅在底部附加提示条。
    */
   notice?: string | null;
+  /** 传入后，错误态显示“去配置”按钮 */
+  onOpenSettings?: () => void;
   /**
    * 是否在首次加载时应用逐段揭幕动画。
    * 历史详情页：true。
@@ -260,6 +262,7 @@ export function Interpretation({
   isLoading,
   error,
   notice,
+  onOpenSettings,
   staggerOnMount = false,
   cardTerms,
   positionTerms,
@@ -280,8 +283,13 @@ export function Interpretation({
           {error}
         </p>
         <p className="cn-label text-bone-dim">
-          请 检 查 与 以 太 的 连 接 ， 然 后 重 试
+          请 检 查 配 置 与 网 络 ， 然 后 重 新 解 读
         </p>
+        {onOpenSettings && (
+          <button onClick={onOpenSettings} className="btn-ink-ghost mt-8">
+            去 配 置
+          </button>
+        )}
       </div>
     );
   }

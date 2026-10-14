@@ -88,12 +88,20 @@
   --color-ink-burgundy: var(--ink-burgundy);
   --color-ink-indigo:   var(--ink-indigo);
 
-  --color-bone:      var(--bone);
-  --color-mist:      var(--mist);
-  --color-gold:      var(--gold);
-  --color-gold-warm: var(--gold-warm);
-  --color-gold-pale: var(--gold-pale);
-  --color-celestial: var(--celestial);
+  /* 文字色一律经 @theme 交给 Tailwind 生成：手写在 @layer 外的 .text-* 会压过
+     @layer utilities 里的 hover:/group-hover: 等变体，使其全部失效 */
+  --color-bone:         var(--bone);
+  --color-bone-dim:     var(--bone-dim);
+  --color-bone-faint:   var(--bone-faint);
+  --color-bone-whisper: var(--bone-whisper);
+  --color-mist:         var(--mist);
+  --color-mist-faint:   var(--mist-faint);
+  --color-gold:         var(--gold);
+  --color-gold-warm:    var(--gold-warm);
+  --color-gold-pale:    var(--gold-pale);
+  --color-gold-dim:     var(--gold-dim);
+  --color-celestial:     var(--celestial);
+  --color-celestial-dim: var(--celestial-dim);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -401,19 +409,6 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══════════════════════════════════════════════════════════════
    Text utilities
    ═══════════════════════════════════════════════════════════════ */
-
-.text-bone { color: var(--bone); }
-.text-bone-dim { color: var(--bone-dim); }
-.text-bone-faint { color: var(--bone-faint); }
-.text-bone-whisper { color: var(--bone-whisper); }
-.text-mist { color: var(--mist); }
-.text-mist-faint { color: var(--mist-faint); }
-.text-gold { color: var(--gold); }
-.text-gold-warm { color: var(--gold-warm); }
-.text-gold-pale { color: var(--gold-pale); }
-.text-gold-dim { color: var(--gold-dim); }
-.text-celestial { color: var(--celestial); }
-.text-celestial-dim { color: var(--celestial-dim); }
 
 .tracking-mystic { letter-spacing: 0.32em; }
 .tracking-quiet  { letter-spacing: 0.2em; }

@@ -186,8 +186,9 @@ export default function ReadingPage() {
     goToPhase,
   } = useReading();
 
-  const { config, saveConfig } = useApiConfig();
+  const { config, isLoaded: configLoaded, canUseApi, saveConfig } = useApiConfig();
   const [showSettings, setShowSettings] = useState(false);
+  const needsConfig = configLoaded && !canUseApi;
   const [followUpDraft, setFollowUpDraft] = useState('');
 
   const act = ACTS[phase] ?? ACTS.question;
@@ -247,6 +248,10 @@ export default function ReadingPage() {
   );
 
   const handleStartInterpretation = (): void => {
+    if (needsConfig) {
+      setShowSettings(true);
+      return;
+    }
     startInterpretation(config);
   };
 
@@ -262,7 +267,8 @@ export default function ReadingPage() {
   };
 
   const handleQuestionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && question.trim()) {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter' && !e.shiftKey && question.trim()) {
       e.preventDefault();
       goToPhase('spread');
     }
@@ -582,7 +588,7 @@ export default function ReadingPage() {
               </div>
 
               {/* 控制 */}
-              <div className="mt-14 flex gap-10 items-center">
+              <div className="mt-14 flex flex-col gap-8 items-center">
                 {phase === 'draw' && revealedCount < drawnCards.length && (
                   <button onClick={revealAllCards} className="btn-ink px-10 py-3.5">
                     全 部 翻 开
@@ -603,6 +609,15 @@ export default function ReadingPage() {
                       <span className="text-xs">✦</span>
                     </button>
                   </div>
+                )}
+
+                {phase === 'reveal' && needsConfig && (
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="cn-hint text-bone-faint hover:text-gold-dim transition-colors duration-500 anim-fade-in"
+                  >
+                    尚 未 配 置 API · 点 此 填 写 后 即 可 请 求 神 谕
+                  </button>
                 )}
               </div>
             </div>
@@ -654,6 +669,7 @@ export default function ReadingPage() {
                     isLoading={isInterpreting}
                     error={error}
                     notice={notice}
+                    onOpenSettings={() => setShowSettings(true)}
                     retry={retryInfo}
                     cardTerms={baseCardTerms}
                     positionTerms={basePositionTerms}

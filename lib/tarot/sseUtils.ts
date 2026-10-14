@@ -11,6 +11,8 @@ export interface ParsedSseChunk {
   isDone: boolean;
   /** 如果模型因 token 上限停止，返回 true */
   truncated: boolean;
+  /** 上游给出了 finish_reason（stop / length 等），说明生成已正常收尾 */
+  finished: boolean;
 }
 
 export interface DecisionResult {
@@ -86,14 +88,17 @@ function extractErrorMessage(value: unknown): string | null {
 }
 
 export function parseSseChunk(data: string): ParsedSseChunk {
+  const empty: ParsedSseChunk = {
+    content: '', thinking: '', error: null, isDone: false, truncated: false, finished: false,
+  };
   if (data === '[DONE]') {
-    return { content: '', thinking: '', error: null, isDone: true, truncated: false };
+    return { ...empty, isDone: true };
   }
 
   try {
     const parsedUnknown: unknown = JSON.parse(data);
     if (!isRecord(parsedUnknown)) {
-      return { content: '', thinking: '', error: null, isDone: false, truncated: false };
+      return empty;
     }
 
     const choices = Array.isArray(parsedUnknown.choices) ? parsedUnknown.choices : [];
@@ -125,10 +130,11 @@ export function parseSseChunk(data: string): ParsedSseChunk {
     // 检测 finish_reason: "length" —— 表示模型因 token 上限被截断
     const finishReason = firstChoice ? firstChoice.finish_reason : null;
     const truncated = finishReason === 'length';
+    const finished = typeof finishReason === 'string' && finishReason.length > 0;
 
-    return { content, thinking, error, isDone: false, truncated };
+    return { content, thinking, error, isDone: false, truncated, finished };
   } catch {
-    return { content: '', thinking: '', error: null, isDone: false, truncated: false };
+    return empty;
   }
 }
 

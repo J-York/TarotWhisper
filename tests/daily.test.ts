@@ -5,6 +5,7 @@ import {
   getDailyDraw,
   getRecentDailyDraws,
 } from '@/lib/tarot/daily';
+import { allCards } from '@/lib/tarot/cards';
 
 describe('formatDateKey', () => {
   it('formats a date as YYYY-MM-DD', () => {
@@ -60,6 +61,30 @@ describe('getDailyDraw', () => {
     );
     const uniqueCards = new Set(draws.map((d) => d.card.id));
     expect(uniqueCards.size).toBeGreaterThan(1);
+  });
+
+  it('does not walk sequentially through the deck on consecutive days', () => {
+    const draws = Array.from({ length: 365 }, (_, i) =>
+      getDailyDraw(new Date(2026, 0, i + 1))
+    );
+    const deckIdx = draws.map((d) => allCards.findIndex((c) => c.id === d.card.id));
+    let sequentialSteps = 0;
+    for (let i = 1; i < deckIdx.length; i++) {
+      if (Math.abs(deckIdx[i] - deckIdx[i - 1]) === 1) sequentialSteps++;
+    }
+    // 均匀随机下相邻索引差为 ±1 的概率约 2/78，一年约 9 次
+    expect(sequentialSteps).toBeLessThan(30);
+    expect(new Set(deckIdx).size).toBeGreaterThan(60);
+  });
+
+  it('mixes upright and reversed within every month', () => {
+    for (let month = 0; month < 12; month++) {
+      const reversed = Array.from({ length: 28 }, (_, i) =>
+        getDailyDraw(new Date(2026, month, i + 1)).isReversed
+      ).filter(Boolean).length;
+      expect(reversed).toBeGreaterThan(4);
+      expect(reversed).toBeLessThan(24);
+    }
   });
 
   it('dateKey matches the input date', () => {

@@ -214,6 +214,7 @@ async function doStreamRequest(
   let buffer = '';
   let fullText = '';
   let streamComplete = false;
+  let sawFinishReason = false;
   let receivedError = false;
   let truncated = false;
   let thinkingBlockOpen = false;
@@ -299,6 +300,9 @@ async function doStreamRequest(
       truncated = true;
       callbacks.onTruncated?.();
     }
+    if (parsed.finished) {
+      sawFinishReason = true;
+    }
   };
 
   const resetIdleTimer = (): void => {
@@ -346,6 +350,12 @@ async function doStreamRequest(
 
     closeThinking();
     flushCallbacks();
+
+    // 连接关闭却既没有 [DONE] 也没有 finish_reason：上游或网关中途断开（含平台 maxDuration 强杀）
+    if (!streamComplete && !sawFinishReason && !receivedError && fullText) {
+      receivedError = true;
+      callbacks.onStreamError?.('解读传输中断');
+    }
   } catch (err) {
     closeThinking();
     flushCallbacks();

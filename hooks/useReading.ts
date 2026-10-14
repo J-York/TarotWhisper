@@ -148,6 +148,8 @@ export function useReading() {
     const controller = createAbortController();
     // 节流 setState：长思考时 token 极密，逐 chunk setState 会卡死神谕阶段
     const textBuffer = createStreamTextBuffer((text) => setInterpretation(text));
+    // 流内错误先暂存：有正文时作为提示附在正文下方，没有正文才整块显示错误
+    const stream: { error: string | null } = { error: null };
 
     try {
       const result = await streamInterpret(
@@ -155,7 +157,7 @@ export function useReading() {
         {
           onContent: (chunk) => textBuffer.append(chunk),
           onThinking: (chunk) => textBuffer.append(chunk),
-          onStreamError: (msg) => setError(msg),
+          onStreamError: (msg) => { stream.error ??= msg; },
           onRetry: (attempt, max) => {
             setRetryInfo({ attempt, max });
           },
@@ -186,11 +188,13 @@ export function useReading() {
         };
         saveReading(reading);
 
-        if (result.truncated) {
+        if (stream.error) {
+          setNotice(`${stream.error}，以上为已收到的部分内容。可点击下方「重新解读」再试一次。`);
+        } else if (result.truncated) {
           setNotice('解读内容因模型输出长度限制被截断，已显示部分内容。建议在设置中切换更高输出限制的模型，或使用追问功能获取剩余内容。');
         }
-      } else if (!result.receivedError) {
-        setError('未收到有效解读内容，连接可能被网关提前中断');
+      } else {
+        setError(stream.error ?? '未收到有效解读内容，连接可能被网关提前中断');
       }
     } catch (err) {
       textBuffer.flush();
@@ -212,13 +216,12 @@ export function useReading() {
 
   // ── 追问解读 ─────────────────────────────────────────────
 
+  // target 由调用方传入快照：askFollowUp 刚 setFollowUps 的新追问在其闭包中尚不可见
   const runFollowUpInterpretation = useCallback(async (
-    followUpId: string,
+    target: Pick<FollowUp, 'id' | 'question' | 'decision' | 'additionalCards'>,
     apiConfig: ApiConfig,
   ): Promise<void> => {
-    const target = followUps.find((fu) => fu.id === followUpId);
-    if (!target) return;
-
+    const followUpId = target.id;
     const mode = target.decision === 'draw' ? 'with-extras' : 'direct';
     patchFollowUp(followUpId, { status: 'interpreting', interpretation: '', error: null });
 
@@ -298,7 +301,7 @@ export function useReading() {
         activeAbortRef.current = null;
       }
     }
-  }, [followUps, question, spread, drawnCards, interpretation, patchFollowUp, readingId, createAbortController]);
+  }, [question, spread, drawnCards, interpretation, patchFollowUp, readingId, createAbortController]);
 
   // ── 追问入口 ─────────────────────────────────────────────
 
@@ -365,7 +368,10 @@ export function useReading() {
           drawCount: 0,
           reason: decision.reason,
         });
-        await runFollowUpInterpretation(id, apiConfig);
+        await runFollowUpInterpretation(
+          { id, question: trimmed, decision: 'direct', additionalCards: [] },
+          apiConfig,
+        );
       } else {
         const additionalCards = drawSupplementaryCards(decision.drawCount, 0);
         patchFollowUp(id, {
@@ -399,39 +405,32 @@ export function useReading() {
         if (fu.status !== 'awaiting-reveal') return fu;
         if (fu.revealedCount >= fu.additionalCards.length) return fu;
 
-        const nextRevealedCount = fu.revealedCount + 1;
-        const allRevealed = nextRevealedCount >= fu.additionalCards.length;
-
-        if (allRevealed) {
+        const next = { ...fu, revealedCount: fu.revealedCount + 1 };
+        if (next.revealedCount >= fu.additionalCards.length) {
           queueMicrotask(() => {
-            runFollowUpInterpretation(followUpId, apiConfig);
+            runFollowUpInterpretation(next, apiConfig);
           });
         }
 
-        return { ...fu, revealedCount: nextRevealedCount };
+        return next;
       }),
     );
   }, [runFollowUpInterpretation]);
 
   const revealAllFollowUpCards = useCallback((followUpId: string, apiConfig: ApiConfig) => {
-    setFollowUps((prev) =>
-      prev.map((fu) => {
-        if (fu.id !== followUpId) return fu;
-        if (fu.status !== 'awaiting-reveal') return fu;
-        if (fu.revealedCount >= fu.additionalCards.length) return fu;
-        return { ...fu, revealedCount: fu.additionalCards.length };
-      }),
-    );
-    queueMicrotask(() => {
-      runFollowUpInterpretation(followUpId, apiConfig);
-    });
-  }, [runFollowUpInterpretation]);
+    const target = followUps.find((fu) => fu.id === followUpId);
+    if (!target || target.status !== 'awaiting-reveal') return;
+    if (target.revealedCount >= target.additionalCards.length) return;
+
+    patchFollowUp(followUpId, { revealedCount: target.additionalCards.length });
+    void runFollowUpInterpretation(target, apiConfig);
+  }, [followUps, patchFollowUp, runFollowUpInterpretation]);
 
   const retryFollowUp = useCallback(async (followUpId: string, apiConfig: ApiConfig) => {
     const target = followUps.find((fu) => fu.id === followUpId);
     if (!target) return;
     if (target.decision) {
-      await runFollowUpInterpretation(followUpId, apiConfig);
+      await runFollowUpInterpretation(target, apiConfig);
     }
   }, [followUps, runFollowUpInterpretation]);
 

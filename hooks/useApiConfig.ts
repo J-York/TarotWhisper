@@ -13,16 +13,18 @@ const defaultConfig: ApiConfig = {
 
 export function useApiConfig() {
   const [config, setConfig] = useState<ApiConfig>(defaultConfig);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [storageLoaded, setStorageLoaded] = useState(false);
   // 服务端是否配置了可用的后备 LLM（无用户 key 时也能占卜）
   const [fallbackAvailable, setFallbackAvailable] = useState(false);
+  const [fallbackChecked, setFallbackChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/config')
       .then((res) => res.json())
       .then((data) => { if (!cancelled) setFallbackAvailable(!!data.fallbackAvailable); })
-      .catch(() => { if (!cancelled) setFallbackAvailable(false); });
+      .catch(() => { if (!cancelled) setFallbackAvailable(false); })
+      .finally(() => { if (!cancelled) setFallbackChecked(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -39,7 +41,7 @@ export function useApiConfig() {
       }
     }
     queueMicrotask(() => {
-      setIsLoaded(true);
+      setStorageLoaded(true);
     });
   }, []);
 
@@ -56,6 +58,8 @@ export function useApiConfig() {
     });
   }, []);
 
+  // 两项都就绪后 canUseApi 才可信，否则后备配置查询返回前会误判为“未配置”
+  const isLoaded = storageLoaded && fallbackChecked;
   const isConfigured = config.apiKey.length > 0;
   // 能否发起占卜：用户配了 key，或服务端有后备配置
   const canUseApi = isConfigured || fallbackAvailable;

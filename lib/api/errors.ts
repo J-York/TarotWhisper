@@ -32,7 +32,7 @@ export interface LLMErrorInfo {
 const USER_MESSAGES: Record<LLMErrorCode, string> = {
   AUTH_FAILED:        '认证失败，请检查 API Key 是否正确',
   RATE_LIMITED:       '请求过于频繁，请稍后再试',
-  MODEL_NOT_FOUND:    '所选模型不存在，请在配置中更换模型',
+  MODEL_NOT_FOUND:    '接口地址或模型不存在，请检查配置中的 API 地址与模型名称',
   BAD_REQUEST:        '请求格式错误，请检查 API 配置',
   SERVER_ERROR:       '上游服务暂时异常，请稍后重试',
   GATEWAY_ERROR:      '网关超时或不可用，请稍后重试',
@@ -78,13 +78,51 @@ export function classifyHttpError(status: number, body?: string): LLMErrorInfo {
       retryable = status >= 500;
   }
 
+  let message = USER_MESSAGES[code];
+  const payload = parseErrorPayload(body);
+
+  if (payload?.source === 'route' && payload.error) {
+    // /api/interpret 自身的判断（未配置 Key、限流、校验失败等）已是面向用户的中文文案。
+    // 其 429 是按小时计的配额，退避几秒重试必然失败，还会多扣一次配额
+    message = payload.error;
+    if (status === 429) retryable = false;
+  } else if (payload?.upstreamMessage) {
+    message = `${message}（服务商返回：${truncate(payload.upstreamMessage, 120)}）`;
+  }
+
   return {
     code,
-    message: USER_MESSAGES[code],
+    message,
     detail: body ? sanitizeErrorDetail(body) : undefined,
     retryable,
     httpStatus: status,
   };
+}
+
+interface ErrorPayload {
+  error?: string;
+  source?: 'route' | 'upstream';
+  upstreamMessage?: string;
+}
+
+function parseErrorPayload(body?: string): ErrorPayload | null {
+  if (!body) return null;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const record = parsed as Record<string, unknown>;
+    return {
+      error: typeof record.error === 'string' ? record.error : undefined,
+      source: record.source === 'route' || record.source === 'upstream' ? record.source : undefined,
+      upstreamMessage: typeof record.upstreamMessage === 'string' ? record.upstreamMessage : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 /** 根据 JS 错误对象分类 */

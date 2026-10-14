@@ -43,6 +43,15 @@ describe('parseSseChunk', () => {
     expect(result.error).toBeNull();
   });
 
+  it('marks chunks carrying finish_reason as finished', () => {
+    const stop = parseSseChunk(JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }));
+    expect(stop.finished).toBe(true);
+    expect(stop.truncated).toBe(false);
+
+    const mid = parseSseChunk(JSON.stringify({ choices: [{ delta: { content: 'a' }, finish_reason: null }] }));
+    expect(mid.finished).toBe(false);
+  });
+
   it('handles empty content', () => {
     const data = JSON.stringify({ choices: [{ delta: {} }] });
     const result = parseSseChunk(data);

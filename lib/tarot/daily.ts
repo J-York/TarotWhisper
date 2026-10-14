@@ -8,7 +8,7 @@
 import { TarotCard } from './types';
 import { allCards } from './cards';
 
-const SEED_PREFIX = 'mystic-tarot-daily-v1';
+const SEED_PREFIX = 'mystic-tarot-daily-v2';
 
 /** YYYY-MM-DD（本地时区） */
 export function formatDateKey(date: Date): string {
@@ -28,15 +28,21 @@ export function parseDateKey(key: string): Date | null {
 }
 
 /**
- * djb2 字符串哈希 · 32-bit 无符号
- * 足够稳定且分布均匀，用于把日期映射到 0..N
+ * FNV-1a + murmur3 fmix32 收尾 · 32-bit 无符号
+ * 相邻日期只差末位字符，必须有收尾混合才能雪崩到全部位；
+ * 单纯的 djb2 会让连续日期落在连续的牌上，且某一位整月不变。
  */
-function djb2(input: string): number {
-  let h = 5381;
+function hash32(input: string): number {
+  let h = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
-    // ((h << 5) + h) ^ c  ≡  h * 33 ^ c
-    h = ((h << 5) + h) ^ input.charCodeAt(i);
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
   }
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
   return h >>> 0;
 }
 
@@ -52,10 +58,9 @@ export interface DailyDraw {
  */
 export function getDailyDraw(date: Date = new Date()): DailyDraw {
   const dateKey = formatDateKey(date);
-  const seed = djb2(`${SEED_PREFIX}|${dateKey}`);
-  const cardIdx = seed % allCards.length;
-  // 用 seed 的另一段位决定正逆位，避免与卡牌选择强相关
-  const isReversed = (((seed >>> 16) ^ (seed >>> 8)) & 1) === 1;
+  const cardIdx = hash32(`${SEED_PREFIX}|card|${dateKey}`) % allCards.length;
+  // 正逆位用独立的哈希，避免与卡牌选择相关
+  const isReversed = (hash32(`${SEED_PREFIX}|orientation|${dateKey}`) & 1) === 1;
   return {
     card: allCards[cardIdx],
     isReversed,
