@@ -21,7 +21,7 @@ interface ModelsListResponse {
  * 从 endpoint URL 提取 base URL
  * 例如: https://api.openai.com/v1/chat/completions -> https://api.openai.com/v1
  */
-function extractBaseUrl(endpoint: string): string {
+export function extractBaseUrl(endpoint: string): string {
   try {
     const url = new URL(endpoint);
     // 移除路径中的 /chat/completions 部分
@@ -43,6 +43,7 @@ function extractBaseUrl(endpoint: string): string {
 
 /**
  * 获取可用的模型列表
+ * 经 /api/models 由服务端代为请求：多数服务商不对浏览器开放 CORS，直连会被拦截
  * @param endpoint - API endpoint URL (会自动提取 base URL)
  * @param apiKey - API 密钥
  * @returns 模型列表
@@ -51,19 +52,15 @@ export async function fetchAvailableModels(
   endpoint: string,
   apiKey: string
 ): Promise<ModelInfo[]> {
-  const baseUrl = extractBaseUrl(endpoint);
-  const modelsUrl = `${baseUrl}/models`;
-
-  const response = await fetch(modelsUrl, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-    },
+  const response = await fetch('/api/models', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, apiKey }),
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`获取模型列表失败: ${response.status} - ${error}`);
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error ?? `获取模型列表失败 (${response.status})`);
   }
 
   const data = await response.json() as ModelsListResponse;
