@@ -45,7 +45,7 @@ export function CelticCrossLayout({
             {/* 阵位名 · 常驻显示（触屏无 hover）
                挑战牌的标签设为 invisible 占位，保证与同格的中央牌垂直对齐 */}
             <span
-              className={`cn-hint text-bone-faint whitespace-nowrap max-w-[110px] truncate ${
+              className={`max-w-[110px] truncate whitespace-nowrap text-[11px] tracking-[0.06em] text-bone-faint ${
                 isChallenge ? 'invisible' : ''
               }`}
             >
@@ -64,7 +64,7 @@ export function CelticCrossLayout({
 
             {/* 下方说明 · 挑战牌下移一行，避开中央牌的说明 */}
             <span
-              className={`cn-hint text-center whitespace-nowrap max-w-[110px] truncate min-h-4 ${
+              className={`min-h-4 max-w-[110px] truncate whitespace-nowrap text-center text-[11px] ${
                 isChallenge ? 'translate-y-5 text-bone-faint' : 'text-bone-whisper'
               }`}
             >

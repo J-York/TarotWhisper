@@ -1,38 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import Link from 'next/link';
+
 import { TarotCardComponent } from '@/components/TarotCard';
 import { CardDeck } from '@/components/CardDeck';
 import { SpreadSelector } from '@/components/SpreadSelector';
-import { ApiSettings } from '@/components/ApiSettings';
 import { Interpretation } from '@/components/Interpretation';
 import { FollowUpPanel } from '@/components/FollowUpPanel';
 import { CelticCrossLayout } from '@/components/CelticCrossLayout';
-import { useReading } from '@/hooks/useReading';
+import { useSettingsDialog } from '@/components/AppShell';
+import { useReading, type ReadingPhase } from '@/hooks/useReading';
 import { useApiConfig } from '@/hooks/useApiConfig';
 import type { DrawnCard } from '@/lib/tarot/types';
 
-/* ═══════════════════════════════════════════════════════════════
-   Ceremonial Acts · 仪式分幕
-   每一次占卜是一场五幕剧 — 每一幕占满整个视野，
-   幕次以巨型罗马数字水印沉在深渊里，代替一切进度指示。
-   ═══════════════════════════════════════════════════════════════ */
+/* ─── 步骤映射 · 与 useReading 的阶段一一对应 ─── */
 
-interface ActMeta {
-  numeral: string;
-  ordinal: string;
-  name: string;
-}
-
-const ACTS: Record<string, ActMeta> = {
-  question:  { numeral: 'I',     ordinal: 'ACT Ⅰ',   name: '提 问' },
-  spread:    { numeral: 'II',    ordinal: 'ACT Ⅱ',   name: '择 阵' },
-  shuffle:   { numeral: 'III',   ordinal: 'ACT Ⅲ',   name: '洗 礼' },
-  draw:      { numeral: 'IV',    ordinal: 'ACT Ⅳ',   name: '揭 示' },
-  reveal:    { numeral: 'IV',    ordinal: 'ACT Ⅳ',   name: '揭 示' },
-  interpret: { numeral: 'V',     ordinal: 'ACT Ⅴ',   name: '神 谕' },
+const STEP_INDEX: Record<ReadingPhase, number> = {
+  question: 0,
+  spread: 1,
+  shuffle: 2,
+  draw: 3,
+  reveal: 3,
+  interpret: 4,
 };
+
+const STEPS = ['提问', '牌阵', '洗牌', '翻牌', '解读'];
 
 /* ─── 洗牌 particle burst · 确定性伪随机（避免客户端水合漂移） ─── */
 
@@ -51,104 +44,83 @@ const BURST_GLYPHS = ['✦', '✧', '⊹', '◇', '·'];
 function makeBurst(count: number, seed: number): BurstParticle[] {
   return Array.from({ length: count }, (_, i) => {
     const angle = (i / count) * Math.PI * 2 + ((seed * 37 + i * 13) % 10) / 18;
-    const dist = 130 + ((seed * 53 + i * 97) % 150);
+    const dist = 120 + ((seed * 53 + i * 97) % 140);
     return {
       glyph: BURST_GLYPHS[i % BURST_GLYPHS.length],
       dx: Math.cos(angle) * dist,
       dy: Math.sin(angle) * dist * 0.82,
-      size: 10 + ((seed * 29 + i * 41) % 15),
+      size: 10 + ((seed * 29 + i * 41) % 14),
       delay: ((seed * 17 + i * 23) % 10) * 26,
-      duration: 950 + ((seed * 11 + i * 31) % 10) * 55,
+      duration: 900 + ((seed * 11 + i * 31) % 10) * 55,
       color: i % 4 === 0 ? 'var(--bone)' : 'var(--gold-warm)',
     };
   });
 }
 
-/* ─── 揭示幕 · 聚光单卡 ─── */
+/* ─── 单张抽牌位 · 阵位名常驻，牌名翻后显示 ─── */
 
-interface SpotlightCardProps {
+interface DrawSlotProps {
   drawn: DrawnCard;
   index: number;
   isRevealed: boolean;
   isNext: boolean;
   onReveal: () => void;
+  size?: 'sm' | 'md';
 }
 
-function SpotlightCard({ drawn, index, isRevealed, isNext, onReveal }: SpotlightCardProps) {
+function DrawSlot({
+  drawn,
+  index,
+  isRevealed,
+  isNext,
+  onReveal,
+  size = 'md',
+}: DrawSlotProps): ReactElement {
   return (
     <div
-      className="relative flex flex-col items-center anim-veil-rise"
-      style={{ animationDelay: `${Math.min(index * 110, 900)}ms` }}
+      className="flex w-full max-w-[190px] flex-col items-center anim-veil-rise"
+      style={{ animationDelay: `${Math.min(index * 90, 720)}ms` }}
     >
-      {/* 聚光锥 · 自帷幕之上垂落 */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-52 h-[135%] transition-opacity duration-[1400ms]"
-        style={{
-          opacity: isRevealed ? 1 : 0,
-          transitionTimingFunction: 'var(--ease-veil)',
-          background:
-            'linear-gradient(to bottom, transparent 0%, var(--gold-faint) 32%, rgba(201,169,97,0.05) 72%, transparent 100%)',
-          clipPath: 'polygon(41% 0, 59% 0, 100% 100%, 0 100%)',
-        }}
-      />
-      {/* 地面光晕 */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-12 transition-opacity duration-[1400ms]"
-        style={{
-          opacity: isRevealed ? 1 : 0,
-          transitionTimingFunction: 'var(--ease-veil)',
-          background:
-            'radial-gradient(ellipse 62% 52% at 50% 56%, var(--gold-glow) 0%, rgba(201,169,97,0.06) 46%, transparent 72%)',
-        }}
-      />
-
-      {/* 阵位名 · 常驻（触屏无 hover，这是唯一的阵位信息来源） */}
-      <span className="relative cn-label text-bone-faint mb-5">
-        {drawn.position.nameCn}
-      </span>
-
-      <div className="relative">
-        <TarotCardComponent
-          card={drawn.card}
-          isReversed={drawn.isReversed}
-          isRevealed={isRevealed}
-          onClick={onReveal}
-          size="md"
-        />
-
-        {/* 下一张待翻 · 呼吸金框示意 */}
-        {isNext && (
-          <div
-            aria-hidden
-            className="absolute -inset-3 pointer-events-none anim-glow-pulse"
-            style={{ boxShadow: '0 0 0 0.5px var(--gold-faint)' }}
-          />
-        )}
-
-        {/* 幕次序号 · 碑刻体 */}
-        <span
-          aria-hidden
-          className={`absolute -top-7 -left-8 font-display text-2xl select-none transition-colors duration-1000 ${
-            isRevealed ? 'text-gold-dim' : 'text-bone-whisper'
-          }`}
-        >
-          {String(index + 1).padStart(2, '0')}
+      <div className="mb-3 flex w-full items-center gap-2">
+        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-[var(--ink-line-strong)] text-[10px] text-bone-faint">
+          {index + 1}
         </span>
+        <span className="truncate text-xs tracking-[0.1em] text-bone-faint">{drawn.position.nameCn}</span>
       </div>
 
-      {/* 牌名 · 揭示后以碑刻体浮现 */}
-      <span
-        className={`relative mt-5 font-display text-[11px] tracking-[0.3em] uppercase transition-all duration-1000 ${
-          isRevealed
-            ? 'text-gold opacity-100 translate-y-0'
-            : 'text-bone-whisper opacity-0 translate-y-2'
-        }`}
-        style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-      >
-        {drawn.card.name}
-      </span>
+      <div className="relative">
+        <div className={isNext ? 'rounded-lg shadow-[0_0_0_1px_var(--gold-dim),0_0_28px_-6px_var(--gold-glow)]' : ''}>
+          <TarotCardComponent
+            card={drawn.card}
+            isReversed={drawn.isReversed}
+            isRevealed={isRevealed}
+            onClick={onReveal}
+            size={size}
+          />
+        </div>
+        {isNext && (
+          <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-[var(--gold-faint)] bg-[var(--ink-deep)] px-2 py-0.5 text-[10px] tracking-wider text-gold-warm">
+            轻触翻开
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex min-h-10 flex-col items-center text-center">
+        <span
+          className={`font-heading text-sm tracking-[0.05em] transition-all duration-500 ${
+            isRevealed ? 'translate-y-0 text-gold-warm opacity-100' : 'translate-y-1 text-bone-faint opacity-0'
+          }`}
+        >
+          {drawn.card.nameCn}
+        </span>
+        <span
+          className={`mt-0.5 text-[10px] uppercase tracking-[0.16em] transition-all duration-500 ${
+            isRevealed ? 'text-bone-faint opacity-100' : 'opacity-0'
+          }`}
+        >
+          {drawn.isReversed ? '逆位 · Reversed' : '正位 · Upright'}
+        </span>
+      </div>
     </div>
   );
 }
@@ -157,7 +129,7 @@ function SpotlightCard({ drawn, index, isRevealed, isNext, onReveal }: Spotlight
    Page
    ═══════════════════════════════════════════════════════════════ */
 
-export default function ReadingPage() {
+export default function ReadingPage(): ReactElement {
   const {
     phase,
     question,
@@ -182,74 +154,60 @@ export default function ReadingPage() {
     revealNextFollowUpCard,
     revealAllFollowUpCards,
     retryFollowUp,
+    cancelRequest,
     reset,
     goToPhase,
   } = useReading();
 
-  const { config, isLoaded: configLoaded, canUseApi, saveConfig } = useApiConfig();
-  const [showSettings, setShowSettings] = useState(false);
+  const { config, isLoaded: configLoaded, canUseApi } = useApiConfig();
+  const { openSettings } = useSettingsDialog();
   const needsConfig = configLoaded && !canUseApi;
   const [followUpDraft, setFollowUpDraft] = useState('');
 
-  const act = ACTS[phase] ?? ACTS.question;
-
-  // ── 提问幕 · 自动聚焦 & 回车推进 ──
+  const stepIndex = STEP_INDEX[phase];
   const questionRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     if (phase !== 'question') return;
-    const t = window.setTimeout(() => questionRef.current?.focus({ preventScroll: true }), 450);
+    const t = window.setTimeout(() => questionRef.current?.focus({ preventScroll: true }), 300);
     return () => window.clearTimeout(t);
   }, [phase]);
 
-  // ── 洗牌幕 · particle burst ──
+  /* ── 洗牌 burst ── */
   const [burst, setBurst] = useState<{ key: number; particles: BurstParticle[] } | null>(null);
   const burstTimer = useRef<number>(0);
 
-  // 一次洗牌只引爆一次：burst 非空时封锁；洗牌幕结束后整节卸载，天然复位
   const igniteBurst = (): void => {
     if (phase !== 'shuffle' || burst !== null) return;
     const key = Date.now();
-    setBurst({ key, particles: makeBurst(28, key % 9973) });
-    burstTimer.current = window.setTimeout(() => setBurst(null), 2200);
+    setBurst({ key, particles: makeBurst(26, key % 9973) });
+    burstTimer.current = window.setTimeout(() => setBurst(null), 2000);
   };
 
   useEffect(() => () => window.clearTimeout(burstTimer.current), []);
 
-  // ── 解读区 ref · 进入 interpret 阶段时自动滚动至此 ──
-  const interpretSectionRef = useRef<HTMLDivElement>(null);
-
+  /* ── 进入解读时滚到结果区 ── */
+  const resultRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (phase !== 'interpret') return;
-    const el = interpretSectionRef.current;
-    if (!el) return;
-
-    const reduceMotion =
+    const reduce =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // 让揭幕动画先展开，随后再滚，避免跳动感
     const t = window.setTimeout(() => {
-      el.scrollIntoView({
-        behavior: reduceMotion ? 'auto' : 'smooth',
-        block: 'start',
-      });
+      resultRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     }, 80);
     return () => window.clearTimeout(t);
   }, [phase]);
 
-  // 跨“牌名 / 阵位名”提取，用于解读区金色关键词高亮
   const baseCardTerms = useMemo<string[]>(
     () => drawnCards.flatMap((d) => [d.card.nameCn, d.card.name]),
     [drawnCards]
   );
-  const basePositionTerms = useMemo<string[]>(
-    () => spread.positions.map((p) => p.nameCn),
-    [spread]
-  );
+  const basePositionTerms = useMemo<string[]>(() => spread.positions.map((p) => p.nameCn), [spread]);
 
   const handleStartInterpretation = (): void => {
     if (needsConfig) {
-      setShowSettings(true);
+      openSettings();
       return;
     }
     startInterpretation(config);
@@ -262,10 +220,6 @@ export default function ReadingPage() {
     setFollowUpDraft('');
   };
 
-  const advanceFromQuestion = (): void => {
-    if (question.trim()) goToPhase('spread');
-  };
-
   const handleQuestionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey && question.trim()) {
@@ -274,414 +228,355 @@ export default function ReadingPage() {
     }
   };
 
+  const goBack = (): void => {
+    if (phase === 'spread') goToPhase('question');
+    else if (phase === 'shuffle') goToPhase('spread');
+  };
+
   return (
-    <div className="relative min-h-screen">
-      {/* ═══════════════════════════════════════
-          幕次水印 · 巨型罗马数字沉在深渊里
-         ═══════════════════════════════════════ */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden>
-        <div
-          key={act.numeral}
-          className="absolute inset-0 flex items-center justify-center anim-fade-in"
-          style={{ animationDuration: '1800ms' }}
-        >
-          <span
-            className="font-display font-bold select-none text-bone translate-x-[6vw] -translate-y-[4vh]"
-            style={{
-              fontSize: 'clamp(18rem, 48vw, 44rem)',
-              lineHeight: 1,
-              opacity: 0.045,
-            }}
-          >
-            {act.numeral}
+    <main id="main-content" className="page-container page-main">
+      {/* ─── 流程条 ─── */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 md:mb-10">
+        <div className="flex items-center gap-2">
+          <Link href="/" className="btn-ink-ghost -ml-2 text-xs">
+            ← 首页
+          </Link>
+          <span className="hidden h-4 w-px bg-[var(--ink-line)] sm:block" />
+          <ol className="hidden items-center gap-1 sm:flex" aria-label="占卜进度">
+            {STEPS.map((label, i) => (
+              <li key={label}>
+                <span
+                  className={`step-pill ${
+                    i < stepIndex ? 'step-pill--done' : i === stepIndex ? 'step-pill--active' : ''
+                  }`}
+                  aria-current={i === stepIndex ? 'step' : undefined}
+                >
+                  <span className="text-[10px]">{i < stepIndex ? '✓' : String(i + 1).padStart(2, '0')}</span>
+                  {label}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-bone-faint sm:hidden">
+            第 {stepIndex + 1} / 5 步 · {STEPS[stepIndex]}
           </span>
-          {/* 命运之轮 · 随幕缓转 */}
-          <div
-            className="arc-glow w-[72vmin] h-[72vmin] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{ animationDuration: '140s' }}
-          />
+          {phase !== 'question' && (
+            <button
+              type="button"
+              onClick={() => {
+                cancelRequest();
+                reset();
+              }}
+              className="btn-ink-ghost text-xs"
+            >
+              重新开始
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════
-          离场 · 仅左上一隅
-         ═══════════════════════════════════════ */}
-      <header className="fixed top-0 left-0 z-50 px-6 py-7 md:px-10">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-4 text-bone-dim hover:text-bone transition-colors duration-500"
-          style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-        >
-          <span
-            className="text-base group-hover:-translate-x-1.5 transition-transform duration-700"
-            style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-          >
-            ←
-          </span>
-          <span className="cn-nav">离 开</span>
-        </Link>
-      </header>
+      {/* ═══ 步骤 1 · 提问 ═══ */}
+      {phase === 'question' && (
+        <section className="mx-auto max-w-3xl anim-veil-rise">
+          <header className="text-center">
+            <p className="eyebrow">Step 01 · Your Question</p>
+            <h1 className="page-title mt-4">把问题写下来</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-bone-faint">
+              越具体的问题，越能得到有用的答案。写下此刻最想厘清的那一件事。
+            </p>
+          </header>
 
-      {/* 幕次字幕 · 左下隅 */}
-      <div
-        className="fixed bottom-7 left-6 md:left-10 z-40 pointer-events-none select-none hidden sm:flex items-center gap-4"
-        aria-hidden
-      >
-        <span className="font-display text-xs tracking-[0.4em] text-gold-dim">
-          {act.ordinal}
-        </span>
-        <span className="rule-h-gold w-10" />
-        <span className="cn-label text-bone-faint">{act.name}</span>
-      </div>
-
-      {/* 配置 · 右下隅的一粒耳语（仪式中不设导航，仅此一处） */}
-      <button
-        onClick={() => setShowSettings(true)}
-        className="fixed bottom-7 right-6 md:right-10 z-40 cn-hint text-bone-whisper hover:text-gold-dim transition-colors duration-500"
-        style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-        aria-label="API 配置"
-      >
-        ⚙ 配 置
-      </button>
-
-      {/* ═══════════════════════════════════════
-          五幕 · 每一幕占满整个视野
-         ═══════════════════════════════════════ */}
-      <main id="main-content" className="relative z-10">
-
-        {/* ─── 幕 Ⅰ · 提问 ─── */}
-        {phase === 'question' && (
-          <section className="act-fullscreen overflow-hidden">
-            {/* 巨型水印 · 你寻求什么 */}
-            <div
-              aria-hidden
-              className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-            >
-              <span
-                className="font-heading text-bone whitespace-nowrap anim-drift"
-                style={{
-                  fontSize: 'clamp(4.5rem, 17vw, 15rem)',
-                  letterSpacing: '0.12em',
-                  opacity: 0.05,
-                }}
-              >
-                你寻求什么
+          <div className="surface mt-9 p-5 md:p-7">
+            <label htmlFor="reading-question" className="eyebrow">
+              你的问题
+            </label>
+            <textarea
+              id="reading-question"
+              ref={questionRef}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={handleQuestionKeyDown}
+              placeholder="例如：我是否应该接受这份新的工作机会？"
+              rows={4}
+              spellCheck={false}
+              className="mt-3 w-full resize-none rounded-lg border border-[var(--ink-line-strong)] bg-[rgba(10,8,18,0.5)] px-4 py-3.5 font-body text-lg leading-relaxed text-bone outline-none transition-colors placeholder:text-bone-whisper focus:border-[var(--gold-dim)]"
+            />
+            <div className="mt-4 flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
+              <span className="text-center text-xs text-bone-faint sm:text-left">
+                Enter 继续 · Shift + Enter 换行
               </span>
-            </div>
-
-            <div className="relative w-full max-w-4xl flex flex-col items-center anim-veil-rise">
-              <span className="cn-label text-gold-dim mb-10 anim-whisper">
-                第 一 幕 · 凝 视 内 心
-              </span>
-
-              {/* 无界之问 · 只有光与文字 */}
-              <textarea
-                ref={questionRef}
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={handleQuestionKeyDown}
-                placeholder="在此写下你的问题…"
-                rows={4}
-                spellCheck={false}
-                aria-label="你的问题"
-                className="input-ink-bare w-full resize-none text-center font-body text-3xl md:text-4xl leading-[1.9] text-bone placeholder:text-bone-whisper/70"
-                style={{ caretColor: 'var(--gold)' }}
-              />
-
-              {/* 呼吸基线 · 落笔之处 */}
-              <div className="relative mt-4 w-64 md:w-96">
-                <div className="rule-h-gold w-full" />
-                <span
-                  aria-hidden
-                  className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rotate-45 bg-[var(--gold)] anim-twinkle"
-                  style={{ boxShadow: '0 0 12px var(--gold-glow)' }}
-                />
-              </div>
-
-              <p className="font-body italic-soft text-bone-faint text-sm mt-10">
-                集中精神，让问题在心中浮现 — 写毕按 Enter，或轻触下方
-              </p>
-
               <button
-                onClick={advanceFromQuestion}
+                type="button"
+                onClick={() => question.trim() && goToPhase('spread')}
                 disabled={!question.trim()}
-                className="btn-ink-ghost mt-8 text-base"
+                className="btn-ink-primary h-11 w-full px-6 sm:w-auto"
               >
-                带 着 问 题 前 行 →
+                选择牌阵 →
               </button>
             </div>
-          </section>
-        )}
+          </div>
 
-        {/* ─── 幕 Ⅱ · 择阵 · 悬浮于不同景深的面板 ─── */}
-        {phase === 'spread' && (
-          <section className="act-fullscreen overflow-hidden">
-            {/* 远景层 · 沉在后方 */}
-            <div
-              aria-hidden
-              className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-            >
-              <span
-                className="font-heading text-bone whitespace-nowrap"
-                style={{ fontSize: 'clamp(4rem, 14vw, 12rem)', letterSpacing: '0.2em', opacity: 0.04 }}
-              >
-                命运的形状
-              </span>
-            </div>
-
-            {/* 3D 舞台 */}
-            <div className="relative w-full perspective-1000">
-              <div className="relative w-full max-w-5xl mx-auto transform-style-3d">
-                {/* 深处漂浮的仪式残片 · translateZ 负值 */}
-                <div
-                  aria-hidden
-                  className="hidden lg:block absolute -left-24 top-10 w-44 h-64 ink-panel-quiet"
-                  style={{ transform: 'translateZ(-140px) rotateY(16deg) rotateX(4deg)', opacity: 0.55 }}
-                >
-                  <div className="absolute inset-3 hairline flex items-center justify-center">
-                    <span className="text-gold-faint text-3xl anim-drift">☾</span>
-                  </div>
-                </div>
-                <div
-                  aria-hidden
-                  className="hidden lg:block absolute -right-20 bottom-6 w-36 h-52 ink-panel-quiet"
-                  style={{ transform: 'translateZ(-90px) rotateY(-14deg) rotateX(3deg)', opacity: 0.45 }}
-                >
-                  <div className="absolute inset-3 hairline flex items-center justify-center">
-                    <span className="text-gold-faint text-2xl anim-drift" style={{ animationDelay: '3s' }}>✧</span>
-                  </div>
-                </div>
-                <span
-                  aria-hidden
-                  className="scatter-symbol text-3xl -top-10 right-[12%] anim-drift hidden md:block"
-                  style={{ transform: 'translateZ(-60px)' }}
-                >
-                  ◇
-                </span>
-                <span
-                  aria-hidden
-                  className="scatter-symbol text-xl bottom-0 left-[8%] anim-whisper hidden md:block"
-                  style={{ transform: 'translateZ(-40px)' }}
-                >
-                  ⊹
-                </span>
-
-                {/* 主面板 · 浮在最前 */}
-                <div
-                  className="relative ink-panel-ritual float-card px-4 py-12 md:p-14 anim-curtain"
-                  style={{ transform: 'translateZ(0px)' }}
-                >
-                  <SpreadSelector selectedSpread={spread} onSelect={setSpread} />
-
-                  <div className="mt-12 flex flex-col sm:flex-row gap-6 sm:gap-12 items-center justify-center">
-                    <button onClick={() => goToPhase('question')} className="btn-ink-ghost">
-                      ← 返 回 问 题
-                    </button>
-                    <button
-                      onClick={() => goToPhase('shuffle')}
-                      className="btn-ink-primary px-12 py-3.5 inline-flex items-center gap-3"
-                    >
-                      <span>就 此 落 阵</span>
-                      <span className="text-xs">✦</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ─── 幕 Ⅲ · 洗礼 · 牌堆居于舞台中央 ─── */}
-        {phase === 'shuffle' && (
-          <section className="act-fullscreen overflow-hidden">
-            {/* 命运之轮 · 双重光弧 */}
-            <div
-              aria-hidden
-              className="arc-glow w-[80vmin] h-[80vmin] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-              style={{ animationDuration: '90s' }}
-            />
-            <div
-              aria-hidden
-              className="arc-glow w-[56vmin] h-[56vmin] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-              style={{ animationDirection: 'reverse', animationDuration: '60s' }}
-            />
-            <span aria-hidden className="scatter-symbol text-2xl top-[16%] left-[14%] anim-drift">✧</span>
-            <span aria-hidden className="scatter-symbol text-3xl bottom-[18%] right-[12%] anim-drift" style={{ animationDelay: '2.5s' }}>◇</span>
-            <span aria-hidden className="scatter-symbol text-lg top-[30%] right-[24%] anim-whisper">⊹</span>
-
-            <div className="relative flex flex-col items-center anim-veil-rise">
-              <span className="cn-label text-gold-dim mb-8 anim-whisper">
-                第 三 幕 · 汇 聚 能 量
-              </span>
-              <h2 className="font-heading text-massive text-bone text-center tracking-[0.14em] mb-6">
-                洗 礼 之 时
-              </h2>
-              <div className="rule-h-gold w-24 mb-8" />
-
-              {/* 你的问题 · 此刻悬在牌堆之上 */}
-              <p className="font-body italic-soft text-bone-dim text-base md:text-lg text-center max-w-xl leading-relaxed mb-14 line-clamp-2">
-                「{question}」
-              </p>
-
-              {/* 牌堆 · 点击即引爆星尘 */}
-              <div className="relative" onClickCapture={igniteBurst}>
-                {burst && (
-                  <BurstLayer key={burst.key} particles={burst.particles} />
-                )}
-                <CardDeck onShuffle={shuffleAndDraw} />
-              </div>
-
-              <p className="font-body italic-soft text-bone-faint text-sm mt-12">
-                在洗牌时，于心中默念你的问题
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* ─── 幕 Ⅳ · 揭示 · 每张牌独享一束追光 ─── */}
-        {(phase === 'draw' || phase === 'reveal') && (
-          <section className="act-fullscreen">
-            <div className="w-full max-w-6xl flex flex-col items-center anim-veil-rise">
-              <span className="cn-label text-gold-dim mb-6 anim-whisper">
-                {phase === 'draw' ? '第 四 幕 · 逐 张 显 形' : '第 四 幕 · 全 牌 已 现'}
-              </span>
-              <h2 className="font-heading text-massive text-bone text-center tracking-[0.14em] mb-5">
-                {phase === 'draw' ? '命 运 显 形' : '牌 面 皆 现'}
-              </h2>
-              <div className="rule-h-gold w-24 mb-6" />
-              <div className="cn-label text-bone-dim">{spread.nameCn}</div>
-              {phase === 'draw' && revealedCount < drawnCards.length && (
-                <p className="font-body italic-soft text-bone-whisper text-sm mt-5">
-                  逐张轻触，让命运缓缓显形
-                </p>
+          <div className="mt-8">
+            <p className="text-center text-xs tracking-wider text-bone-faint">不知道问什么？从这里开始</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {['我最近的事业发展会顺利吗？', '我和 Ta 的关系未来会怎样？', '面对眼前的选择，我该如何决定？'].map(
+                (sample) => (
+                  <button
+                    key={sample}
+                    type="button"
+                    onClick={() => {
+                      setQuestion(sample);
+                      questionRef.current?.focus();
+                    }}
+                    className="rounded-full border border-[var(--ink-line)] px-4 py-2 text-sm text-bone-faint transition-colors hover:border-[var(--gold-faint)] hover:text-bone"
+                  >
+                    {sample}
+                  </button>
+                )
               )}
+            </div>
+          </div>
+        </section>
+      )}
 
-              {/* 牌桌 */}
-              <div className="relative w-full mt-12 px-2 py-10 md:p-12">
-                {spread.id === 'celtic-cross' ? (
-                  <CelticCrossLayout
-                    drawnCards={drawnCards}
-                    revealedCount={revealedCount}
-                    onReveal={(index) => {
+      {/* ═══ 步骤 2 · 选择牌阵 ═══ */}
+      {phase === 'spread' && (
+        <section className="anim-veil-rise">
+          <header className="mb-8 text-center">
+            <p className="eyebrow">Step 02 · Choose a Spread</p>
+            <h1 className="page-title mt-4">选择牌阵</h1>
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-bone-faint">
+              牌阵决定了每张牌回答问题的哪一部分。张数越多，画面越完整，解读也越长。
+            </p>
+          </header>
+
+          <div className="surface mx-auto max-w-5xl p-5 md:p-8">
+            <SpreadSelector selectedSpread={spread} onSelect={setSpread} />
+
+            <div className="mt-8 flex flex-col-reverse items-center justify-between gap-4 border-t border-[var(--ink-line)] pt-6 sm:flex-row">
+              <button type="button" onClick={goBack} className="btn-ink-ghost text-sm">
+                ← 返回修改问题
+              </button>
+              <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
+                <span className="text-xs text-bone-faint">
+                  已选「{spread.nameCn}」· {spread.positions.length} 张牌
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goToPhase('shuffle')}
+                  className="btn-ink-primary h-11 w-full px-6 sm:w-auto"
+                >
+                  进入洗牌 →
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ═══ 步骤 3 · 洗牌 ═══ */}
+      {phase === 'shuffle' && (
+        <section className="mx-auto flex max-w-2xl flex-col items-center anim-veil-rise">
+          <p className="eyebrow">Step 03 · Shuffle</p>
+          <h1 className="page-title mt-4 text-center">洗牌</h1>
+          <p className="mt-3 max-w-md text-center text-sm leading-relaxed text-bone-faint">
+            在洗牌时默念你的问题。牌堆停下后，你会依次翻开 {spread.positions.length} 张牌。
+          </p>
+
+          <blockquote className="mt-8 w-full rounded-xl border border-[var(--ink-line)] bg-[rgba(20,16,34,0.5)] px-6 py-4 text-center">
+            <span className="text-xs tracking-wider text-gold-dim">你的问题</span>
+            <p className="mt-2 font-body text-base leading-relaxed text-bone-dim">「{question}」</p>
+          </blockquote>
+
+          <div className="relative mt-12" onClickCapture={igniteBurst}>
+            {burst && <BurstLayer key={burst.key} particles={burst.particles} />}
+            <CardDeck onShuffle={shuffleAndDraw} />
+          </div>
+
+          <button type="button" onClick={goBack} className="btn-ink-ghost mt-6 text-sm">
+            ← 换一个牌阵
+          </button>
+        </section>
+      )}
+
+      {/* ═══ 步骤 4 · 翻牌 ═══ */}
+      {(phase === 'draw' || phase === 'reveal') && (
+        <section className="anim-veil-rise">
+          <header className="text-center">
+            <p className="eyebrow">
+              Step 04 · {phase === 'draw' ? `Reveal ${revealedCount} / ${drawnCards.length}` : 'All Cards'}
+            </p>
+            <h1 className="page-title mt-4">{phase === 'draw' ? '翻开你的牌' : '牌面已全部展开'}</h1>
+            <p className="mt-3 text-sm text-bone-faint">
+              {spread.nameCn} · {drawnCards.length} 张牌
+              {phase === 'draw' ? ' · 轻触发光的牌逐张翻开' : ''}
+            </p>
+          </header>
+
+          <div className="surface mx-auto mt-8 max-w-5xl px-3 py-8 md:px-8 md:py-10">
+            {spread.id === 'celtic-cross' ? (
+              <CelticCrossLayout
+                drawnCards={drawnCards}
+                revealedCount={revealedCount}
+                onReveal={(index) => {
+                  if (index === revealedCount) revealNextCard();
+                }}
+              />
+            ) : (
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-10 md:gap-x-10">
+                {drawnCards.map((drawn, index) => (
+                  <DrawSlot
+                    key={drawn.position.id}
+                    drawn={drawn}
+                    index={index}
+                    isRevealed={index < revealedCount}
+                    isNext={phase === 'draw' && index === revealedCount}
+                    onReveal={() => {
                       if (index === revealedCount) revealNextCard();
                     }}
+                    size={drawnCards.length > 5 ? 'sm' : 'md'}
                   />
-                ) : (
-                  <div
-                    className="flex flex-wrap justify-center items-start gap-x-14 gap-y-24 md:gap-x-24 transition-all duration-1000"
-                    style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-                  >
-                    {drawnCards.map((drawn, index) => (
-                      <SpotlightCard
-                        key={drawn.position.id}
-                        drawn={drawn}
-                        index={index}
-                        isRevealed={index < revealedCount}
-                        isNext={phase === 'draw' && index === revealedCount}
-                        onReveal={() => {
-                          if (index === revealedCount) revealNextCard();
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
+            )}
 
-              {/* 控制 */}
-              <div className="mt-14 flex flex-col gap-8 items-center">
+            <div className="mt-9 flex flex-col items-center gap-4 border-t border-[var(--ink-line)] pt-6 sm:flex-row sm:justify-between">
+              <span className="text-xs text-bone-faint">
+                已翻开 {Math.min(revealedCount, drawnCards.length)} / {drawnCards.length} 张
+              </span>
+              <div className="flex flex-wrap items-center justify-center gap-3">
                 {phase === 'draw' && revealedCount < drawnCards.length && (
-                  <button onClick={revealAllCards} className="btn-ink px-10 py-3.5">
-                    全 部 翻 开
+                  <button type="button" onClick={revealAllCards} className="btn-ink h-11 px-5 text-sm">
+                    全部翻开
                   </button>
                 )}
-
                 {phase === 'reveal' && (
-                  <div className="flex flex-col sm:flex-row gap-8 sm:gap-10 items-center anim-veil-rise">
-                    <button onClick={reset} className="btn-ink-ghost">
-                      重 新 开 始
-                    </button>
-                    <button
-                      onClick={handleStartInterpretation}
-                      disabled={isInterpreting}
-                      className="btn-ink-primary px-12 py-3.5 inline-flex items-center gap-3"
-                    >
-                      <span>{isInterpreting ? '聆 听 神 谕' : '请 求 神 谕'}</span>
-                      <span className="text-xs">✦</span>
-                    </button>
-                  </div>
-                )}
-
-                {phase === 'reveal' && needsConfig && (
                   <button
-                    onClick={() => setShowSettings(true)}
-                    className="cn-hint text-bone-faint hover:text-gold-dim transition-colors duration-500 anim-fade-in"
+                    type="button"
+                    onClick={handleStartInterpretation}
+                    disabled={isInterpreting}
+                    className="btn-ink-primary h-11 px-6"
                   >
-                    尚 未 配 置 API · 点 此 填 写 后 即 可 请 求 神 谕
+                    <span className="text-gold-pale" aria-hidden>✦</span>
+                    请 求 神 谕
                   </button>
                 )}
               </div>
             </div>
-          </section>
-        )}
+            {phase === 'reveal' && needsConfig && (
+              <p className="mt-4 text-center text-xs text-bone-faint">
+                解读需要 API 配置 ·
+                <button
+                  type="button"
+                  onClick={openSettings}
+                  className="ml-1 text-gold-warm underline decoration-[var(--gold-faint)] underline-offset-4"
+                >
+                  现在配置
+                </button>
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
-        {/* ─── 幕 Ⅴ · 神谕 · 卷轴徐徐展开 ─── */}
-        {phase === 'interpret' && (
-          <section className="act-fullscreen items-stretch justify-start pt-28 pb-20">
-            <div
-              ref={interpretSectionRef}
-              className="flex flex-col items-center gap-14 w-full max-w-5xl mx-auto scroll-mt-24 md:scroll-mt-28"
-            >
-              {/* 幕首 */}
-              <div className="text-center anim-veil-rise">
-                <span className="cn-label text-gold-dim anim-whisper">第 五 幕 · 聆 听</span>
-                <h2 className="font-heading text-massive text-bone tracking-[0.14em] mt-5">
-                  神 谕 降 临
-                </h2>
-                <div className="rule-h-gold w-24 mx-auto mt-6" />
-              </div>
-
-              {/* 牌面回顾 · 一排小小的见证者 */}
-              <div
-                className="flex flex-wrap justify-center gap-5 opacity-70 hover:opacity-100 transition-opacity duration-700"
-                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
+      {/* ═══ 步骤 5 · 解读 ═══ */}
+      {phase === 'interpret' && (
+        <section ref={resultRef} className="scroll-mt-24 anim-veil-rise">
+          <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow">Step 05 · The Oracle</p>
+              <h1 className="page-title mt-3">解读</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/history" className="btn-ink-ghost text-sm">
+                轨迹
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  cancelRequest();
+                  reset();
+                }}
+                className="btn-ink h-10 px-4 text-sm"
               >
-                {drawnCards.map((drawn) => (
-                  <div key={drawn.position.id} className="transform scale-75 origin-top">
-                    <TarotCardComponent
-                      card={drawn.card}
-                      isReversed={drawn.isReversed}
-                      isRevealed={true}
-                      size="sm"
-                    />
-                  </div>
-                ))}
-              </div>
+                新的占卜
+              </button>
+            </div>
+          </header>
 
-              {/* 卷轴 · 自上而下徐徐展开 */}
-              <div className="w-full anim-curtain" style={{ animationDuration: '1600ms' }}>
-                {/* 上轴 */}
-                <div aria-hidden className="h-2 w-full bg-gradient-to-r from-transparent via-[var(--gold-dim)] to-transparent" />
-                <div aria-hidden className="rule-h-gold w-full" />
-
-                <div className="ink-panel-ritual border-y-0 px-6 py-12 md:px-14 md:py-16">
-                  <Interpretation
-                    content={interpretation}
-                    isLoading={isInterpreting}
-                    error={error}
-                    notice={notice}
-                    onOpenSettings={() => setShowSettings(true)}
-                    retry={retryInfo}
-                    cardTerms={baseCardTerms}
-                    positionTerms={basePositionTerms}
-                  />
+          <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+            {/* 左侧 · 本次占卜摘要（sticky） */}
+            <aside className="order-2 flex flex-col gap-4 lg:order-1 lg:sticky lg:top-24">
+              <div className="surface overflow-hidden">
+                <div className="border-b border-[var(--ink-line)] px-5 py-4">
+                  <p className="eyebrow">本次占卜</p>
+                  <p className="mt-2 font-body text-[15px] leading-relaxed text-bone">「{question}」</p>
+                  <p className="mt-2 text-xs text-bone-faint">
+                    {spread.nameCn} · {drawnCards.length} 张
+                  </p>
                 </div>
-
-                {/* 下轴 */}
-                <div aria-hidden className="rule-h-gold w-full" />
-                <div aria-hidden className="h-2 w-full bg-gradient-to-r from-transparent via-[var(--gold-dim)] to-transparent" />
+                <ul className="divide-y divide-[var(--ink-line)]">
+                  {drawnCards.map((drawn) => (
+                    <li key={drawn.position.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-9 shrink-0">
+                        <TarotCardComponent
+                          card={drawn.card}
+                          isReversed={drawn.isReversed}
+                          isRevealed
+                          size="sm"
+                          enableInteractions={false}
+                          className="!h-[60px] !w-9"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] tracking-[0.08em] text-bone-faint">{drawn.position.nameCn}</p>
+                        <p className="truncate font-heading text-sm text-bone">
+                          {drawn.card.nameCn}
+                          {drawn.isReversed && <span className="ml-1.5 text-[10px] text-gold-dim">逆</span>}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              {/* ─── 追问区 ─── */}
+              {!isInterpreting && (
+                <div className="surface-soft px-5 py-4">
+                  <p className="text-xs leading-relaxed text-bone-faint">
+                    解读与追问会自动保存到「
+                    <Link href="/history" className="text-gold-warm hover:underline">
+                      轨迹
+                    </Link>
+                    」，仅保存在本地浏览器。
+                  </p>
+                </div>
+              )}
+            </aside>
+
+            {/* 右侧 · 解读正文与追问 */}
+            <div className="order-1 flex min-w-0 flex-col gap-6 lg:order-2">
+              <Interpretation
+                content={interpretation}
+                isLoading={isInterpreting}
+                error={error}
+                notice={notice}
+                onOpenSettings={openSettings}
+                retry={retryInfo}
+                cardTerms={baseCardTerms}
+                positionTerms={basePositionTerms}
+              />
+
+              {isInterpreting && (
+                <div className="flex justify-center">
+                  <button type="button" onClick={cancelRequest} className="btn-ink-ghost text-sm">
+                    停止生成
+                  </button>
+                </div>
+              )}
+
               {!isInterpreting && !error && interpretation && (
                 <>
                   {followUps.map((fu) => (
@@ -698,84 +593,68 @@ export default function ReadingPage() {
                     />
                   ))}
 
-                  <div className="w-full max-w-4xl anim-veil-rise">
-                    <div className="flex items-center gap-3 mb-5">
-                      <span className="text-gold-dim text-base">◆</span>
-                      <span className="cn-label text-gold-dim">继 续 追 问</span>
-                      <div className="rule-h-fade flex-1" />
+                  <div className="surface p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="section-title text-[15px]">继续追问</span>
+                      <span className="text-xs text-bone-faint">Enter 发送</span>
                     </div>
-                    <div className="chat-bubble-oracle">
+                    <div className="field-shell">
                       <textarea
                         value={followUpDraft}
                         onChange={(e) => setFollowUpDraft(e.target.value)}
                         placeholder={
                           hasInFlightFollowUp
                             ? '神谕正在回应，请稍候…'
-                            : '若想深入某张牌、追问具体行动，或换个角度，请在此提出'
+                            : '想深入某张牌、追问具体行动，或换个角度？'
                         }
                         disabled={hasInFlightFollowUp}
-                        className="input-ink-bare w-full h-28 px-7 py-5 text-base text-bone resize-none font-body leading-relaxed"
+                        className="input-ink-bare h-24 w-full resize-none px-4 py-3 text-base leading-relaxed"
                         style={{ caretColor: 'var(--gold)' }}
                         spellCheck={false}
                       />
                     </div>
-                    <div className="mt-5 flex justify-end">
+                    <div className="mt-3 flex justify-end">
                       <button
+                        type="button"
                         onClick={handleAskFollowUp}
                         disabled={hasInFlightFollowUp || !followUpDraft.trim()}
-                        className="btn-ink-primary px-10 py-3 inline-flex items-center gap-3"
+                        className="btn-ink-primary h-10 px-5 text-sm"
                       >
-                        <span>追 问</span>
-                        <span className="text-xs">✦</span>
+                        追问
                       </button>
                     </div>
                   </div>
                 </>
               )}
 
-              {/* 终章 */}
-              <div className="flex flex-col items-center gap-10 pb-10">
-                {!isInterpreting && !hasInFlightFollowUp && (
-                  <>
-                    <div className="sigil-seal" aria-hidden>
-                      <span className="sigil-glyph">✦</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-8 sm:gap-10 items-center">
-                      <button
-                        onClick={handleStartInterpretation}
-                        className="btn-ink px-10 py-3.5"
-                      >
-                        重 新 解 读
-                      </button>
-                      <button
-                        onClick={reset}
-                        className="btn-ink-primary px-12 py-3.5 inline-flex items-center gap-3"
-                      >
-                        <span>新 的 占 卜</span>
-                        <span className="text-xs">✦</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {!isInterpreting && !hasInFlightFollowUp && (
+                <div className="flex flex-wrap items-center justify-center gap-3 border-t border-[var(--ink-line)] pt-6">
+                  <button type="button" onClick={handleStartInterpretation} className="btn-ink h-11 px-5 text-sm">
+                    重新解读
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      cancelRequest();
+                      reset();
+                    }}
+                    className="btn-ink-primary h-11 px-6"
+                  >
+                    新的占卜
+                  </button>
+                </div>
+              )}
             </div>
-          </section>
-        )}
-      </main>
-
-      <ApiSettings
-        config={config}
-        onSave={saveConfig}
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
-    </div>
+          </div>
+        </section>
+      )}
+    </main>
   );
 }
 
-/* ─── 星尘迸发 · 以 transition 驱动，无需额外 keyframes ─── */
+/* ─── 星尘迸发 ─── */
 
-function BurstLayer({ particles }: { particles: BurstParticle[] }) {
+function BurstLayer({ particles }: { particles: BurstParticle[] }): ReactElement {
   const [ignited, setIgnited] = useState(false);
 
   useEffect(() => {
@@ -786,7 +665,7 @@ function BurstLayer({ particles }: { particles: BurstParticle[] }) {
   return (
     <div
       aria-hidden
-      className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20"
+      className="pointer-events-none absolute left-1/2 top-1/3 z-20 -translate-x-1/2 -translate-y-1/2"
     >
       {particles.map((p, i) => (
         <span

@@ -32,35 +32,32 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-8">
-          <div className="ink-panel-quiet p-16 md:p-20 text-center max-w-lg anim-veil-rise">
-            <div className="text-gold-dim text-3xl mb-8">◇</div>
-            <h1 className="font-heading text-2xl text-bone mb-5 tracking-[0.2em] uppercase">
-              以 太 连 接 断 裂
-            </h1>
-            <div className="rule-h-gold w-16 mx-auto mb-6" />
-            <p className="font-body italic-soft text-bone-faint text-base mb-4 leading-relaxed">
-              某个星辰的低语未能被解读。
+        <div className="flex min-h-[70dvh] items-center justify-center p-6">
+          <div className="surface max-w-md px-8 py-10 text-center anim-veil-rise">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-[var(--ink-line-strong)] text-xl text-gold-dim" aria-hidden>
+              ◇
+            </div>
+            <h1 className="mt-5 font-heading text-xl text-bone">页面出现了一点问题</h1>
+            <p className="mt-2 text-sm leading-relaxed text-bone-faint">
+              某个组件渲染失败。你的占卜记录仍安全保存在本地。
             </p>
             {this.state.error && (
-              <details className="mb-8 text-left">
-                <summary className="cn-hint text-bone-whisper cursor-pointer">
-                  技 术 细 节
-                </summary>
-                <p className="mt-3 font-mono text-xs text-bone-faint break-all leading-relaxed">
+              <details className="mt-5 rounded-lg border border-[var(--ink-line)] px-4 py-3 text-left">
+                <summary className="cursor-pointer text-xs text-bone-faint">技术细节</summary>
+                <p className="mt-2 break-all font-mono text-[11px] leading-relaxed text-bone-whisper">
                   {this.state.error.message}
                 </p>
               </details>
             )}
-            <div className="flex gap-8 justify-center">
+            <div className="mt-6 flex justify-center gap-2">
               <button
                 onClick={() => this.setState({ hasError: false, error: null })}
-                className="btn-ink px-10 py-3"
+                className="btn-ink h-10 px-5 text-sm"
               >
-                重 试
+                重试
               </button>
-              <Link href="/" className="btn-ink-primary px-10 py-3">
-                返 回 首 页
+              <Link href="/" className="btn-ink-primary h-10 px-5 text-sm">
+                返回首页
               </Link>
             </div>
           </div>

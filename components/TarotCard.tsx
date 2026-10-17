@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import Image from 'next/image';
 import { TarotCard } from '@/lib/tarot/types';
 
@@ -10,23 +10,13 @@ interface TarotCardProps {
   isRevealed?: boolean;
   onClick?: () => void;
   size?: 'sm' | 'md' | 'lg';
-  /**
-   * 是否启用鼠标视差与翻牌 shimmer。
-   * 解读页底部的「迷你回顾」可关闭以避免过度。
-   */
+  /** 是否启用鼠标视差与翻牌 shimmer */
   enableInteractions?: boolean;
-  /**
-   * 自定义尺寸类 · 提供时覆盖内置 size 的固定宽高。
-   * 例如每日页的大卡："w-64 md:w-80 lg:w-96 aspect-[2/3]"。
-   */
+  /** 自定义尺寸类 · 提供时覆盖内置 size 的固定宽高 */
   className?: string;
 }
 
-// 视差最大角度（°）— ±8 是触觉上「轻端在手里」的感觉，不致眩晕
-const PARALLAX_MAX = 8;
-
-// 卡背月相刻度环的刻痕数量 · 24 道 = 每 15° 一道，正位四方向为金色主刻
-const LUNAR_TICK_COUNT = 24;
+const PARALLAX_MAX = 7;
 
 export function TarotCardComponent({
   card,
@@ -36,9 +26,8 @@ export function TarotCardComponent({
   size = 'md',
   enableInteractions = true,
   className,
-}: TarotCardProps) {
+}: TarotCardProps): ReactElement {
   const [imageError, setImageError] = useState(false);
-
   const parallaxRef = useRef<HTMLDivElement>(null);
   const shimmerRef = useRef<HTMLDivElement>(null);
   const trackingRaf = useRef<number>(0);
@@ -46,17 +35,15 @@ export function TarotCardComponent({
 
   const sizeClasses = {
     sm: 'w-24 h-40',
-    md: 'w-48 h-80',
-    lg: 'w-64 h-96',
+    md: 'w-44 h-[293px]',
+    lg: 'w-60 h-[400px]',
   };
 
-  // 翻牌后若为逆位，再叠加 180° 旋转
+  // 逆位：先翻到正面，再把牌面本身倒转
   const cardFaceTransform =
-    isReversed && isRevealed
-      ? 'rotateY(180deg) rotate(180deg)'
-      : 'rotateY(180deg)';
+    isReversed && isRevealed ? 'rotateY(180deg) rotate(180deg)' : 'rotateY(180deg)';
 
-  /* ─── 翻牌 shimmer · 直接操作 DOM 避免 effect 中 setState ─── */
+  /* 翻牌瞬间的金箔反光 */
   useEffect(() => {
     const justRevealed = !wasRevealed.current && isRevealed;
     wasRevealed.current = isRevealed;
@@ -64,11 +51,7 @@ export function TarotCardComponent({
 
     const el = shimmerRef.current;
     if (!el) return;
-
-    // 跟随翻牌动画：牌面约在 400ms 后朝前，此时上 shimmer
-    const startTimer = window.setTimeout(() => {
-      el.classList.add('is-active');
-    }, 380);
+    const startTimer = window.setTimeout(() => el.classList.add('is-active'), 380);
     const onEnd = (): void => el.classList.remove('is-active');
     el.addEventListener('animationend', onEnd, { once: true });
 
@@ -79,22 +62,18 @@ export function TarotCardComponent({
     };
   }, [isRevealed]);
 
-  /* ─── 鼠标视差 · 仅 sm 以上 + 开启 ─── */
   const enableParallax = enableInteractions && size !== 'sm';
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>): void => {
     if (!enableParallax) return;
     const el = parallaxRef.current;
     if (!el) return;
-
     const rect = el.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;   // 0..1
-    const py = (e.clientY - rect.top) / rect.height;   // 0..1
-
-    // 当卡背朝上时反向（保持「推同一侧上抬」的物理直觉）
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
     const direction = isRevealed ? 1 : -1;
-    const ry = (px - 0.5) * 2 * PARALLAX_MAX * direction;   // 左右
-    const rx = -(py - 0.5) * 2 * PARALLAX_MAX;              // 上下
+    const ry = (px - 0.5) * 2 * PARALLAX_MAX * direction;
+    const rx = -(py - 0.5) * 2 * PARALLAX_MAX;
 
     if (trackingRaf.current) cancelAnimationFrame(trackingRaf.current);
     trackingRaf.current = requestAnimationFrame(() => {
@@ -114,15 +93,15 @@ export function TarotCardComponent({
     el.classList.remove('is-tracking');
   };
 
-  useEffect(() => {
-    return () => {
-      if (trackingRaf.current) cancelAnimationFrame(trackingRaf.current);
-    };
+  useEffect(() => () => {
+    if (trackingRaf.current) cancelAnimationFrame(trackingRaf.current);
   }, []);
 
   return (
     <div
-      className={`relative ${className ?? sizeClasses[size]} cursor-pointer perspective-1000 group`}
+      className={`group relative shrink-0 ${className ?? sizeClasses[size]} ${
+        onClick ? 'cursor-pointer' : ''
+      } perspective-1000`}
       onClick={onClick}
       onKeyDown={(e) => {
         if (onClick && (e.key === 'Enter' || e.key === ' ')) {
@@ -134,216 +113,107 @@ export function TarotCardComponent({
       onPointerLeave={handlePointerLeave}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={`${card.nameCn} (${card.name})${isReversed && isRevealed ? ' · 逆位' : ''}${!isRevealed ? ' · 未翻开' : ''}`}
+      aria-label={`${card.nameCn} (${card.name})${isReversed && isRevealed ? ' · 逆位' : ''}${
+        !isRevealed ? ' · 未翻开' : ''
+      }`}
     >
-      {/* parallax 容器 · 接收 --rx / --ry */}
-      <div
-        ref={parallaxRef}
-        className={`relative w-full h-full ${enableParallax ? 'card-parallax' : ''}`}
-      >
+      <div ref={parallaxRef} className={`relative h-full w-full ${enableParallax ? 'card-parallax' : ''}`}>
         <div
-          className={`relative w-full h-full card-flip transform-style-3d ${
+          className={`card-flip transform-style-3d relative h-full w-full ${
             isRevealed ? 'rotate-y-180' : ''
           }`}
         >
-          {/* ─── 背面 · 秘仪剧场 ─── */}
+          {/* ─── 背面 ─── */}
           <div
-            className={`absolute w-full h-full backface-hidden overflow-hidden bg-[var(--ink-void)] hairline ${
-              !isRevealed ? 'group-hover:shadow-[0_0_24px_-12px_var(--gold-glow)]' : ''
+            className={`backface-hidden absolute h-full w-full overflow-hidden rounded-lg border bg-[var(--ink-veil)] ${
+              isRevealed
+                ? 'border-[var(--ink-line)]'
+                : 'border-[var(--gold-faint)] shadow-[0_16px_36px_-22px_rgba(0,0,0,0.9)] group-hover:shadow-[0_20px_44px_-20px_rgba(0,0,0,0.95),0_0_28px_-12px_var(--gold-glow)]'
             }`}
-            style={{ transition: 'box-shadow 700ms var(--ease-veil)' }}
+            style={{ transition: 'box-shadow 350ms var(--ease-ritual)' }}
           >
-            {/* 中央烛金径向辉光 · 极淡，悬停时微微苏醒 */}
             <div
               aria-hidden
-              className="absolute inset-0 pointer-events-none opacity-55 group-hover:opacity-85 transition-opacity duration-700"
+              className="absolute inset-0"
               style={{
                 background:
-                  'radial-gradient(ellipse 72% 50% at 50% 46%, var(--gold-glow) 0%, var(--gold-faint) 36%, transparent 74%)',
-                transitionTimingFunction: 'var(--ease-veil)',
+                  'radial-gradient(ellipse 78% 55% at 50% 44%, rgba(210,178,116,0.14) 0%, rgba(210,178,116,0.04) 45%, transparent 76%)',
               }}
             />
+            {/* 内框 */}
+            <div aria-hidden className="absolute inset-2 rounded border border-[var(--gold-faint)]/60" />
+            <div aria-hidden className="absolute inset-3.5 rounded-sm border border-[var(--ink-line-strong)]" />
 
-            {/* 旋转外环 · 月相刻度 · 120s 极慢公转（anim-lunar） */}
-            <div
-              aria-hidden
-              className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-70 group-hover:opacity-100 transition-opacity duration-700"
-              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-            >
-              <div className="relative w-full aspect-square anim-lunar">
-                {/* 环体细线 · 刻度骑线而生 */}
-                <span className="absolute inset-1 rounded-full border border-[var(--ink-line-strong)]" />
-                {Array.from({ length: LUNAR_TICK_COUNT }, (_, i) => {
-                  const isCardinal = i % 6 === 0;
-                  const tone = isCardinal
-                    ? 'bg-[var(--gold-dim)]'
-                    : i % 2 === 0
-                      ? 'bg-[var(--bone-whisper)]'
-                      : 'bg-[var(--celestial-faint)]';
-                  return (
-                    <div
-                      key={i}
-                      className="absolute inset-0"
-                      style={{ transform: `rotate(${i * (360 / LUNAR_TICK_COUNT)}deg)` }}
-                    >
-                      <span
-                        className={`absolute left-1/2 -translate-x-1/2 w-px ${
-                          isCardinal ? 'h-2' : 'h-1'
-                        } ${tone}`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="w-full h-full relative flex items-center justify-center">
-              {/* 内框 · 0.5px 双层 */}
-              <div className="absolute inset-2 hairline" />
-              <div className="absolute inset-3.5 hairline-strong" />
-
-              {/* 中央徽记 · ✦ 外加一圈缓转的虚线星环 */}
-              <div
-                className="relative flex flex-col items-center gap-3 transition-transform duration-700 group-hover:scale-105"
-                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-              >
-                <div className="relative flex items-center justify-center">
-                  <span
-                    aria-hidden
-                    className="absolute w-12 h-12 rounded-full border border-dashed border-[var(--gold-faint)] anim-lunar"
-                  >
-                    {/* 环顶星珠 · 令旋转可被感知 */}
-                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--celestial-dim)]" />
-                  </span>
-                  <span className="text-gold-dim text-2xl">✦</span>
-                </div>
-                <span className="h-px w-10 bg-[var(--gold-faint)]" />
-                <span className="font-heading text-bone-faint text-[10px] tracking-veil uppercase">
-                  Tarot
+            {/* 中央徽记 */}
+            <div className="relative flex h-full w-full flex-col items-center justify-center gap-2.5">
+              <div className="relative flex items-center justify-center">
+                <span
+                  aria-hidden
+                  className="absolute h-11 w-11 rounded-full border border-dashed border-[var(--gold-faint)] anim-lunar"
+                >
+                  <span className="absolute -top-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--gold-dim)]" />
                 </span>
+                <span className="text-xl text-gold">✦</span>
               </div>
-
-              {/* 角部刻痕 · 骨白与星蓝交替 */}
-              <CornerTicks />
+              <span aria-hidden className="h-px w-8 bg-[var(--gold-faint)]" />
+              <span className="font-heading text-[9px] uppercase tracking-[0.3em] text-gold-dim">
+                Tarot
+              </span>
             </div>
+
+            {/* 四角刻痕 */}
+            {[
+              'left-3 top-3 border-l border-t',
+              'right-3 top-3 border-r border-t',
+              'bottom-3 left-3 border-b border-l',
+              'bottom-3 right-3 border-b border-r',
+            ].map((pos) => (
+              <span
+                key={pos}
+                aria-hidden
+                className={`absolute h-2 w-2 border-[var(--gold-dim)]/60 ${pos}`}
+              />
+            ))}
           </div>
 
-          {/* ─── 正面 · 仅图像（含跟随翻转的底部渐隐） + shimmer ───
-             可读文字（牌名 / fallback 字标）不放在这里，以免逆位时被
-             rotate(180deg) 连同上下颠倒 */}
+          {/* ─── 正面 ─── */}
           <div
-            className={`absolute w-full h-full backface-hidden overflow-hidden bg-[var(--ink-void)] ${
-              isRevealed ? 'card-revealed-halo card-halo-breathe' : 'hairline'
+            className={`backface-hidden absolute h-full w-full overflow-hidden rounded-lg bg-[var(--ink-void)] ${
+              isRevealed ? 'card-revealed-halo' : 'border border-[var(--ink-line)]'
             }`}
             style={{ transform: cardFaceTransform }}
           >
-            {!imageError && (
-              <div className="w-full h-full relative">
-                <Image
-                  src={card.image}
-                  alt={card.name}
-                  fill
-                  sizes={
-                    className
-                      ? '(min-width: 1024px) 384px, (min-width: 768px) 320px, 256px'
-                      : size === 'lg'
-                        ? '256px'
-                        : size === 'md'
-                          ? '192px'
-                          : '96px'
-                  }
-                  className="object-cover"
-                  onError={() => setImageError(true)}
-                  priority={size === 'lg' || !!className}
-                />
-                {/* 底部渐隐 · 跟随牌图翻转，视觉合理 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink-void)]/85 via-transparent to-[var(--ink-void)]/30 pointer-events-none" />
+            {!imageError ? (
+              <Image
+                src={card.image}
+                alt={card.name}
+                fill
+                sizes={
+                  className
+                    ? '(min-width: 1024px) 384px, (min-width: 768px) 320px, 256px'
+                    : size === 'lg'
+                      ? '240px'
+                      : size === 'md'
+                        ? '176px'
+                        : '96px'
+                }
+                className="object-cover"
+                onError={() => setImageError(true)}
+                priority={size === 'lg' || !!className}
+              />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center">
+                <span className="text-xl text-gold-dim" aria-hidden>✦</span>
+                <span aria-hidden className="h-px w-10 bg-[var(--gold-faint)]" />
+                <span className="font-heading text-sm tracking-[0.1em] text-bone">{card.nameCn}</span>
+                <span className="text-[9px] uppercase tracking-[0.16em] text-bone-faint">{card.name}</span>
               </div>
             )}
-
-            {/* 翻牌瞬间的金箔 shimmer · 仅一次，由 effect 直接操控 class */}
-            <div ref={shimmerRef} className="card-shimmer" aria-hidden />
+            <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
+            <div ref={shimmerRef} className="card-shimmer rounded-lg" aria-hidden />
           </div>
         </div>
       </div>
-
-      {/* ─── 文字 / 字标层 · 独立于 3D 翻转，永远视觉正向 ───
-         彻底解决了逆位时（cardFaceTransform 含 rotate(180deg)）牌名跟着
-         上下颠倒 / 被推到视觉顶部的问题。 */}
-      {isRevealed && (imageError ? (
-        // 图片缺失时的纪念碑式版面 · 常显
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center pointer-events-none">
-          <span className="text-gold-dim text-2xl mb-4">
-            {card.type === 'major' ? '✦' : getSuitSymbol(card.suit)}
-          </span>
-          <div className="rule-h-gold w-12 mb-4" />
-          <div className="font-heading text-lg text-bone mb-2 tracking-[0.18em]">
-            {card.nameCn}
-          </div>
-          <div className="font-heading text-[11px] tracking-veil text-bone-dim uppercase">
-            {card.name}
-          </div>
-        </div>
-      ) : (
-        // 图片正常时的 hover 牌名 · 自带底部渐变以保证可读性
-        // card-name-overlay：触屏设备（无 hover）上常驻显示，见 globals.css
-        <div
-          className="card-name-overlay absolute bottom-0 inset-x-0 p-4 pt-10 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-          style={{
-            transitionTimingFunction: 'var(--ease-veil)',
-            background:
-              'linear-gradient(to top, rgba(6,6,10,0.92), rgba(6,6,10,0.7) 40%, transparent)',
-          }}
-        >
-          <div className="rule-h-gold w-8 mx-auto mb-2" />
-          <h3 className="font-heading text-bone text-base tracking-[0.2em]">
-            {card.nameCn}
-          </h3>
-          <p className="font-heading text-[10px] tracking-veil text-gold-dim uppercase mt-1">
-            {card.name}
-          </p>
-        </div>
-      ))}
-
-      {/* 逆位标识 */}
-      {isRevealed && isReversed && (
-        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 anim-fade-in">
-          <span className="cn-label text-gold-dim">
-            逆 位
-          </span>
-        </div>
-      )}
     </div>
   );
-}
-
-/* 角部刻痕 · 对角同色：左上/右下 骨白，右上/左下 极淡星蓝 */
-function CornerTicks() {
-  const corners: ReadonlyArray<{ at: string; tone: string }> = [
-    { at: 'top-3 left-3', tone: 'bg-[var(--bone-whisper)]' },
-    { at: 'top-3 right-3', tone: 'bg-[var(--celestial-faint)]' },
-    { at: 'bottom-3 left-3', tone: 'bg-[var(--celestial-faint)]' },
-    { at: 'bottom-3 right-3', tone: 'bg-[var(--bone-whisper)]' },
-  ];
-
-  return (
-    <>
-      {corners.map(({ at, tone }) => (
-        <span key={at} className={`absolute ${at}`} aria-hidden>
-          <span className={`absolute w-2 h-px ${tone}`} />
-          <span className={`absolute h-2 w-px ${tone}`} />
-        </span>
-      ))}
-    </>
-  );
-}
-
-function getSuitSymbol(suit?: string): string {
-  switch (suit) {
-    case 'wands':     return '✦';
-    case 'cups':      return '◇';
-    case 'swords':    return '✧';
-    case 'pentacles': return '⊹';
-    default:          return '✦';
-  }
 }

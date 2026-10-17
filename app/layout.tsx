@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Cinzel_Decorative, Marcellus, Spectral } from "next/font/google";
 import { AmbientField } from "@/components/AmbientField";
+import { AppShell } from "@/components/AppShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
@@ -35,8 +36,8 @@ const spectral = Spectral({
 });
 
 export const metadata: Metadata = {
-  title: "Mystic Tarot — 神秘塔罗",
-  description: "聆听命运的回声",
+  title: "神秘塔罗 · Mystic Tarot",
+  description: "聆听命运的回声 — 七十八张塔罗牌、六种牌阵与流式 AI 解读",
 };
 
 export default function RootLayout({
@@ -68,7 +69,7 @@ export default function RootLayout({
 
         <div className="relative z-10">
           <ErrorBoundary>
-            {children}
+            <AppShell>{children}</AppShell>
           </ErrorBoundary>
         </div>
       </body>

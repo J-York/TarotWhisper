@@ -1,101 +1,117 @@
 'use client';
 
-import { Spread } from '@/lib/tarot/types';
+import { type ReactElement } from 'react';
+
 import { spreads } from '@/lib/tarot/spreads';
+import type { Spread } from '@/lib/tarot/types';
 
 interface SpreadSelectorProps {
   selectedSpread: Spread;
   onSelect: (spread: Spread) => void;
 }
 
-export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps) {
+/* 牌阵最小示意 · 用方点表达排布形状，代替泛泛的列表 */
+const SPREAD_LAYOUTS: Record<string, string[]> = {
+  single: ['single'],
+  'three-card': ['row3'],
+  'two-options': ['row3', 'row2'],
+  relationship: ['row2', 'row3'],
+  timeline: ['row5'],
+  'celtic-cross': ['row3', 'row2'],
+};
+
+function MiniLayout({ id }: { id: string }): ReactElement {
+  const rows = SPREAD_LAYOUTS[id] ?? ['row3'];
   return (
-    <div className="w-full max-w-5xl px-4">
-      {/* ─── 标题 ─── */}
-      <div className="text-center mb-14">
-        <span className="text-gold text-lg" aria-hidden>✦</span>
-        <h3 className="font-heading text-2xl text-bone mt-5 mb-3 tracking-[0.22em] uppercase">
-          选 择 牌 阵
-        </h3>
-        <div className="rule-h-gold w-20 mx-auto mt-4" />
-        <p className="font-body italic-soft text-bone-faint text-sm mt-5">
-          每一种排布，都是宇宙不同侧面的回声
-        </p>
+    <div className="spread-mini" aria-hidden>
+      <div className="flex flex-col items-center gap-1.5">
+        {rows.map((row, ri) => {
+          const count = row === 'single' ? 1 : Number(row.replace('row', ''));
+          return (
+            <div key={`${row}-${ri}`} className="flex items-center gap-1.5">
+              {Array.from({ length: count }, (_, i) => (
+                <span
+                  key={i}
+                  className={`spread-mini-card ${
+                    id === 'celtic-cross' && ri === 0 && i === 1 ? 'spread-mini-card--major' : ''
+                  }`}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function SpreadSelector({ selectedSpread, onSelect }: SpreadSelectorProps): ReactElement {
+  return (
+    <div>
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <h2 className="section-title">牌阵</h2>
+          <p className="mt-1 text-xs text-bone-faint">共 6 种 · 点击切换</p>
+        </div>
+        <span className="hidden text-xs text-bone-faint md:inline">张数越多，解读越深入</span>
       </div>
 
-      {/* ─── 牌阵卡片 · 极细分隔 ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-3">
-        {spreads.map((spread, index) => {
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {spreads.map((spread) => {
           const isSelected = selectedSpread.id === spread.id;
-          // 每行中间列需要左右边线（3 列布局中 col % 3 === 1）
-          const col = index % 3;
-          const needBorderX = col === 1;
-          // 第二行起需要顶部边线
-          const needBorderT = index >= 3;
-
           return (
             <button
               key={spread.id}
+              type="button"
               onClick={() => onSelect(spread)}
-              className={`
-                relative group flex flex-col items-start text-left p-10
-                transition-all duration-700
-                ${isSelected
-                  ? 'bg-[var(--ink-veil)]'
-                  : 'bg-transparent hover:bg-[var(--ink-veil)]'
-                }
-                ${needBorderX ? 'md:border-l md:border-r md:border-[var(--ink-line)]' : ''}
-                ${needBorderT ? 'md:border-t md:border-[var(--ink-line)]' : ''}
-              `}
-              style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+              aria-pressed={isSelected}
+              className={`group relative flex flex-col rounded-xl border p-4 text-left transition-all duration-200 ${
+                isSelected
+                  ? 'border-[var(--gold-dim)] bg-[rgba(210,178,116,0.09)]'
+                  : 'border-[var(--ink-line)] bg-[rgba(20,16,34,0.35)] hover:border-[var(--ink-line-strong)] hover:bg-[rgba(20,16,34,0.6)]'
+              }`}
             >
-              {/* 选中态 · 顶部金线 */}
-              <span
-                className={`absolute top-0 left-0 right-0 h-px transition-all duration-700 ${
-                  isSelected ? 'bg-[var(--gold)]' : 'bg-transparent'
-                }`}
-                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-              />
-
-              {/* 符号 + 英文名 */}
-              <div className="flex items-center gap-4 mb-8">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3
+                    className={`font-heading text-[15px] tracking-[0.04em] ${
+                      isSelected ? 'text-gold-warm' : 'text-bone'
+                    }`}
+                  >
+                    {spread.nameCn}
+                  </h3>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-bone-faint">
+                    {spread.name}
+                  </p>
+                </div>
                 <span
-                  className={`text-lg transition-colors duration-700 ${
-                    isSelected ? 'text-gold' : 'text-gold-dim'
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] transition-colors ${
+                    isSelected
+                      ? 'border-[var(--gold)] bg-[var(--gold)] text-[var(--ink-void)]'
+                      : 'border-[var(--ink-line-strong)] text-transparent'
                   }`}
+                  aria-hidden
                 >
-                  {isSelected ? '✦' : '◇'}
-                </span>
-                <span
-                  className={`font-heading text-[11px] tracking-veil uppercase transition-colors duration-700 ${
-                    isSelected ? 'text-gold' : 'text-bone-dim'
-                  }`}
-                >
-                  {spread.name}
+                  ✓
                 </span>
               </div>
 
-              {/* 中文名 · 主标题 */}
-              <h4
-                className={`font-heading text-xl mb-4 tracking-[0.18em] transition-colors duration-700 ${
-                  isSelected
-                    ? 'text-bone'
-                    : 'text-bone-dim group-hover:text-bone'
-                }`}
-              >
-                {spread.nameCn}
-              </h4>
+              <div className="my-3">
+                <MiniLayout id={spread.id} />
+              </div>
 
-              {/* 描述 · Cormorant 衬线 */}
-              <p className="font-body text-bone-faint text-base leading-relaxed mb-10 italic-soft">
+              <p className="line-clamp-2 min-h-10 text-xs leading-relaxed text-bone-faint">
                 {spread.description}
               </p>
 
-              {/* 底部 · 张数 */}
-              <div className="mt-auto flex items-center gap-3 cn-label text-bone-faint">
-                <span>{spread.positions.length}</span>
-                <span className="w-6 h-px bg-[var(--ink-line)]" />
-                <span>张 牌</span>
+              <div className="mt-3 flex items-center justify-between border-t border-[var(--ink-line)] pt-2.5">
+                <span className="text-[11px] text-bone-faint">
+                  {spread.positions.length} 张
+                </span>
+                <span className="text-[10px] text-bone-faint">
+                  {spread.positions.map((p) => p.nameCn).slice(0, 3).join(' · ')}
+                  {spread.positions.length > 3 ? ' …' : ''}
+                </span>
               </div>
             </button>
           );

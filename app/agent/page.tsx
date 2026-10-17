@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 
 import { TarotCardComponent } from '@/components/TarotCard';
 import { Interpretation } from '@/components/Interpretation';
-import { ApiSettings } from '@/components/ApiSettings';
+import { useSettingsDialog } from '@/components/AppShell';
 import { useAgentChat } from '@/hooks/useAgentChat';
 import { useApiConfig } from '@/hooks/useApiConfig';
 import type {
@@ -15,7 +14,14 @@ import type {
 } from '@/hooks/useAgentChat';
 import type { DrawnCard, Spread } from '@/lib/tarot/types';
 
-export default function AgentPage() {
+const SUGGESTIONS = [
+  { glyph: '☾', label: '事业', question: '我最近的事业发展会顺利吗？' },
+  { glyph: '✦', label: '关系', question: '我和 Ta 的关系未来会怎样？' },
+  { glyph: '◇', label: '选择', question: '面对眼前的选择，我该如何决定？' },
+  { glyph: '⊹', label: '当下', question: '请给我一个关于当下的指引。' },
+];
+
+export default function AgentPage(): ReactElement {
   const {
     messages,
     isRunning,
@@ -26,15 +32,16 @@ export default function AgentPage() {
     cancel,
     reset,
   } = useAgentChat();
-  const { config, isLoaded, canUseApi, saveConfig } = useApiConfig();
-  const [showSettings, setShowSettings] = useState(false);
+  const { config, isLoaded, canUseApi } = useApiConfig();
+  const { openSettings } = useSettingsDialog();
   const [draft, setDraft] = useState('');
 
-  // 消息列表底部锚定 · 新消息或流式更新时自动滚动到底部
   const bottomRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    // 空会话时不滚动，否则首次进入会把页头推出视口
+    if (messages.length === 0) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
@@ -43,7 +50,6 @@ export default function AgentPage() {
   const handleSend = (): void => {
     const text = draft.trim();
     if (!text || isRunning || !canUseApi) return;
-    // 有首轮解读后，输入视为追问；否则视为首轮提问
     const lastAgent = [...messages].reverse().find((m) => m.role === 'agent');
     if (lastAgent && lastAgent.role === 'agent' && lastAgent.status === 'done') {
       askFollowUp(text, config);
@@ -53,14 +59,12 @@ export default function AgentPage() {
     setDraft('');
   };
 
-  // 欢迎区建议签 · 点选即直接发问
   const handleSuggestion = (question: string): void => {
     if (isRunning || !canUseApi) return;
     sendQuestion(question, config);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Enter 发送，Shift+Enter 换行；输入法选词时的 Enter 不算（Safari 下 isComposing 可能已为 false，需看 keyCode 229）
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -69,266 +73,171 @@ export default function AgentPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      {/* ─── 漂浮符印 · 全局氛围层 ─── */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
-        <span className="scatter-symbol text-2xl top-[16%] left-[5%] anim-drift" style={{ animationDelay: '2s' }}>✧</span>
-        <span className="scatter-symbol text-3xl top-[62%] right-[4%] anim-drift" style={{ animationDelay: '5s' }}>☾</span>
-        <span className="scatter-symbol text-lg top-[38%] right-[14%] anim-twinkle" style={{ animationDelay: '1s' }}>⋆</span>
-        <span className="scatter-symbol text-xl bottom-[16%] left-[20%] anim-whisper">⊹</span>
-        <span className="scatter-symbol text-sm top-[8%] right-[38%] anim-twinkle" style={{ animationDelay: '2.6s' }}>✦</span>
-      </div>
-
-      {/* ─── Header · 离开 / 轨迹 / 配置 ─── */}
-      <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-5 md:px-10 md:pl-16 py-7 bg-gradient-to-b from-[var(--ink-deep)] via-[var(--ink-deep)]/85 to-transparent pointer-events-none">
-        <Link
-          href="/"
-          className="pointer-events-auto flex items-center gap-4 text-bone-dim hover:text-bone transition-colors duration-500 group"
-          style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-        >
-          <span
-            className="text-base group-hover:-translate-x-1 transition-transform duration-700"
-            style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-          >
-            ←
-          </span>
-          <span className="cn-nav">离 开</span>
-        </Link>
-        <div className="flex items-center gap-5 md:gap-9 pointer-events-auto">
-          <Link
-            href="/history"
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
-            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-          >
-            轨 迹
-          </Link>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="cn-nav text-bone-dim hover:text-bone transition-colors duration-500"
-            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-          >
-            配 置
-          </button>
+    <main id="main-content" className="page-container page-main pb-40">
+      {/* ─── 页头 ─── */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">Oracle Chat</p>
+          <h1 className="page-title mt-3">神谕对话</h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-bone-faint">
+            提出问题，神谕会自行选择牌阵、抽牌，并把牌面与解读一起交给你。
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasConversation && (
+            <button
+              type="button"
+              onClick={reset}
+              disabled={isRunning}
+              className="btn-ink h-10 px-4 text-sm"
+            >
+              新的对话
+            </button>
+          )}
         </div>
       </header>
 
-      {/* ─── 对话区 ─── */}
-      <main
-        id="main-content"
-        ref={scrollContainerRef}
-        className="relative z-10 flex-1 flex flex-col px-5 md:px-10 md:pl-16 pt-32 pb-48"
-      >
-        <div className="w-full max-w-4xl mx-auto flex flex-col gap-16 md:gap-24">
-          {!hasConversation && (
-            <WelcomeBlock
-              isLoaded={isLoaded}
-              canUseApi={canUseApi}
-              onPick={handleSuggestion}
-            />
-          )}
+      {isLoaded && !canUseApi && (
+        <div className="surface mt-6 flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+          <p className="text-sm text-bone-dim">
+            <span className="mr-2 text-gold-dim" aria-hidden>◇</span>
+            尚未配置 API 密钥，神谕暂时无法开口。
+          </p>
+          <button type="button" onClick={openSettings} className="btn-ink-primary h-9 px-4 text-sm">
+            去配置
+          </button>
+        </div>
+      )}
 
+      <div className="mx-auto mt-8 w-full max-w-3xl">
+        {!hasConversation && (
+          <section className="anim-veil-rise">
+            <div className="surface p-6 md:p-8">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-full border border-[var(--gold-faint)] bg-[rgba(210,178,116,0.08)] text-gold">
+                  ✦
+                </span>
+                <div>
+                  <p className="font-heading text-lg text-bone">直接说出你的问题</p>
+                  <p className="mt-0.5 text-xs text-bone-faint">
+                    无需选牌与洗牌 · 神谕会自动完成全部步骤
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s.question}
+                    type="button"
+                    onClick={() => handleSuggestion(s.question)}
+                    disabled={isRunning || !canUseApi}
+                    className="group flex items-center gap-3 rounded-lg border border-[var(--ink-line)] bg-[rgba(20,16,34,0.4)] px-4 py-3 text-left transition-colors hover:border-[var(--gold-faint)] hover:bg-[rgba(210,178,116,0.06)] disabled:opacity-50"
+                  >
+                    <span className="text-gold-dim transition-colors group-hover:text-gold" aria-hidden>
+                      {s.glyph}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[10px] tracking-[0.16em] text-bone-faint">{s.label}</span>
+                      <span className="block truncate text-sm text-bone">{s.question}</span>
+                    </span>
+                    <span className="text-bone-faint transition-transform group-hover:translate-x-0.5" aria-hidden>
+                      →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { t: '自动选阵', d: '依据问题性质挑选最合适的牌阵' },
+                { t: '连续追问', d: '需要时会补抽牌，再给出新的解读' },
+                { t: '随时停止', d: '生成中可以停止，已完成的内容会保留' },
+              ].map((f) => (
+                <div key={f.t} className="surface-soft px-4 py-3.5">
+                  <p className="text-sm text-bone">{f.t}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-bone-faint">{f.d}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="flex flex-col gap-10">
           {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
               message={msg}
               isRunning={isRunning}
               canUseApi={canUseApi}
-              onRegenerateAgent={(agentId) => {
-                regenerateAgentMessage(agentId, config);
-              }}
-              onRegenerateFollowUp={(agentId, followUpId) => {
-                regenerateFollowUp(agentId, followUpId, config);
-              }}
-            />
-          ))}
-
-          <div ref={bottomRef} />
-        </div>
-      </main>
-
-      {/* ─── 输入区 · 一道线 + 一枚发送符印 ─── */}
-      <div className="fixed bottom-0 inset-x-0 z-40 px-5 md:px-10 md:pl-16 pt-12 pb-6 bg-gradient-to-t from-[var(--ink-deep)] via-[var(--ink-deep)]/92 to-transparent">
-        <div className="w-full max-w-4xl mx-auto">
-          {isLoaded && !canUseApi && (
-            <p className="cn-hint text-gold-dim mb-4">
-              <span className="mr-2">◇</span>
-              请先于「配置」中设置 API 密钥
-            </p>
-          )}
-          <div
-            className="flex items-end gap-5 border-b border-[var(--ink-line-strong)] pb-3 transition-colors duration-700 focus-within:border-[var(--gold-dim)]"
-            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-          >
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                hasConversation
-                  ? '继续追问，或换个角度再问…'
-                  : '说出你心中的疑问，让神谕为你选牌解读…'
+              onRegenerateAgent={(agentId) => regenerateAgentMessage(agentId, config)}
+              onRegenerateFollowUp={(agentId, followUpId) =>
+                regenerateFollowUp(agentId, followUpId, config)
               }
-              disabled={isRunning}
-              rows={1}
-              className="input-ink-bare flex-1 max-h-32 py-2 text-base md:text-lg text-bone resize-none font-body leading-relaxed disabled:opacity-40"
-              style={{ minHeight: '2.5rem' }}
-              spellCheck={false}
             />
-            {isRunning ? (
-              <button
-                onClick={cancel}
-                className="cn-nav text-bone-dim hover:text-gold transition-colors duration-500 pb-1"
-                style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-              >
-                停 止
-              </button>
-            ) : (
-              <button
-                onClick={handleSend}
-                disabled={!draft.trim() || !canUseApi}
-                aria-label="发送"
-                className="group pb-0.5 disabled:opacity-25 disabled:cursor-not-allowed transition-opacity duration-500"
-              >
-                <span
-                  className="block text-gold text-2xl leading-none transition-all duration-700 group-hover:text-gold-warm group-hover:rotate-90 group-hover:scale-110 group-active:scale-95"
-                  style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-                >
-                  ✦
-                </span>
-              </button>
-            )}
-          </div>
-          <div className="flex justify-between items-center mt-3 px-1">
-            <span className="cn-hint text-bone-whisper">
-              Enter 发送 · Shift+Enter 换行
-            </span>
-            {hasConversation && !isRunning && (
-              <button
-                onClick={reset}
-                className="cn-hint text-bone-whisper hover:text-gold-dim transition-colors duration-500"
-                style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-              >
-                新 的 对 话
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <ApiSettings
-        config={config}
-        onSave={saveConfig}
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
-    </div>
-  );
-}
-
-// ─── 欢迎区 · 非对称神谕前厅 ──────────────────────────────
-
-interface WelcomeBlockProps {
-  isLoaded: boolean;
-  canUseApi: boolean;
-  onPick: (question: string) => void;
-}
-
-/** 四支建议签 · 错落排布（移动端纵向 cascading，桌面端高低参差） */
-const SUGGESTIONS: { glyph: string; num: string; question: string }[] = [
-  { glyph: '☾', num: '壹', question: '我最近的事业发展会顺利吗？' },
-  { glyph: '✦', num: '贰', question: '我和 Ta 的关系未来会怎样？' },
-  { glyph: '◇', num: '叁', question: '面对眼前的选择，我该如何决定？' },
-  { glyph: '⊹', num: '肆', question: '请给我一个关于当下的指引。' },
-];
-
-const CHIP_DROPS = ['md:mt-0', 'md:mt-14', 'md:mt-5', 'md:mt-20'];
-const CHIP_SHIFTS = ['ml-0', 'ml-8', 'ml-3', 'ml-12'];
-
-function WelcomeBlock({ isLoaded, canUseApi, onPick }: WelcomeBlockProps) {
-  return (
-    <section className="relative min-h-[82dvh] flex flex-col justify-center py-16 anim-veil-rise">
-      {/* 散落的星象符印 */}
-      <span className="scatter-symbol text-4xl top-[2%] right-[6%] anim-drift" aria-hidden>☾</span>
-      <span className="scatter-symbol text-2xl top-[26%] right-[30%] anim-twinkle" style={{ animationDelay: '1.2s' }} aria-hidden>✧</span>
-      <span className="scatter-symbol text-xl top-[55%] right-[10%] anim-whisper" aria-hidden>⊹</span>
-      <span className="scatter-symbol text-3xl bottom-[10%] right-[36%] anim-drift" style={{ animationDelay: '3s' }} aria-hidden>✦</span>
-      <span className="scatter-symbol text-lg top-[12%] left-[48%] anim-twinkle" style={{ animationDelay: '2s' }} aria-hidden>⋆</span>
-      <span className="scatter-symbol text-base bottom-[28%] left-[8%] anim-whisper" style={{ animationDelay: '1.6s' }} aria-hidden>✶</span>
-
-      {/* 竖金线 + 巨型标题 · 左对齐 */}
-      <div className="flex items-stretch gap-6 md:gap-10">
-        <div
-          className="w-px self-stretch shrink-0"
-          style={{
-            background:
-              'linear-gradient(to bottom, transparent, var(--gold-dim) 30%, var(--gold) 55%, transparent)',
-          }}
-          aria-hidden
-        />
-        <div className="flex flex-col">
-          <span className="cn-label text-gold-dim mb-6 md:mb-8">
-            ORACLE CHAMBER · 神 谕 之 殿
-          </span>
-          <h1 className="text-massive font-heading text-bone">
-            神谕<span className="text-gold-dim"> · </span>对话
-          </h1>
-          <p className="font-heading text-tiny text-bone-faint mt-7">
-            Ask, and the cards shall answer
-          </p>
-        </div>
-      </div>
-
-      {/* 描述 · 右移错位 */}
-      <div className="mt-14 md:mt-16 md:ml-32 lg:ml-48 max-w-xl">
-        <p className="font-body italic-soft text-bone-faint text-lg leading-loose">
-          无需选牌、无需洗牌。
-          <br />
-          只管提出疑问，神谕自会为你选阵、抽牌、解读。
-        </p>
-      </div>
-
-      {/* 建议签 · 高低错落 */}
-      {isLoaded && !canUseApi ? null : (
-        <div className="mt-16 md:mt-24 flex flex-col md:flex-row md:flex-wrap md:items-start gap-4 md:gap-6">
-          {SUGGESTIONS.map((s, i) => (
-            <button
-              key={s.question}
-              onClick={() => onPick(s.question)}
-              className={`group text-left hairline max-w-sm bg-transparent hover:bg-[var(--ink-veil)] hover:border-[var(--gold-faint)] px-6 py-5 transition-all duration-500 hover:-translate-y-1 ${CHIP_SHIFTS[i]} ${CHIP_DROPS[i]}`}
-              style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-            >
-              <span className="flex items-center gap-3 mb-3">
-                <span className="text-gold-dim text-sm group-hover:text-gold transition-colors duration-500">
-                  {s.glyph}
-                </span>
-                <span className="text-tiny font-heading text-bone-whisper">
-                  签 · {s.num}
-                </span>
-              </span>
-              <span className="block font-body text-sm text-bone-dim leading-relaxed group-hover:text-bone transition-colors duration-500">
-                {s.question}
-              </span>
-              <span
-                className="block mt-3 text-gold-dim text-xs opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500"
-                style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-                aria-hidden
-              >
-                ⟶ 以此发问
-              </span>
-            </button>
           ))}
         </div>
-      )}
 
-      {/* 底部低语提示 */}
-      <p className="cn-hint text-bone-whisper mt-16 md:mt-24 md:ml-32 lg:ml-48">
-        或 ， 直 接 在 下 方 写 下 你 的 疑 问
-      </p>
-    </section>
+        <div ref={bottomRef} />
+      </div>
+
+      {/* ─── 输入区 ─── */}
+      <div className="fixed inset-x-0 bottom-16 z-30 border-t border-[var(--ink-line)] bg-[var(--ink-deep)]/92 backdrop-blur-xl md:bottom-0">
+        <div className="page-container py-3.5">
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="field-shell flex items-end gap-2 p-2 pl-4">
+              <textarea
+                ref={inputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  hasConversation
+                    ? '继续追问，或换个角度再问…'
+                    : '说出你的疑问，神谕为你解牌…'
+                }
+                disabled={isRunning}
+                rows={1}
+                className="input-ink-bare max-h-32 flex-1 resize-none py-2 text-[15px] leading-relaxed disabled:opacity-50"
+                style={{ minHeight: '2.25rem' }}
+                spellCheck={false}
+              />              {isRunning ? (
+                <button type="button" onClick={cancel} className="btn-ink h-9 px-4 text-sm">
+                  停止
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={!draft.trim() || !canUseApi}
+                  aria-label="发送"
+                  className="btn-ink-primary h-9 w-9 shrink-0 !px-0"
+                >
+                  <span aria-hidden className="text-base">↑</span>
+                </button>
+              )}
+            </div>
+            <div className="mt-1.5 flex items-center justify-between px-1">
+              <span className="text-[11px] text-bone-whisper">Enter 发送 · Shift + Enter 换行</span>
+              {isLoaded && !canUseApi && (
+                <button
+                  type="button"
+                  onClick={openSettings}
+                  className="text-[11px] text-gold-warm hover:underline"
+                >
+                  配置 API
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
 
-// ─── 消息气泡 ─────────────────────────────────────────────
+/* ─── 消息 ─── */
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -344,17 +253,17 @@ function MessageBubble({
   canUseApi,
   onRegenerateAgent,
   onRegenerateFollowUp,
-}: MessageBubbleProps) {
+}: MessageBubbleProps): ReactElement {
   if (message.role === 'user') {
     return (
-      <div className="flex flex-col items-end anim-veil-rise">
-        <span className="text-tiny font-heading text-celestial mb-3 mr-1">
-          你 · 问
-        </span>
-        <div className="chat-bubble-user max-w-[88%] md:max-w-[70%] px-7 py-5">
-          <p className="font-body text-bone text-base md:text-lg leading-relaxed whitespace-pre-wrap">
-            {message.content}
-          </p>
+      <div className="flex justify-end anim-veil-rise">
+        <div className="max-w-[85%] md:max-w-[75%]">
+          <p className="mb-1.5 mr-1 text-right text-[11px] tracking-[0.12em] text-celestial">你</p>
+          <div className="chat-bubble-user px-4 py-3">
+            <p className="whitespace-pre-wrap font-body text-[15px] leading-relaxed text-bone md:text-base">
+              {message.content}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -371,8 +280,6 @@ function MessageBubble({
   );
 }
 
-// ─── Agent 气泡 · 神谕回应 ────────────────────────────────
-
 interface AgentBubbleProps {
   message: AgentMessage;
   isRunning: boolean;
@@ -387,143 +294,122 @@ function AgentBubble({
   canUseApi,
   onRegenerate,
   onRegenerateFollowUp,
-}: AgentBubbleProps) {
-  // 术语提取必须在组件顶层无条件调用（rules-of-hooks）
+}: AgentBubbleProps): ReactElement {
   const cardTerms = useCardTerms(message.drawnCards);
   const positionTerms = usePositionTerms(message.spread);
   const canRegenerate =
-    !isRunning &&
-    canUseApi &&
-    (message.status === 'done' || message.status === 'error');
+    !isRunning && canUseApi && (message.status === 'done' || message.status === 'error');
 
   return (
-    <div className="anim-veil-rise">
-      {/* 称谓行 · 神谕开口 */}
-      <div className="flex items-center gap-4 mb-6">
-        <span className="text-gold text-sm anim-whisper" aria-hidden>
+    <article className="anim-veil-rise">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="grid h-7 w-7 place-items-center rounded-full border border-[var(--gold-faint)] text-[11px] text-gold">
           ✦
         </span>
-        <span className="text-tiny font-heading text-gold-dim">神 谕 · 回 应</span>
-        <div className="flex-1 rule-h-fade" aria-hidden />
+        <span className="text-xs tracking-[0.14em] text-gold-dim">神谕</span>
+        <span className="h-px flex-1 bg-[var(--ink-line)]" />
       </div>
 
-      <div className="chat-bubble-oracle px-6 md:px-10 py-8 md:py-10 flex flex-col gap-10">
-        {/* 牌阵选择说明 */}
+      <div className="surface-soft overflow-hidden">
         {message.spread && (
-          <div className="ink-panel-ritual px-6 py-5">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-gold text-sm">✦</span>
-              <span className="cn-label text-gold-dim">为 你 选 定 牌 阵</span>
-            </div>
-            <div className="font-heading text-bone text-lg tracking-[0.16em] mb-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--ink-line)] bg-[rgba(210,178,116,0.05)] px-5 py-3.5">
+            <span className="text-[10px] tracking-[0.16em] text-gold-dim">选定牌阵</span>
+            <span className="font-heading text-sm text-bone">
               {message.spread.nameCn}
-            </div>
+              <span className="ml-2 text-[10px] text-bone-faint">{message.spread.name}</span>
+            </span>
             {message.spreadReason && (
-              <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed">
+              <span className="w-full text-xs leading-relaxed text-bone-faint">
                 {message.spreadReason}
-              </p>
+              </span>
             )}
           </div>
         )}
 
-        {/* 牌面展示 · 悬浮全自动翻开 */}
         {message.drawnCards.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-10 md:gap-x-12 py-2">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-7 border-b border-[var(--ink-line)] px-4 py-7">
             {message.drawnCards.map((drawn, index) => (
-              <CardAutoReveal
-                key={drawn.position.id}
-                drawn={drawn}
-                delay={index * 220}
-              />
+              <CardAutoReveal key={drawn.position.id} drawn={drawn} delay={index * 160} />
             ))}
           </div>
         )}
 
-        {/* 解读 */}
-        {(message.content || message.status === 'running' || message.error) && (
-          <Interpretation
-            content={message.content}
-            isLoading={message.status === 'running' && !message.content}
-            error={message.error}
-            notice={message.notice}
-            retry={message.retry}
-            staggerOnMount={false}
-            cardTerms={cardTerms}
-            positionTerms={positionTerms}
-          />
-        )}
+        <div className="px-5 py-6 md:px-7">
+          {(message.content || message.status === 'running' || message.error) && (
+            <Interpretation
+              content={message.content}
+              isLoading={message.status === 'running' && !message.content}
+              error={message.error}
+              notice={message.notice}
+              retry={message.retry}
+              staggerOnMount={false}
+              cardTerms={cardTerms}
+              positionTerms={positionTerms}
+            />
+          )}
 
-        {canRegenerate && (
-          <div className="flex justify-end -mt-4">
-            <button
-              type="button"
-              onClick={() => onRegenerate(message.id)}
-              className="cn-hint text-bone-whisper hover:text-gold-dim transition-colors duration-500"
-              style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
-            >
-              重 新 生 成
-            </button>
+          {canRegenerate && (
+            <div className="mt-5 flex justify-end border-t border-[var(--ink-line)] pt-4">
+              <button
+                type="button"
+                onClick={() => onRegenerate(message.id)}
+                className="btn-ink-ghost text-xs"
+              >
+                重新生成
+              </button>
+            </div>
+          )}
+        </div>
+
+        {message.followUps.length > 0 && (
+          <div className="flex flex-col gap-8 border-t border-[var(--ink-line)] bg-[rgba(10,8,18,0.35)] px-5 py-6 md:px-7">
+            {message.followUps.map((fu) => (
+              <FollowUpBlock
+                key={fu.id}
+                agentId={message.id}
+                followUp={fu}
+                isRunning={isRunning}
+                canUseApi={canUseApi}
+                onRegenerate={onRegenerateFollowUp}
+              />
+            ))}
           </div>
         )}
-
-        {/* 追问列表 */}
-        {message.followUps.map((fu) => (
-          <FollowUpBlock
-            key={fu.id}
-            agentId={message.id}
-            followUp={fu}
-            isRunning={isRunning}
-            canUseApi={canUseApi}
-            onRegenerate={onRegenerateFollowUp}
-          />
-        ))}
       </div>
-    </div>
+    </article>
   );
 }
 
-// ─── 自动翻牌（挂载后延时揭示 · 悬浮牌） ──────────────────
-
-function CardAutoReveal({ drawn, delay }: { drawn: DrawnCard; delay: number }) {
+function CardAutoReveal({ drawn, delay }: { drawn: DrawnCard; delay: number }): ReactElement {
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setRevealed(true), delay + 150);
+    const t = setTimeout(() => setRevealed(true), delay + 120);
     return () => clearTimeout(t);
   }, [delay]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <span className="cn-label text-bone-faint">{drawn.position.nameCn}</span>
-      <div className="float-card">
-        <TarotCardComponent
-          card={drawn.card}
-          isReversed={drawn.isReversed}
-          isRevealed={revealed}
-          size="sm"
-          enableInteractions={false}
-        />
-      </div>
-      {/* 牌名 · 揭示后浮现 */}
+    <div className="flex w-24 flex-col items-center gap-2">
+      <span className="truncate text-[11px] tracking-[0.06em] text-bone-faint">
+        {drawn.position.nameCn}
+      </span>
+      <TarotCardComponent
+        card={drawn.card}
+        isReversed={drawn.isReversed}
+        isRevealed={revealed}
+        size="sm"
+        enableInteractions={false}
+      />
       <div
-        className={`text-center transition-all duration-1000 ${
-          revealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+        className={`text-center transition-all duration-500 ${
+          revealed ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
         }`}
-        style={{ transitionTimingFunction: 'var(--ease-veil)' }}
       >
-        <span className="font-display text-sm text-gold tracking-[0.18em]">
-          {drawn.card.nameCn}
-        </span>
-        {drawn.isReversed && (
-          <span className="text-tiny font-heading text-bone-faint block mt-1.5">
-            逆 位
-          </span>
-        )}
+        <p className="font-heading text-xs text-gold-warm">{drawn.card.nameCn}</p>
+        {drawn.isReversed && <p className="mt-0.5 text-[10px] text-bone-faint">逆位</p>}
       </div>
     </div>
   );
 }
-
-// ─── 追问块 ───────────────────────────────────────────────
 
 interface FollowUpBlockProps {
   agentId: string;
@@ -539,43 +425,30 @@ function FollowUpBlock({
   isRunning,
   canUseApi,
   onRegenerate,
-}: FollowUpBlockProps) {
+}: FollowUpBlockProps): ReactElement {
   const canRegenerate =
-    !isRunning &&
-    canUseApi &&
-    (fu.status === 'done' || fu.status === 'error');
+    !isRunning && canUseApi && (fu.status === 'done' || fu.status === 'error');
 
   return (
-    <div className="flex flex-col gap-6 hairline-top pt-10 mt-2">
-      {/* 追问问题 · 你的声音 */}
-      <div className="flex items-start gap-4">
-        <span className="text-celestial text-sm mt-1" aria-hidden>
+    <section className="flex flex-col gap-4 rounded-lg border border-[var(--celestial-faint)] bg-[rgba(139,159,212,0.04)] p-4">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 text-xs text-celestial" aria-hidden>
           ◆
         </span>
-        <div>
-          <span className="text-tiny font-heading text-celestial block mb-2">
-            追 问
-          </span>
-          <p className="font-body text-bone text-base leading-relaxed">
-            {fu.question}
-          </p>
+        <div className="min-w-0">
+          <span className="text-[10px] tracking-[0.16em] text-celestial">追问</span>
+          <p className="mt-1 font-body text-sm leading-relaxed text-bone">{fu.question}</p>
         </div>
       </div>
 
-      {/* 补充牌 */}
       {fu.additionalCards.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-8">
+        <div className="flex flex-wrap gap-4">
           {fu.additionalCards.map((drawn, index) => (
-            <CardAutoReveal
-              key={drawn.position.id}
-              drawn={drawn}
-              delay={index * 220}
-            />
+            <CardAutoReveal key={drawn.position.id} drawn={drawn} delay={index * 160} />
           ))}
         </div>
       )}
 
-      {/* 追问解读 */}
       {(fu.interpretation || fu.status === 'running' || fu.error) && (
         <Interpretation
           content={fu.interpretation}
@@ -588,33 +461,24 @@ function FollowUpBlock({
       )}
 
       {canRegenerate && (
-        <div className="flex justify-end -mt-1">
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={() => onRegenerate(agentId, fu.id)}
-            className="cn-hint text-bone-whisper hover:text-gold-dim transition-colors duration-500"
-            style={{ transitionTimingFunction: 'var(--ease-ritual)' }}
+            className="btn-ink-ghost text-xs"
           >
-            重 新 生 成
+            重新生成
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
-// ─── 术语提取（小型 memo hooks） ──────────────────────────
-
 function useCardTerms(drawnCards: DrawnCard[]): string[] {
-  return useMemo(
-    () => drawnCards.flatMap((d) => [d.card.nameCn, d.card.name]),
-    [drawnCards],
-  );
+  return useMemo(() => drawnCards.flatMap((d) => [d.card.nameCn, d.card.name]), [drawnCards]);
 }
 
 function usePositionTerms(spread: Spread | null): string[] {
-  return useMemo(
-    () => (spread ? spread.positions.map((p) => p.nameCn) : []),
-    [spread],
-  );
+  return useMemo(() => (spread ? spread.positions.map((p) => p.nameCn) : []), [spread]);
 }

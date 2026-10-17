@@ -53,58 +53,58 @@ const THINKING_TAG_PATTERN = /<\/?(think|thinking)>/gi;
  */
 const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => (
-    <h1 className="font-heading text-2xl text-bone mt-12 mb-6 first:mt-0 tracking-[0.18em] pb-4 hairline-bottom">
+    <h1 className="mb-4 mt-9 border-b border-[var(--ink-line)] pb-3 font-heading text-xl text-bone first:mt-0 md:text-[22px]">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-heading text-xl text-bone mt-10 mb-5 first:mt-0 tracking-[0.16em]">
+    <h2 className="mb-3 mt-8 font-heading text-lg text-bone first:mt-0 md:text-xl">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="font-heading text-lg text-bone mt-8 mb-4 first:mt-0 tracking-[0.14em]">
+    <h3 className="mb-2.5 mt-7 font-heading text-base text-bone first:mt-0 md:text-[17px]">
       {children}
     </h3>
   ),
   h4: ({ children }) => (
-    <h4 className="font-heading text-base text-bone mt-6 mb-3 first:mt-0 tracking-[0.12em]">
+    <h4 className="mb-2 mt-6 font-heading text-[15px] text-bone first:mt-0">
       {children}
     </h4>
   ),
   p: ({ children }) => (
-    <p className="font-body text-bone-dim text-lg leading-[1.95] mb-6 last:mb-0 font-light">
+    <p className="mb-4 font-body text-[15px] font-light leading-[1.9] text-bone-dim last:mb-0 md:text-base md:leading-[1.95]">
       {children}
     </p>
   ),
   ul: ({ children }) => (
-    <ul className="font-body list-none text-bone-dim text-lg leading-[1.95] my-6 space-y-3 pl-0 font-light">
+    <ul className="my-4 list-none space-y-2 pl-0 font-body text-[15px] font-light leading-[1.9] text-bone-dim md:text-base">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="font-body list-decimal list-inside text-bone-dim text-lg leading-[1.95] my-6 space-y-3 pl-2 font-light">
+    <ol className="my-4 list-decimal space-y-2 pl-5 font-body text-[15px] font-light leading-[1.9] text-bone-dim md:text-base">
       {children}
     </ol>
   ),
   li: ({ children }) => (
-    <li className="text-bone-dim leading-[1.95] pl-6 relative before:content-['◇'] before:absolute before:left-0 before:text-gold-dim before:text-sm before:top-2">
+    <li className="relative pl-5 leading-[1.9] text-bone-dim before:absolute before:left-0 before:top-0 before:text-[10px] before:text-gold-dim before:content-['◆'] before:opacity-80">
       {children}
     </li>
   ),
   strong: ({ children }) => (
-    <strong className="text-gold font-medium tracking-wide">{children}</strong>
+    <strong className="font-medium text-gold-warm">{children}</strong>
   ),
   em: ({ children }) => (
     <em className="font-body italic text-bone">{children}</em>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="font-body border-l border-[var(--gold-dim)] pl-6 my-8 italic-soft text-bone-faint text-lg leading-[1.95]">
+    <blockquote className="my-6 rounded-r-lg border-l-2 border-[var(--gold-dim)] bg-[rgba(210,178,116,0.05)] py-2 pl-4 pr-4 font-body text-[15px] italic text-bone-faint">
       {children}
     </blockquote>
   ),
   hr: () => (
-    <hr className="my-10 border-0 rule-h-fade" />
+    <hr className="my-8 border-0 rule-h-fade" />
   ),
 };
 
@@ -271,23 +271,18 @@ export function Interpretation({
   /* ─── 错误态 ─── */
   if (error) {
     return (
-      <div className="w-full max-w-4xl p-12 ink-panel-quiet anim-veil-rise">
-        <div className="flex items-center gap-4 mb-5">
-          <span className="text-gold-dim text-lg">◇</span>
-          <h3 className="font-heading text-xl text-bone tracking-[0.18em]">
-            连 接 已 断
-          </h3>
+      <div className="w-full rounded-xl border border-[rgba(210,178,116,0.3)] bg-[rgba(210,178,116,0.05)] p-6 anim-fade-in md:p-8">
+        <div className="flex items-center gap-3">
+          <span className="grid h-8 w-8 place-items-center rounded-full border border-[var(--gold-faint)] text-sm text-gold" aria-hidden>
+            ◇
+          </span>
+          <h3 className="section-title">连接已断</h3>
         </div>
-        <div className="rule-h-gold w-20 mb-6" />
-        <p className="font-body text-bone-dim text-base leading-relaxed mb-4 italic-soft">
-          {error}
-        </p>
-        <p className="cn-label text-bone-dim">
-          请 检 查 配 置 与 网 络 ， 然 后 重 新 解 读
-        </p>
+        <p className="mt-4 font-body text-sm leading-relaxed text-bone-dim">{error}</p>
+        <p className="mt-2 text-xs text-bone-faint">请检查 API 配置与网络，然后重新解读。</p>
         {onOpenSettings && (
-          <button onClick={onOpenSettings} className="btn-ink-ghost mt-8">
-            去 配 置
+          <button onClick={onOpenSettings} className="btn-ink mt-5 h-9 px-4 text-sm">
+            去配置
           </button>
         )}
       </div>
@@ -301,78 +296,62 @@ export function Interpretation({
   const useStaggerReveal = staggerOnMount && !isLoading && content.length > 0;
 
   return (
-    <div className="w-full max-w-4xl">
+    <div className="w-full">
       {/* ─── 标题 ─── */}
-      <div className="flex flex-col items-center gap-4 mb-12 anim-fade-in">
-        <span className="text-gold text-xl anim-drift">✦</span>
-        <h3 className="font-heading text-2xl text-bone tracking-[0.32em] uppercase">
-          神 谕
-        </h3>
-        <div className="rule-h-gold w-20" />
-        <p className="font-body italic-soft text-bone-faint text-sm">
-          The Oracle Speaks
-        </p>
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="text-xs text-gold" aria-hidden>✦</span>
+        <h3 className="text-xs tracking-[0.16em] text-gold-dim">神谕</h3>
+        <span className="h-px flex-1 bg-[var(--ink-line)]" />
+        {isLoading && <span className="text-[11px] text-bone-faint">生成中…</span>}
       </div>
 
       {/* ─── 内容容器 ─── */}
-      <div
-        className={`relative ink-panel-quiet transition-all duration-1000 ${
-          isLoading && !content ? 'min-h-[320px]' : 'min-h-[120px]'
-        }`}
-        style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-      >
-        <div className="p-10 md:p-16 relative">
-          {content ? (
-            <>
-              <InterpretationBody
-                content={content}
-                streaming={isStreamingActive}
-                stagger={useStaggerReveal}
-                cardTerms={cardTerms}
-                positionTerms={positionTerms}
-                showSigil={!isLoading}
-              />
-              {/* 非致命警示 · 正文之下的安静提示条 */}
-              {notice && !isLoading && (
-                <div className="mt-10 px-5 py-4 border-l border-[var(--gold-dim)] anim-fade-in">
-                  <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed">
-                    <span className="text-gold-dim mr-2">◇</span>
-                    {notice}
-                  </p>
-                </div>
-              )}
-            </>
-          ) : isLoading ? (
-            // ─── 加载态 · 通灵中 ───
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-7">
-              <div className="relative">
-                <span className="text-gold text-4xl anim-whisper">✦</span>
-                <span className="absolute inset-0 anim-glow-pulse rounded-full" aria-hidden />
+      <div className="surface px-5 py-6 md:px-8 md:py-8">
+        {content ? (
+          <>
+            <InterpretationBody
+              content={content}
+              streaming={isStreamingActive}
+              stagger={useStaggerReveal}
+              cardTerms={cardTerms}
+              positionTerms={positionTerms}
+              showSigil={!isLoading}
+            />
+            {/* 非致命警示 · 正文之下的安静提示条 */}
+            {notice && !isLoading && (
+              <div className="mt-7 rounded-lg border-l-2 border-[var(--gold-dim)] bg-[rgba(210,178,116,0.05)] px-4 py-3 anim-fade-in">
+                <p className="font-body text-xs leading-relaxed text-bone-faint">
+                  <span className="mr-1.5 text-gold-dim" aria-hidden>◇</span>
+                  {notice}
+                </p>
               </div>
-              <p className="cn-label text-bone-dim">
-                {retry ? '与 以 太 重 新 连 接' : '正 在 通 灵'}
-              </p>
-              <div className="flex gap-2.5">
-                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '0ms' }} />
-                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '400ms' }} />
-                <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
-              </div>
-              <p className="font-body italic-soft text-bone-faint text-sm mt-2">
-                {retry
-                  ? `连接中断，正在重试（第 ${retry.attempt} / ${retry.max} 次）`
-                  : '星辰需要时间才能开口'}
-              </p>
+            )}
+          </>
+        ) : isLoading ? (
+          // ─── 加载态 · 通灵中 ───
+          <div className="flex min-h-[260px] flex-col items-center justify-center gap-4">
+            <span className="text-2xl text-gold anim-whisper" aria-hidden>✦</span>
+            <p className="text-xs tracking-[0.16em] text-bone-dim">
+              {retry ? '正在重新连接' : '正在通灵'}
+            </p>
+            <div className="flex gap-1.5" aria-hidden>
+              <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '0ms' }} />
+              <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '400ms' }} />
+              <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '800ms' }} />
             </div>
-          ) : (
-            // ─── 空态 ───
-            <div className="flex flex-col items-center justify-center py-14 gap-5">
-              <span className="text-bone-whisper text-2xl">◇</span>
-              <p className="cn-label text-bone-faint">
-                等 待 牌 面
-              </p>
-            </div>
-          )}
-        </div>
+            <p className="text-xs text-bone-faint">
+              {retry
+                ? `连接中断，正在重试（${retry.attempt} / ${retry.max}）`
+                : '长思考模型可能需要等待一会儿'}
+            </p>
+          </div>
+        ) : (
+          // ─── 空态 ───
+          <div className="flex min-h-[160px] flex-col items-center justify-center gap-3">
+            <span className="text-xl text-bone-whisper" aria-hidden>◇</span>
+            <p className="text-xs tracking-[0.16em] text-bone-faint">等待牌面</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -462,59 +441,36 @@ export function InterpretationBody({
       {/* 思考块 · 统一折叠在顶部，不再切碎正文 */}
       {thinking && (
         <details
-          className="group ink-panel-quiet my-6"
+          className="group my-5 rounded-lg border border-[var(--ink-line)] bg-[rgba(10,8,18,0.35)]"
           open={thinkingOpen}
           onToggle={(event) => {
             setThinkingOpen((event.currentTarget as HTMLDetailsElement).open);
           }}
         >
-          <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer select-none [&::-webkit-details-marker]:hidden">
-            <div className="flex items-center gap-4">
-              <span className="text-gold-dim text-sm">◇</span>
-              <div className="flex flex-col gap-1.5">
-                <span className="cn-label text-bone">
-                  模 型 思 考
-                  {streaming && !answer ? (
-                    <span className="ml-3 cn-hint text-bone-faint normal-case tracking-normal">
-                      进行中 · {thinking.length.toLocaleString()} 字
-                    </span>
-                  ) : thinking.length > 200 ? (
-                    <span className="ml-3 cn-hint text-bone-faint normal-case tracking-normal">
-                      {thinking.length.toLocaleString()} 字
-                    </span>
-                  ) : null}
-                </span>
-                <span className="cn-hint text-bone-faint group-open:hidden">
-                  点 击 展 开
-                </span>
-                <span className="cn-hint text-bone-faint hidden group-open:inline">
-                  点 击 折 叠
-                </span>
-              </div>
+          <summary className="flex cursor-pointer select-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] text-gold-dim" aria-hidden>◇</span>
+              <span className="text-xs text-bone-dim">模型思考</span>
+              <span className="text-[11px] text-bone-faint">
+                {streaming && !answer
+                  ? `进行中 · ${thinking.length.toLocaleString()} 字`
+                  : `${thinking.length.toLocaleString()} 字`}
+              </span>
             </div>
-            <span
-              className="text-bone-faint transition-transform duration-700 group-open:rotate-180"
-              style={{ transitionTimingFunction: 'var(--ease-veil)' }}
-            >
+            <span className="text-[11px] text-bone-faint transition-transform duration-300 group-open:rotate-180" aria-hidden>
               ⌄
             </span>
           </summary>
 
-          {/*
-            关键时才挂载正文：
-            - 流式中用纯文本（避免对快速增长的思考反复跑 Markdown AST）
-            - 完成后才走 ReactMarkdown
-          */}
+          {/* 流式中用纯文本避免反复解析 Markdown；完成后才走 ReactMarkdown */}
           {thinkingOpen && (
-            <div className="px-6 pb-6 hairline-top pt-5">
+            <div className="border-t border-[var(--ink-line)] px-4 pb-4 pt-3">
               {streaming ? (
-                <pre className="font-body text-bone-dim text-base leading-[1.9] whitespace-pre-wrap break-words font-light m-0">
+                <pre className="m-0 whitespace-pre-wrap break-words font-body text-sm font-light leading-[1.85] text-bone-dim">
                   {thinking}
                 </pre>
               ) : (
-                <ReactMarkdown components={MARKDOWN_COMPONENTS}>
-                  {thinking}
-                </ReactMarkdown>
+                <ReactMarkdown components={MARKDOWN_COMPONENTS}>{thinking}</ReactMarkdown>
               )}
             </div>
           )}
@@ -523,9 +479,9 @@ export function InterpretationBody({
 
       {/* 思考已经在动但正文还未出现 · 给一个轻量等候提示 */}
       {showWaitingHint && (
-        <div className="flex items-center gap-4 py-3">
-          <span className="text-gold-dim anim-whisper">✦</span>
-          <span className="cn-hint text-bone-faint">神 谕 正 在 凝 聚</span>
+        <div className="flex items-center gap-2.5 py-2">
+          <span className="text-xs text-gold-dim anim-whisper" aria-hidden>✦</span>
+          <span className="text-xs text-bone-faint">神谕正在凝聚</span>
         </div>
       )}
 

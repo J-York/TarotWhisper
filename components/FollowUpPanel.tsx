@@ -49,53 +49,46 @@ export function FollowUpPanel({
   );
 
   return (
-    <section className="w-full max-w-4xl anim-veil-rise">
+    <section className="anim-veil-rise rounded-xl border border-[var(--celestial-faint)] bg-[rgba(139,159,212,0.045)] p-4 md:p-5">
       {/* ─── 追问标头 ─── */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-gold-dim text-base">◆</span>
-          <span className="cn-label text-gold-dim">追 问</span>
-          <div className="rule-h-fade flex-1" />
+      <div className="mb-3 flex items-start gap-2.5">
+        <span className="mt-0.5 text-xs text-celestial" aria-hidden>◆</span>
+        <div className="min-w-0">
+          <span className="text-[10px] tracking-[0.16em] text-celestial">追问</span>
+          <p className="mt-1 font-body text-[15px] leading-relaxed text-bone">{followUp.question}</p>
         </div>
-        <p className="font-body italic-soft text-bone text-lg leading-relaxed pl-7">
-          {followUp.question}
-        </p>
       </div>
 
       {/* ─── 决策态 · 思索中 ─── */}
       {status === 'deciding' && (
-        <div className="flex items-center gap-4 pl-7 mb-4">
-          <span className="text-gold-dim text-sm anim-whisper">✦</span>
-          <span className="cn-label text-bone-dim">神 谕 沉 吟</span>
-          <span className="flex gap-1.5 items-center">
-            <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '0ms' }} />
-            <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '400ms' }} />
-            <span className="w-1 h-1 bg-[var(--gold-dim)] rounded-full anim-whisper" style={{ animationDelay: '800ms' }} />
+        <div className="mb-2 flex items-center gap-2.5 rounded-lg bg-[rgba(255,255,255,0.03)] px-3.5 py-2.5">
+          <span className="text-[11px] text-gold-dim anim-whisper" aria-hidden>✦</span>
+          <span className="text-xs text-bone-dim">神谕正在决定是否需要补牌</span>
+          <span className="ml-auto flex items-center gap-1" aria-hidden>
+            <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '0ms' }} />
+            <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '400ms' }} />
+            <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '800ms' }} />
           </span>
         </div>
       )}
 
       {/* ─── 索要补充牌 ─── */}
       {decision === 'draw' && (
-        <div className="ink-panel-quiet p-7 mb-8 anim-fade-in">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-gold-dim">◇</span>
-            <span className="cn-label text-bone">神 谕 索 要 {additionalCards.length} 张 补 充 指 引</span>
+        <div className="mb-3 rounded-lg border border-[var(--ink-line)] bg-[rgba(20,16,34,0.45)] p-4 anim-fade-in">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="text-[11px] text-gold-dim" aria-hidden>◇</span>
+            <span className="text-xs tracking-[0.08em] text-bone">
+              补抽 {additionalCards.length} 张牌
+            </span>
           </div>
           {reason && (
-            <p className="font-body italic-soft text-bone-dim text-base leading-relaxed mb-6">
-              {reason}
-            </p>
+            <p className="mb-4 text-xs leading-relaxed text-bone-faint">{reason}</p>
           )}
 
-          {/* 补充牌网格 */}
-          <div className="flex flex-wrap justify-center gap-x-8 gap-y-12 md:gap-x-10">
+          <div className="flex flex-wrap gap-x-5 gap-y-6">
             {additionalCards.map((drawn, idx) => (
-              <div key={drawn.position.id} className="flex flex-col items-center gap-3">
-                {/* 阵位名 · 常驻显示 */}
-                <span className="cn-hint text-bone-faint">
-                  {drawn.position.nameCn}
-                </span>
+              <div key={drawn.position.id} className="flex w-24 flex-col items-center gap-2">
+                <span className="text-[11px] text-bone-faint">{drawn.position.nameCn}</span>
                 <TarotCardComponent
                   card={drawn.card}
                   isReversed={drawn.isReversed}
@@ -107,18 +100,27 @@ export function FollowUpPanel({
                   }}
                   size="sm"
                 />
+                <span
+                  className={`text-center font-heading text-[11px] text-gold-warm transition-opacity duration-500 ${
+                    idx < revealedCount ? 'opacity-100' : 'opacity-0'
+                  }`}
+                >
+                  {drawn.card.nameCn}
+                </span>
               </div>
             ))}
           </div>
 
-          {/* 全部翻开按钮 */}
           {status === 'awaiting-reveal' && revealedCount < additionalCards.length && (
-            <div className="mt-7 flex justify-center">
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--ink-line)] pt-3">
+              <span className="text-[11px] text-bone-faint">
+                已翻开 {revealedCount} / {additionalCards.length} 张
+              </span>
               <button
                 onClick={() => onRevealAll(followUp.id, apiConfig)}
-                className="btn-ink px-8 py-2.5"
+                className="btn-ink h-8 px-3.5 text-xs"
               >
-                全 部 翻 开
+                全部翻开
               </button>
             </div>
           )}
@@ -127,7 +129,7 @@ export function FollowUpPanel({
 
       {/* ─── 解读流式区 ─── */}
       {(status === 'interpreting' || status === 'done') && interpretation && (
-        <div className="ink-panel-quiet p-8 md:p-12 mb-4">
+        <div className="rounded-lg border border-[var(--ink-line)] bg-[rgba(20,16,34,0.35)] p-4 md:p-5">
           <InterpretationBody
             content={interpretation}
             streaming={status === 'interpreting'}
@@ -137,9 +139,9 @@ export function FollowUpPanel({
           />
           {/* 非致命警示（如截断）· 完成态但 error 非空时显示 */}
           {status === 'done' && error && (
-            <div className="mt-8 px-5 py-4 border-l border-[var(--gold-dim)] anim-fade-in">
-              <p className="font-body italic-soft text-bone-faint text-sm leading-relaxed">
-                <span className="text-gold-dim mr-2">◇</span>
+            <div className="mt-5 rounded-md border-l-2 border-[var(--gold-dim)] bg-[rgba(210,178,116,0.05)] px-3 py-2 anim-fade-in">
+              <p className="text-xs leading-relaxed text-bone-faint">
+                <span className="mr-1.5 text-gold-dim" aria-hidden>◇</span>
                 {error}
               </p>
             </div>
@@ -149,16 +151,14 @@ export function FollowUpPanel({
 
       {/* ─── 解读等待态 ─── */}
       {status === 'interpreting' && !interpretation && (
-        <div className="ink-panel-quiet p-12 flex flex-col items-center justify-center gap-4 mb-4">
-          <div className="flex items-center gap-4">
-            <span className="text-gold-dim anim-whisper">✦</span>
-            <span className="cn-label text-bone-dim">
-              {retry ? '连 接 中 断 · 正 在 重 试' : '正 在 通 灵'}
-            </span>
-          </div>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[var(--ink-line)] bg-[rgba(20,16,34,0.35)] px-4 py-8">
+          <span className="text-sm text-gold-dim anim-whisper" aria-hidden>✦</span>
+          <span className="text-xs tracking-[0.12em] text-bone-dim">
+            {retry ? '连接中断 · 正在重试' : '正在解读'}
+          </span>
           {retry && (
-            <span className="cn-hint text-bone-faint">
-              第 {retry.attempt} ╱ {retry.max} 次
+            <span className="text-[11px] text-bone-faint">
+              {retry.attempt} / {retry.max}
             </span>
           )}
         </div>
@@ -166,20 +166,18 @@ export function FollowUpPanel({
 
       {/* ─── 错误态 ─── */}
       {status === 'error' && (
-        <div className="ink-panel-quiet p-8 mb-4">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-gold-dim">◇</span>
-            <span className="cn-label text-bone">连 接 已 断</span>
+        <div className="rounded-lg border border-[rgba(210,178,116,0.28)] bg-[rgba(210,178,116,0.05)] p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-gold-dim" aria-hidden>◇</span>
+            <span className="text-xs tracking-[0.08em] text-bone">追问失败</span>
           </div>
-          <p className="font-body italic-soft text-bone-dim text-base mb-6">
-            {error ?? '追问失败'}
-          </p>
+          <p className="mt-2 text-xs leading-relaxed text-bone-dim">{error ?? '请稍后重试'}</p>
           {decision && (
             <button
               onClick={() => onRetry(followUp.id, apiConfig)}
-              className="btn-ink-ghost"
+              className="btn-ink mt-3 h-8 px-3.5 text-xs"
             >
-              重 试
+              重试
             </button>
           )}
         </div>
