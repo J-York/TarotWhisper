@@ -53,15 +53,16 @@ function Icon({ d }: { d: string }): ReactElement {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/reading', label: '占卜', icon: <Icon d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17V4.5Z M9 8.5h4 M9 12h4" /> },
   { href: '/agent', label: '神谕对话', icon: <Icon d="M4 12a8 8 0 0 1 16 0c0 4.4-3.6 8-8 8-1 0-2-.2-2.8-.6L5 21l1.1-3.6A7.9 7.9 0 0 1 4 12Z" /> },
+  { href: '/reading', label: '亲手占卜', icon: <Icon d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17V4.5Z M9 8.5h4 M9 12h4" /> },
   { href: '/daily', label: '今日一牌', icon: <Icon d="M12 3v2 M12 19v2 M3 12h2 M19 12h2 M5.6 5.6l1.4 1.4 M17 17l1.4 1.4 M18.4 5.6 17 7 M7 17l-1.4 1.4" /> },
   { href: '/library', label: '牌典', icon: <Icon d="M4 5.5A2 2 0 0 1 6 3.5h5v17H6a2 2 0 0 0-2 2v-17Z M20 5.5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2v-17Z" /> },
   { href: '/history', label: '轨迹', icon: <Icon d="M12 7v5l3 2 M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z" /> },
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === '/reading') return pathname === '/reading';
+  // /agent 是主入口，其余页面不再共享高亮
+  if (href === '/agent' || href === '/reading') return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -117,10 +118,10 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
                 <span className="hidden sm:inline">配置</span>
               </button>
               <Link
-                href="/reading"
+                href="/agent"
                 className="btn-ink-primary hidden h-9 px-5 text-sm md:inline-flex"
               >
-                开始占卜
+                与神谕对话
               </Link>
             </div>
           </div>

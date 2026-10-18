@@ -11,18 +11,22 @@ import { spreads } from '@/lib/tarot/spreads';
 
 const ENTRIES = [
   {
-    href: '/reading',
-    title: '开始占卜',
-    en: 'Guided Reading',
-    text: '写下问题，选择牌阵，亲手翻开属于你的牌。',
-    glyph: '✦',
-  },
-  {
     href: '/agent',
     title: '神谕对话',
     en: 'Oracle Chat',
-    text: '无需选牌。提出问题，让 AI 选阵、抽牌并一步步解读。',
+    text: '直接把问题说出来。神谕会自动选阵、抽牌并给出解读，还能继续追问。',
     glyph: '☾',
+    primary: true,
+    cta: '开始对话',
+  },
+  {
+    href: '/reading',
+    title: '亲手占卜',
+    en: 'Guided Reading',
+    text: '想自己挑选牌阵、亲手翻牌？走完整的五步仪式。',
+    glyph: '✦',
+    primary: false,
+    cta: '进入流程',
   },
   {
     href: '/library',
@@ -30,6 +34,8 @@ const ENTRIES = [
     en: 'Card Library',
     text: '七十八张牌的含义、关键词与正逆位对照。',
     glyph: '◇',
+    primary: false,
+    cta: '翻看牌典',
   },
 ];
 
@@ -56,20 +62,24 @@ export default function HomePage(): ReactElement {
             <span className="text-gold"> 的回声</span>
           </h1>
           <p className="mt-6 max-w-lg font-body text-base leading-relaxed text-bone-dim md:text-[17px]">
-            七十八张韦特塔罗，六种经典牌阵。写下你心中的问题，翻开牌面，
-            让一段安静的解读替星辰开口。
+            七十八张韦特塔罗，六种经典牌阵。把问题交给神谕，它会替你选阵、抽牌，
+            再写下这段安静的解读。
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link href="/reading" className="btn-ink-primary h-12 px-7">
-              开始占卜
+            <Link href="/agent" className="btn-ink-primary h-12 px-7">
+              与神谕对话
               <span aria-hidden>→</span>
             </Link>
-            <Link href="/agent" className="btn-ink h-12 px-6">
+            <Link href="/reading" className="btn-ink h-12 px-6">
               <span className="text-gold" aria-hidden>✦</span>
-              与神谕对话
+              亲手选牌占卜
             </Link>
           </div>
+
+          <p className="mt-4 text-xs leading-relaxed text-bone-faint">
+            推荐从对话开始——说出问题即可，无需了解牌阵。
+          </p>
 
           {needsSetup && (
             <p className="mt-5 flex flex-wrap items-center gap-2 text-sm text-bone-faint">
@@ -168,18 +178,35 @@ export default function HomePage(): ReactElement {
             <Link
               key={entry.href}
               href={entry.href}
-              className="group surface flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--gold-faint)]"
+              className={`group surface flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 ${
+                entry.primary
+                  ? 'border-[var(--gold-faint)] bg-[linear-gradient(180deg,rgba(210,178,116,0.10)_0%,rgba(20,16,34,0.75)_100%)] hover:border-[var(--gold-dim)] md:col-span-1 md:p-7'
+                  : 'hover:border-[var(--gold-faint)]'
+              }`}
             >
               <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-full border border-[var(--ink-line-strong)] text-gold-dim transition-colors duration-300 group-hover:border-[var(--gold-dim)] group-hover:text-gold">
+                <span
+                  className={`grid h-10 w-10 place-items-center rounded-full border text-gold-dim transition-colors duration-300 ${
+                    entry.primary
+                      ? 'border-[var(--gold-dim)] text-gold'
+                      : 'border-[var(--ink-line-strong)] group-hover:border-[var(--gold-dim)] group-hover:text-gold'
+                  }`}
+                >
                   {entry.glyph}
                 </span>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-bone-faint">{entry.en}</span>
               </div>
-              <h3 className="mt-5 font-heading text-lg tracking-[0.04em] text-bone">{entry.title}</h3>
+              <div className="mt-5 flex items-baseline gap-2">
+                <h3 className="font-heading text-lg tracking-[0.04em] text-bone">{entry.title}</h3>
+                {entry.primary && (
+                  <span className="rounded-full border border-[var(--gold-faint)] px-2 py-0.5 text-[10px] tracking-[0.1em] text-gold-dim">
+                    推荐
+                  </span>
+                )}
+              </div>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-bone-faint">{entry.text}</p>
               <span className="mt-5 inline-flex items-center gap-2 text-sm text-gold-warm">
-                进入
+                {entry.cta}
                 <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>
                   →
                 </span>
@@ -193,13 +220,16 @@ export default function HomePage(): ReactElement {
       <section className="mt-16 md:mt-20" aria-labelledby="spreads-title">
         <div className="flex items-end justify-between gap-6">
           <div>
-            <p className="eyebrow">Sacred Spreads</p>
+            <p className="eyebrow">Sacred Spreads · 进阶</p>
             <h2 id="spreads-title" className="page-title mt-3 text-[clamp(1.35rem,2.6vw,1.75rem)]">
               六种牌阵
             </h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-bone-faint">
+              想自己挑牌阵时用得上。对话模式会替你从这六种里挑一个。
+            </p>
           </div>
           <Link href="/reading" className="btn-ink-ghost hidden md:inline-flex">
-            去选择 →
+            亲手选牌 →
           </Link>
         </div>
 

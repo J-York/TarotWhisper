@@ -287,6 +287,12 @@ export default function ReadingPage(): ReactElement {
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-bone-faint">
               越具体的问题，越能得到有用的答案。写下此刻最想厘清的那一件事。
             </p>
+            <p className="mt-4 text-xs text-bone-faint">
+              想跳过选阵与翻牌？
+              <Link href="/agent" className="ml-1 text-gold-warm underline decoration-[var(--gold-faint)] underline-offset-4 hover:decoration-[var(--gold)]">
+                直接与神谕对话
+              </Link>
+            </p>
           </header>
 
           <div className="surface mt-9 p-5 md:p-7">

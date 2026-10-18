@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import Link from 'next/link';
 
 import { TarotCardComponent } from '@/components/TarotCard';
 import { Interpretation } from '@/components/Interpretation';
@@ -161,6 +162,16 @@ export default function AgentPage(): ReactElement {
                 </div>
               ))}
             </div>
+
+            <p className="mt-6 text-center text-xs text-bone-faint">
+              想自己挑选牌阵、亲手翻牌？
+              <Link
+                href="/reading"
+                className="ml-1 text-gold-warm underline decoration-[var(--gold-faint)] underline-offset-4 hover:decoration-[var(--gold)]"
+              >
+                走完整的五步占卜
+              </Link>
+            </p>
           </section>
         )}
 
