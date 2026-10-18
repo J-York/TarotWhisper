@@ -1,504 +1,602 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import Link from 'next/link';
 
-import { TarotCardComponent } from '@/components/TarotCard';
-import { InterpretationBody } from '@/components/Interpretation';
-import { DailyCardSkeleton } from '@/components/Skeletons';
 import { useSettingsDialog } from '@/components/AppShell';
+import { Interpretation } from '@/components/Interpretation';
+import { Seal } from '@/components/Seal';
+import { DailyCardSkeleton } from '@/components/Skeletons';
+import { TarotCardComponent } from '@/components/TarotCard';
 import { useApiConfig } from '@/hooks/useApiConfig';
-import { streamInterpret } from '@/lib/api/stream-client';
 import { LLMError } from '@/lib/api/errors';
-import {
-  formatDateKey,
-  getDailyDraw,
-  getRecentDailyDraws,
-  parseDateKey,
-  type DailyDraw,
-} from '@/lib/tarot/daily';
-import { getDailyNote, saveDailyNote, type DailyNoteEntry } from '@/lib/dailyStorage';
+import { streamInterpret, type RetryState } from '@/lib/api/stream-client';
+import { getAllDailyNotes, getDailyNote, saveDailyNote } from '@/lib/dailyStorage';
+import { formatClock, formatMonthDay, formatYearMonth, weekdayName } from '@/lib/dates';
+import { formatLunarDate, getLunarDate } from '@/lib/lunar';
+import { ARCANA, ARCANA_ORDER, arcanaOf } from '@/lib/tarot/arcana';
+import { formatDateKey, getDailyDraw, parseDateKey, type DailyDraw } from '@/lib/tarot/daily';
+import type { DrawnCard, SpreadPosition } from '@/lib/tarot/types';
 
-const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六'];
+/** 阵位名留空：否则解读里的「今日」之类常用词都会被当成阵位加上点线 */
+const DAILY_POSITION: SpreadPosition = { id: 'daily', name: 'Daily', nameCn: '', description: '' };
 
-function formatHumanDate(date: Date): string {
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+interface DailyReading {
+  dateKey: string;
+  content: string;
+  error: string | null;
+  notice: string | null;
+  retry: RetryState | null;
+  isLoading: boolean;
 }
 
-function formatHumanWeekday(date: Date): string {
-  return `星期${WEEKDAYS_CN[date.getDay()]}`;
+function readNotedKeys(): ReadonlySet<string> {
+  return new Set(getAllDailyNotes().map((entry) => entry.dateKey));
 }
 
-function formatShortDate(date: Date): string {
-  return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+function formatSavedAt(iso: string, todayKey: string): string {
+  const date = new Date(iso);
+  return formatDateKey(date) === todayKey ? formatClock(date) : `${formatMonthDay(date)} ${formatClock(date)}`;
 }
 
-export default function DailyCardPage(): ReactElement {
+function isWeekend(date: Date): boolean {
+  return date.getDay() === 0 || date.getDay() === 6;
+}
+
+export default function DailyPage(): ReactElement {
   const { openSettings } = useSettingsDialog();
+  const { config, isLoaded, canUseApi } = useApiConfig();
 
-  /* ─── 当前查看的日期（默认今天） ─── */
-  const [activeDateKey, setActiveDateKey] = useState<string | null>(null);
-  const [activeDate, setActiveDate] = useState<Date | null>(null);
   const [todayKey, setTodayKey] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [monthOffset, setMonthOffset] = useState(0);
 
   useEffect(() => {
-    const now = new Date();
+    // 日期只在客户端取，避免服务端与浏览器跨零点时渲染不一致
+    const key = formatDateKey(new Date());
     queueMicrotask(() => {
-      setActiveDate(now);
-      setActiveDateKey(formatDateKey(now));
-      setTodayKey(formatDateKey(now));
+      setTodayKey(key);
+      setActiveKey(key);
     });
   }, []);
 
-  const dailyDraw = useMemo<DailyDraw | null>(() => {
-    if (!activeDateKey) return null;
-    const d = parseDateKey(activeDateKey) ?? new Date();
-    return getDailyDraw(d);
-  }, [activeDateKey]);
+  const draw = useMemo(() => {
+    const date = activeKey ? parseDateKey(activeKey) : null;
+    return date ? getDailyDraw(date) : null;
+  }, [activeKey]);
 
-  /* ─── 翻牌动画 ─── */
-  const [revealed, setRevealed] = useState(false);
-  useEffect(() => {
-    if (!activeDateKey) return;
-    queueMicrotask(() => setRevealed(false));
-    const t = window.setTimeout(() => setRevealed(true), 260);
-    return () => window.clearTimeout(t);
-  }, [activeDateKey]);
-
-  /* ─── 笔记 ─── */
-  const [note, setNote] = useState('');
-  const [savedNote, setSavedNote] = useState<DailyNoteEntry | null>(null);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const saveTimer = useRef<number>(0);
-
-  useEffect(() => {
-    if (!activeDateKey) return;
-    const existing = getDailyNote(activeDateKey);
-    queueMicrotask(() => {
-      setSavedNote(existing);
-      setNote(existing?.note ?? '');
-      setSaveState('idle');
-    });
-  }, [activeDateKey]);
-
-  const scheduleSave = useCallback(
-    (value: string) => {
-      if (!activeDateKey) return;
-      window.clearTimeout(saveTimer.current);
-      setSaveState('saving');
-      saveTimer.current = window.setTimeout(() => {
-        saveDailyNote(activeDateKey, value);
-        setSavedNote(
-          value.trim()
-            ? { dateKey: activeDateKey, note: value, updatedAt: new Date().toISOString() }
-            : null
-        );
-        setSaveState('saved');
-        window.setTimeout(() => setSaveState('idle'), 1600);
-      }, 800);
-    },
-    [activeDateKey]
+  const drawnCards = useMemo<DrawnCard[]>(
+    () => (draw ? [{ card: draw.card, isReversed: draw.isReversed, position: DAILY_POSITION }] : []),
+    [draw],
   );
 
-  useEffect(() => () => window.clearTimeout(saveTimer.current), []);
+  /* ─── 翻牌：每换一天，牌先背面朝上，稍后自动翻开 ─── */
 
-  const handleNoteChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
-    setNote(e.target.value);
-    scheduleSave(e.target.value);
-  };
-
-  /* ─── AI 解读 ─── */
-  const { config: apiConfig, isLoaded: configLoaded, canUseApi } = useApiConfig();
-  const [aiInterpretation, setAiInterpretation] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const dailyAbortRef = useRef<AbortController | null>(null);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const revealed = activeKey !== null && revealedKey === activeKey;
 
   useEffect(() => {
-    if (dailyAbortRef.current) {
-      dailyAbortRef.current.abort();
-      dailyAbortRef.current = null;
-    }
-    queueMicrotask(() => {
-      setAiInterpretation('');
-      setAiError(null);
-      setAiLoading(false);
-    });
-  }, [activeDateKey]);
+    if (!activeKey) return;
+    const timer = window.setTimeout(() => setRevealedKey(activeKey), 450);
+    return () => window.clearTimeout(timer);
+  }, [activeKey]);
 
-  const requestAiInterpretation = useCallback(async () => {
-    if (!dailyDraw || !activeDate || aiLoading) return;
-    if (configLoaded && !canUseApi) {
+  /* ─── 札记：停笔片刻后自动保存 ─── */
+
+  const [noteKey, setNoteKey] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [notedKeys, setNotedKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const pendingNote = useRef<{ dateKey: string; value: string } | null>(null);
+  const saveTimer = useRef(0);
+
+  // 换到另一天时在渲染中直接换上那天的札记，不让上一天的字闪一下
+  if (activeKey && noteKey !== activeKey) {
+    const existing = getDailyNote(activeKey);
+    setNoteKey(activeKey);
+    setNote(existing?.note ?? '');
+    setSavedAt(existing?.updatedAt ?? null);
+    setIsSaving(false);
+    setNotedKeys(readNotedKeys());
+  }
+
+  const flushNote = useCallback((): void => {
+    window.clearTimeout(saveTimer.current);
+    const pending = pendingNote.current;
+    if (!pending) return;
+    pendingNote.current = null;
+    saveDailyNote(pending.dateKey, pending.value);
+    setNotedKeys(readNotedKeys());
+  }, []);
+
+  // 换日期或离开页面前，把还没写进存储的札记写进去
+  useEffect(() => flushNote, [activeKey, flushNote]);
+
+  const handleNoteChange = (value: string): void => {
+    if (!activeKey) return;
+    setNote(value);
+    setIsSaving(true);
+    pendingNote.current = { dateKey: activeKey, value };
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      flushNote();
+      setIsSaving(false);
+      setSavedAt(value.trim() ? new Date().toISOString() : null);
+    }, 600);
+  };
+
+  /* ─── 神谕解读 ─── */
+
+  const [reading, setReading] = useState<DailyReading | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const current = reading?.dateKey === activeKey ? reading : null;
+
+  const stopReading = useCallback((): void => abortRef.current?.abort(), []);
+
+  // 换日期或离开页面时停下正在写的解读
+  useEffect(() => stopReading, [activeKey, stopReading]);
+
+  const requestReading = async (): Promise<void> => {
+    if (!activeKey || !draw) return;
+    if (!canUseApi) {
       openSettings();
       return;
     }
 
-    if (dailyAbortRef.current) dailyAbortRef.current.abort();
+    abortRef.current?.abort();
     const controller = new AbortController();
-    dailyAbortRef.current = controller;
+    abortRef.current = controller;
+    const dateKey = activeKey;
+    const patch = (update: (prev: DailyReading) => Partial<DailyReading>): void =>
+      setReading((prev) => (prev?.dateKey === dateKey ? { ...prev, ...update(prev) } : prev));
 
-    setAiLoading(true);
-    setAiInterpretation('');
-    setAiError(null);
+    setReading({ dateKey, content: '', error: null, notice: null, retry: null, isLoading: true });
+    const { card, isReversed } = draw;
 
     try {
-      const keywords = dailyDraw.isReversed
-        ? dailyDraw.card.keywords.reversed
-        : dailyDraw.card.keywords.upright;
-      const meaning = dailyDraw.isReversed
-        ? dailyDraw.card.meaning.reversed
-        : dailyDraw.card.meaning.upright;
-
-      await streamInterpret(
+      const result = await streamInterpret(
         {
           question: '',
           spread: { id: 'daily', name: 'Daily Card', nameCn: '今日一牌', description: '', positions: [] },
           drawnCards: [],
-          apiConfig,
+          apiConfig: config,
           daily: {
-            cardName: dailyDraw.card.name,
-            cardNameCn: dailyDraw.card.nameCn,
-            isReversed: dailyDraw.isReversed,
-            keywords,
-            meaning,
-            dateStr: formatHumanDate(activeDate),
+            cardName: card.name,
+            cardNameCn: card.nameCn,
+            isReversed,
+            keywords: isReversed ? card.keywords.reversed : card.keywords.upright,
+            meaning: isReversed ? card.meaning.reversed : card.meaning.upright,
+            dateStr: dateKey.replaceAll('-', '.'),
           },
         },
         {
-          onContent: (chunk) => setAiInterpretation((prev) => prev + chunk),
-          onThinking: (chunk) => setAiInterpretation((prev) => prev + chunk),
-          onStreamError: (msg) => setAiError(msg),
+          onContent: (chunk) => patch((p) => ({ content: p.content + chunk })),
+          onThinking: (chunk) => patch((p) => ({ content: p.content + chunk })),
+          onStreamError: (msg) => patch((p) => ({ error: p.error ?? msg })),
+          onRetry: (attempt, max) => patch(() => ({ retry: { attempt, max } })),
         },
-        { signal: controller.signal }
+        { signal: controller.signal },
       );
+      patch(() => ({
+        notice: result.truncated ? '解读因模型输出长度限制被截断，只显示了一部分。' : null,
+      }));
     } catch (err) {
-      if (err instanceof LLMError && err.info.code === 'ABORTED') return;
-      setAiError(
-        err instanceof LLMError
-          ? err.info.message
-          : err instanceof Error
-            ? err.message
-            : 'AI 解读失败'
-      );
-    } finally {
-      setAiLoading(false);
-      if (dailyAbortRef.current === controller) {
-        dailyAbortRef.current = null;
+      if (err instanceof LLMError && err.info.code === 'ABORTED') {
+        // 还没写出字就停下，回到初始状态；写了一半的留着
+        setReading((prev) => {
+          if (prev?.dateKey !== dateKey) return prev;
+          return prev.content ? { ...prev, error: '已停止生成' } : null;
+        });
+        return;
       }
+      const message =
+        err instanceof LLMError ? err.info.message : err instanceof Error ? err.message : '解读失败，请稍后再试';
+      patch((p) => ({ error: p.error ?? message }));
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      patch(() => ({ isLoading: false, retry: null }));
     }
-  }, [dailyDraw, activeDate, aiLoading, apiConfig, configLoaded, canUseApi, openSettings]);
-
-  const recent = useMemo(
-    () => (activeDate ? getRecentDailyDraws(14, activeDate) : []),
-    [activeDate]
-  );
-  const timeline = useMemo(() => [...recent].reverse(), [recent]);
-  const isToday = activeDateKey !== null && activeDateKey === todayKey;
-
-  const handleSelectDate = (draw: DailyDraw): void => {
-    const d = parseDateKey(draw.dateKey);
-    if (!d) return;
-    setActiveDate(d);
-    setActiveDateKey(draw.dateKey);
   };
 
-  const handleBackToToday = (): void => {
-    const today = new Date();
-    setActiveDate(today);
-    setActiveDateKey(formatDateKey(today));
+  /* ─── 日期切换 ─── */
+
+  const goToday = (): void => {
+    if (!todayKey) return;
+    setActiveKey(todayKey);
+    setMonthOffset(0);
   };
 
-  if (!activeDateKey || !activeDate || !dailyDraw) {
-    return <DailyCardSkeleton />;
-  }
+  const selectDay = (key: string): void => {
+    setActiveKey(key);
+    const sheet = document.getElementById('daily-sheet');
+    // 月历在页面下方；选中某天后把那天的牌带回视野
+    if (sheet && sheet.getBoundingClientRect().top < 0) {
+      sheet.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
-  const keywords = dailyDraw.isReversed
-    ? dailyDraw.card.keywords.reversed
-    : dailyDraw.card.keywords.upright;
-  const meaning = dailyDraw.isReversed
-    ? dailyDraw.card.meaning.reversed
-    : dailyDraw.card.meaning.upright;
+  if (!todayKey || !activeKey || !draw) return <DailyCardSkeleton />;
+
+  const activeDate = parseDateKey(activeKey) ?? new Date();
+  const isToday = activeKey === todayKey;
+  const { card, isReversed } = draw;
+  const arcana = ARCANA[arcanaOf(card)];
+  const lunar = formatLunarDate(activeDate);
+  const keywords = isReversed ? card.keywords.reversed : card.keywords.upright;
+  const meaning = isReversed ? card.meaning.reversed : card.meaning.upright;
+  const needsSetup = isLoaded && !canUseApi;
 
   return (
     <main id="main-content" className="page-container page-main">
-      {/* ─── 页头 ─── */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Daily Card · 今日一牌</p>
-          <h1 className="page-title mt-3">{isToday ? '今日一牌' : '昔日之牌'}</h1>
-          <p className="mt-2 text-sm text-bone-faint">
-            {formatHumanDate(activeDate)} · {formatHumanWeekday(activeDate)}
-            <span className="ml-2 text-bone-whisper">同日同牌 · 以本地日期为准</span>
+          <p className="kicker">今日一牌</p>
+          <h1 className="page-title mt-3">{isToday ? '今天的牌' : `${formatMonthDay(activeDate)}的牌`}</h1>
+          <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-soft">
+            每天一张。同一天里，所有人翻开的都是同一张牌，日期以你所在的时区为准。
           </p>
         </div>
         {!isToday && (
-          <button type="button" onClick={handleBackToToday} className="btn-ink h-10 px-4 text-sm">
-            回到今日
+          <button type="button" onClick={goToday} className="btn btn-secondary h-10 px-4 text-sm">
+            回到今天
           </button>
         )}
       </header>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
-        {/* ─── 牌面 ─── */}
-        <div key={activeDateKey} className="surface anim-veil-rise p-5 lg:sticky lg:top-24">
-          <div className="flex items-center justify-between pb-4">
-            <span className="text-[10px] tracking-[0.18em] text-gold-dim">
-              {dailyDraw.isReversed ? '逆位 · REVERSED' : '正位 · UPRIGHT'}
-            </span>
-            <span className="text-[10px] text-bone-faint">№ {String(dailyDraw.card.number).padStart(2, '0')}</span>
-          </div>
+      <div className="mt-10 grid items-start gap-10 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-14">
+        {/* ─── 日历撕页 ─── */}
+        <article
+          key={activeKey}
+          id="daily-sheet"
+          aria-label={`${formatMonthDay(activeDate)}的牌`}
+          className="panel anim-rise scroll-mt-24 overflow-hidden"
+        >
+          <div className="perforation" aria-hidden />
+          <div className="px-6 pb-8 pt-4">
+            <div className="flex items-baseline justify-between text-[13px] text-ink-muted">
+              <span>{formatYearMonth(activeDate)}</span>
+              <span className={isWeekend(activeDate) ? 'text-accent' : undefined}>{weekdayName(activeDate)}</span>
+            </div>
 
-          <div className="relative mx-auto flex justify-center">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 h-[22rem] w-[22rem] -translate-x-1/2 -translate-y-1/2"
-              style={{
-                background:
-                  'radial-gradient(circle, rgba(210,178,116,0.14) 0%, rgba(210,178,116,0.04) 42%, transparent 70%)',
-              }}
-            />
-            <div className="relative w-[220px] md:w-[248px]">
+            <div className="relative mt-3 text-center">
+              <p
+                className={`font-latin text-[5.5rem] font-semibold leading-none tabular-nums ${
+                  isWeekend(activeDate) ? 'text-accent' : 'text-ink'
+                }`}
+              >
+                {activeDate.getDate()}
+              </p>
+              {lunar && <p className="mt-3 text-sm tracking-[0.18em] text-ink-soft">{lunar}</p>}
+              {isToday && <Seal text="今日" stamp className="absolute right-0 top-1" />}
+            </div>
+
+            <div className="rule-double mt-6" aria-hidden />
+
+            <div className="mt-8 flex justify-center">
               <TarotCardComponent
-                card={dailyDraw.card}
-                isReversed={dailyDraw.isReversed}
+                card={card}
+                isReversed={isReversed}
                 isRevealed={revealed}
-                onClick={() => setRevealed(true)}
-                className="aspect-[3/5] w-full"
+                onClick={() => setRevealedKey(activeKey)}
+                size="xl"
+                tilt
               />
             </div>
-          </div>
 
-          <div className="mt-5 text-center">
-            {revealed ? (
-              <div className="anim-fade-in">
-                <h2 className="font-heading text-2xl tracking-[0.04em] text-bone">
-                  {dailyDraw.card.nameCn}
-                </h2>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-gold-dim">
-                  {dailyDraw.card.name}
-                </p>
-                <div className="mt-4 flex flex-wrap justify-center gap-1.5">
-                  {keywords.map((kw) => (
-                    <span
-                      key={kw}
-                      className="rounded-full border border-[var(--ink-line)] px-2.5 py-1 text-[11px] text-bone-faint"
-                    >
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-4 font-body text-sm leading-relaxed text-bone-dim">{meaning}</p>
-              </div>
-            ) : (
-              <p className="py-6 text-xs tracking-[0.14em] text-bone-faint anim-whisper">
-                轻触牌面 · 揭示今日之牌
+            {/* 翻开前占住位置，翻开时不顶动下方内容 */}
+            <div className={`mt-7 text-center ${revealed ? 'anim-fade' : 'invisible'}`}>
+              <h2 className="text-2xl font-bold tracking-[0.04em] text-ink">{card.nameCn}</h2>
+              <p className="mt-0.5 font-latin text-base italic text-ink-muted">{card.name}</p>
+              <p className="mt-3 text-sm">
+                <span className={isReversed ? 'font-semibold text-accent' : 'text-ink-soft'}>
+                  {isReversed ? '逆位' : '正位'}
+                </span>
+                <span className="mx-2 text-line-strong" aria-hidden>
+                  ·
+                </span>
+                <span className={arcana.textClass}>{arcana.nameCn}</span>
               </p>
-            )}
+              <p className="mt-4 break-keep text-[15px] leading-relaxed text-ink">{keywords.join(' · ')}</p>
+              <p className="mt-4 text-left text-[15px] leading-relaxed text-ink-soft">{meaning}</p>
+              <Link href={`/library?card=${card.id}`} className="link mt-5 inline-block text-sm">
+                在牌典中查看这张牌
+              </Link>
+            </div>
           </div>
-        </div>
+        </article>
 
-        {/* ─── 右列 ─── */}
-        <div className="flex flex-col gap-6">
-          {/* AI 神谕解读 */}
-          <section className="surface p-5 md:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs text-gold" aria-hidden>✦</span>
-                <h2 className="section-title">神谕解读</h2>
-              </div>
-              {!aiInterpretation && !aiLoading && (
-                <button
-                  type="button"
-                  onClick={requestAiInterpretation}
-                  className="btn-ink-primary h-9 px-4 text-sm"
-                >
-                  生成解读
+        <div className="flex min-w-0 flex-col gap-10">
+          {/* ─── 神谕的话 ─── */}
+          <section aria-labelledby="daily-oracle-title" className="panel px-5 py-6 md:px-8 md:py-7">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="daily-oracle-title" className="section-title">
+                神谕的话
+              </h2>
+              {current?.isLoading && (
+                <button type="button" onClick={stopReading} className="btn btn-ghost h-8 text-sm">
+                  停止
                 </button>
               )}
             </div>
 
-            <div className="mt-4">
-              {aiError && (
-                <div className="rounded-lg border-l-2 border-[var(--gold-dim)] bg-[rgba(210,178,116,0.05)] px-4 py-3">
-                  <p className="text-sm leading-relaxed text-bone-dim">{aiError}</p>
-                  <button
-                    type="button"
-                    onClick={requestAiInterpretation}
-                    className="btn-ink mt-3 h-8 px-3.5 text-xs"
-                  >
-                    重试
-                  </button>
-                </div>
-              )}
-
-              {(aiLoading || aiInterpretation) && (
-                <div>
-                  {aiInterpretation ? (
-                    <InterpretationBody
-                      content={aiInterpretation}
-                      streaming={aiLoading}
-                      cardTerms={[dailyDraw.card.nameCn, dailyDraw.card.name]}
-                      showSigil={!aiLoading}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 py-10">
-                      <span className="text-gold anim-whisper" aria-hidden>✦</span>
-                      <span className="text-xs tracking-[0.14em] text-bone-dim">正在通灵</span>
-                      <span className="flex gap-1.5" aria-hidden>
-                        <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '0ms' }} />
-                        <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '400ms' }} />
-                        <span className="h-1 w-1 rounded-full bg-[var(--gold-dim)] anim-whisper" style={{ animationDelay: '800ms' }} />
-                      </span>
-                    </div>
-                  )}
-                  {aiLoading && (
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => dailyAbortRef.current?.abort()}
-                        className="btn-ink-ghost text-xs"
-                      >
-                        停止生成
+            {current ? (
+              <div className="mt-5">
+                <Interpretation
+                  content={current.content}
+                  isLoading={current.isLoading}
+                  error={current.error}
+                  notice={current.notice}
+                  retry={current.retry}
+                  drawnCards={drawnCards}
+                  onOpenSettings={needsSetup ? openSettings : undefined}
+                />
+                {!current.isLoading && canUseApi && (
+                  <div className="mt-6 flex justify-end">
+                    <button type="button" onClick={() => void requestReading()} className="btn btn-ghost h-9 text-sm">
+                      {current.content ? '重新生成' : '重试'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">
+                  请神谕结合这张牌，为{isToday ? '今天' : '那一天'}写几句具体的提醒。
+                </p>
+                <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {needsSetup ? (
+                    <>
+                      <button type="button" onClick={openSettings} className="btn btn-primary h-10 px-5">
+                        先配置 API
                       </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {!aiInterpretation && !aiLoading && !aiError && (
-                <p className="text-sm leading-relaxed text-bone-faint">
-                  让 AI 结合今日之牌与你的处境，给出一段更具体的指引。
-                  {configLoaded && !canUseApi && (
+                      <span className="text-[13px] text-ink-muted">解读需要连接模型。</span>
+                    </>
+                  ) : (
                     <button
                       type="button"
-                      onClick={openSettings}
-                      className="ml-1 text-gold-warm underline decoration-[var(--gold-faint)] underline-offset-4"
+                      onClick={() => void requestReading()}
+                      disabled={!isLoaded}
+                      className="btn btn-primary h-10 px-5"
                     >
-                      需要先配置 API
+                      请神谕解读
                     </button>
                   )}
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* 札记 */}
-          <section className="surface p-5 md:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs text-gold-dim" aria-hidden>◇</span>
-                <h2 className="section-title">心之札记</h2>
-              </div>
-              <span
-                className={`text-[11px] transition-opacity duration-300 ${
-                  saveState === 'idle' ? 'opacity-0' : 'opacity-100'
-                }`}
-                aria-live="polite"
-              >
-                {saveState === 'saving' ? (
-                  <span className="text-bone-faint">保存中…</span>
-                ) : saveState === 'saved' ? (
-                  <span className="text-gold-warm">✓ 已保存</span>
-                ) : null}
-              </span>
-            </div>
-            <div className="field-shell mt-4">
-              <textarea
-                value={note}
-                onChange={handleNoteChange}
-                placeholder={isToday ? '今日所感、所思、所应。仅保存在本地。' : '可补记当日所感。'}
-                className="input-ink-bare h-36 w-full resize-none px-4 py-3 font-body text-[15px] leading-relaxed"
-                spellCheck={false}
-              />
-            </div>
-            {savedNote && (
-              <p className="mt-2 text-right text-[11px] text-bone-whisper">
-                最后保存 ·{' '}
-                {new Date(savedNote.updatedAt).toLocaleString('zh-CN', {
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
+                </div>
+              </>
             )}
           </section>
+
+          {/* ─── 札记 ─── */}
+          <section aria-labelledby="daily-note-title" className="panel px-5 py-6 md:px-8 md:py-7">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h2 id="daily-note-title" className="section-title">
+                札记
+              </h2>
+              <span className="text-[13px] text-ink-muted" aria-live="polite">
+                {isSaving
+                  ? '正在保存…'
+                  : savedAt
+                    ? `已保存 · ${formatSavedAt(savedAt, todayKey)}`
+                    : '只保存在这台设备上'}
+              </span>
+            </div>
+            <textarea
+              value={note}
+              onChange={(e) => handleNoteChange(e.target.value)}
+              aria-labelledby="daily-note-title"
+              placeholder={isToday ? '今天发生了什么？这张牌让你想到了什么？' : '补记那一天的事。'}
+              spellCheck={false}
+              className="ruled field-bare mt-3 block h-[13.5rem] w-full resize-y font-hand text-lg text-voice"
+            />
+          </section>
+
+          <MonthCalendar
+            todayKey={todayKey}
+            activeKey={activeKey}
+            offset={monthOffset}
+            onOffsetChange={setMonthOffset}
+            notedKeys={notedKeys}
+            onSelect={selectDay}
+          />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+/* ─── 月历 ─── */
+
+const WEEK_HEAD = ['一', '二', '三', '四', '五', '六', '日'];
+
+interface DayCell {
+  key: string;
+  day: number;
+  /** 农历日；逢初一写月份，和纸质日历一样 */
+  lunar: string;
+  /** 还没到的日子为 null */
+  draw: DailyDraw | null;
+}
+
+function buildMonth(todayKey: string, offset: number): { title: string; lead: number; cells: DayCell[] } {
+  const today = parseDateKey(todayKey) ?? new Date();
+  const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const total = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+
+  const cells: DayCell[] = [];
+  for (let day = 1; day <= total; day++) {
+    const date = new Date(first.getFullYear(), first.getMonth(), day);
+    const key = formatDateKey(date);
+    const lunar = getLunarDate(date);
+    cells.push({
+      key,
+      day,
+      lunar: lunar ? (lunar.day === '初一' ? lunar.month : lunar.day) : '',
+      draw: key <= todayKey ? getDailyDraw(date) : null,
+    });
+  }
+
+  // 周一排在第一列
+  return { title: formatYearMonth(first), lead: (first.getDay() + 6) % 7, cells };
+}
+
+interface MonthCalendarProps {
+  todayKey: string;
+  activeKey: string;
+  offset: number;
+  onOffsetChange: (offset: number) => void;
+  notedKeys: ReadonlySet<string>;
+  onSelect: (dateKey: string) => void;
+}
+
+function MonthCalendar({
+  todayKey,
+  activeKey,
+  offset,
+  onOffsetChange,
+  notedKeys,
+  onSelect,
+}: MonthCalendarProps): ReactElement {
+  const { title, lead, cells } = useMemo(() => buildMonth(todayKey, offset), [todayKey, offset]);
+  const trail = (7 - ((lead + cells.length) % 7)) % 7;
+
+  return (
+    <section aria-labelledby="daily-month-title">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="daily-month-title" className="section-title">
+          {title}
+        </h2>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onOffsetChange(offset - 1)}
+            aria-label="上个月"
+            className="btn btn-ghost h-9 w-9 px-0"
+          >
+            <Chevron direction="left" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onOffsetChange(offset + 1)}
+            disabled={offset >= 0}
+            aria-label="下个月"
+            className="btn btn-ghost h-9 w-9 px-0"
+          >
+            <Chevron direction="right" />
+          </button>
         </div>
       </div>
 
-      {/* ─── 近 14 日轨迹 ─── */}
-      <section className="mt-10" aria-labelledby="trail-title">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Last 14 Days</p>
-            <h2 id="trail-title" className="section-title mt-2">近期轨迹</h2>
-          </div>
-          <span className="text-[11px] text-bone-faint">点击任意一天查看当日之牌</span>
-        </div>
-
-        <div className="surface mt-4 px-4 py-7 md:px-6">
-          <div className="relative">
-            <div
+      {/* 格子之间留 1px 缝，透出底色作为格线 */}
+      <div className="mt-4 overflow-hidden rounded-md border border-line">
+        <div className="grid grid-cols-7 gap-px bg-line">
+          {WEEK_HEAD.map((label, i) => (
+            <span
+              key={label}
               aria-hidden
-              className="absolute inset-x-2 top-[9px] h-px bg-gradient-to-r from-transparent via-[var(--gold-faint)] to-transparent"
+              className={`bg-sunken py-1.5 text-center text-xs ${i >= 5 ? 'text-accent' : 'text-ink-muted'}`}
+            >
+              {label}
+            </span>
+          ))}
+          {Array.from({ length: lead }, (_, i) => (
+            <span key={`lead-${i}`} className="bg-canvas" aria-hidden />
+          ))}
+          {cells.map((cell) => (
+            <DayCellView
+              key={cell.key}
+              cell={cell}
+              isToday={cell.key === todayKey}
+              isActive={cell.key === activeKey}
+              hasNote={notedKeys.has(cell.key)}
+              onSelect={onSelect}
             />
-            <ol className="relative flex items-start justify-between gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {timeline.map((draw) => {
-                const date = parseDateKey(draw.dateKey);
-                if (!date) return null;
-                const isActive = draw.dateKey === activeDateKey;
-                const isThisToday = draw.dateKey === todayKey;
-                const noted = !!getDailyNote(draw.dateKey);
-
-                return (
-                  <li key={draw.dateKey} className="flex shrink-0 justify-center">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectDate(draw)}
-                      aria-current={isActive ? 'date' : undefined}
-                      aria-label={`${formatShortDate(date)} · ${draw.card.nameCn}${draw.isReversed ? ' · 逆位' : ''}${noted ? ' · 有札记' : ''}`}
-                      className="group flex w-11 flex-col items-center gap-2 pt-0.5 md:w-14"
-                    >
-                      <span
-                        className={`block rounded-full transition-all duration-300 ${
-                          isActive
-                            ? 'h-3.5 w-3.5 border-2 border-[var(--gold)] bg-[rgba(210,178,116,0.3)] shadow-[0_0_14px_var(--gold-glow)]'
-                            : draw.isReversed
-                              ? 'h-2.5 w-2.5 border border-[var(--mist-faint)] bg-[var(--ink-deep)] group-hover:border-[var(--mist)]'
-                              : 'h-2.5 w-2.5 bg-[var(--bone-whisper)] group-hover:bg-[var(--bone-dim)]'
-                        }`}
-                      />
-                      <span
-                        className={`truncate text-[10px] tracking-wide transition-colors ${
-                          isActive ? 'text-gold-warm' : 'text-bone-faint group-hover:text-bone'
-                        }`}
-                      >
-                        {draw.card.nameCn}
-                      </span>
-                      <span className="flex items-center gap-1 text-[9px] text-bone-whisper">
-                        {formatShortDate(date)}
-                        {isThisToday && <span className="text-gold">●</span>}
-                        {noted && <span className="text-gold-dim">◆</span>}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-[var(--ink-line)] pt-4 text-[10px] text-bone-faint">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" /> 正位
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full border border-[var(--mist)]" /> 逆位
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-gold-dim">◆</span> 有札记
-            </span>
-          </div>
+          ))}
+          {Array.from({ length: trail }, (_, i) => (
+            <span key={`trail-${i}`} className="bg-canvas" aria-hidden />
+          ))}
         </div>
-      </section>
-    </main>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-ink-muted">
+        {ARCANA_ORDER.map((key) => (
+          <span key={key} className="inline-flex items-center gap-1.5">
+            <span className={`h-2 w-2 rounded-full ${ARCANA[key].bgClass}`} aria-hidden />
+            {ARCANA[key].nameCn}
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rotate-45 bg-voice" aria-hidden />
+          写了札记
+        </span>
+        <span className="sm:hidden">空心圆点为逆位</span>
+      </div>
+    </section>
+  );
+}
+
+interface DayCellViewProps {
+  cell: DayCell;
+  isToday: boolean;
+  isActive: boolean;
+  hasNote: boolean;
+  onSelect: (dateKey: string) => void;
+}
+
+function DayCellView({ cell, isToday, isActive, hasNote, onSelect }: DayCellViewProps): ReactElement {
+  const frame = 'relative flex min-h-[4.5rem] flex-col items-center gap-1 px-0.5 pb-2 pt-1.5 sm:min-h-20';
+
+  if (!cell.draw) {
+    return (
+      <span aria-hidden className={`${frame} bg-surface text-ink-muted/50`}>
+        <span className="grid h-8 w-8 place-items-center font-latin text-xl leading-none">{cell.day}</span>
+        <span className="text-[10px] leading-none">{cell.lunar}</span>
+      </span>
+    );
+  }
+
+  const { card, isReversed } = cell.draw;
+  const arcana = ARCANA[arcanaOf(card)];
+  const month = Number(cell.key.slice(5, 7));
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(cell.key)}
+      aria-current={isActive ? 'date' : undefined}
+      aria-label={`${month}月${cell.day}日${isToday ? '（今天）' : ''}，${card.nameCn}，${isReversed ? '逆位' : '正位'}${
+        hasNote ? '，写了札记' : ''
+      }`}
+      className={`${frame} bg-surface transition-colors duration-150 hover:bg-canvas`}
+    >
+      {/* 选中的那天像是用红笔圈了出来 */}
+      <span
+        className={`grid h-8 w-8 place-items-center rounded-full font-latin text-xl leading-none tabular-nums ${
+          isActive ? 'ring-[1.5px] ring-accent' : ''
+        } ${isToday ? 'font-bold text-accent' : 'text-ink'}`}
+      >
+        {cell.day}
+      </span>
+      <span className="text-[10px] leading-none text-ink-muted">{cell.lunar}</span>
+      <span className={`hidden max-w-full truncate text-[11px] leading-tight sm:block ${arcana.textClass}`}>
+        {card.nameCn}
+        {isReversed && <span className="text-ink-muted"> 逆</span>}
+      </span>
+      <span
+        aria-hidden
+        className={`h-1.5 w-1.5 rounded-full border border-current sm:hidden ${arcana.textClass} ${
+          isReversed ? '' : 'bg-current'
+        }`}
+      />
+      {hasNote && <span aria-hidden className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rotate-45 bg-voice" />}
+    </button>
+  );
+}
+
+function Chevron({ direction }: { direction: 'left' | 'right' }): ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d={direction === 'left' ? 'm10 3-5 5 5 5' : 'm6 3 5 5-5 5'} />
+    </svg>
   );
 }

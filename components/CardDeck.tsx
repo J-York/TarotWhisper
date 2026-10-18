@@ -1,45 +1,43 @@
 'use client';
 
-import { useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
+
+import { CardMedallion } from '@/components/TarotCard';
 
 interface CardDeckProps {
+  /** 洗牌动画结束后调用 */
   onShuffle: () => void;
-  isShuffling?: boolean;
+  disabled?: boolean;
 }
 
-export function CardDeck({ onShuffle, isShuffling = false }: CardDeckProps): ReactElement {
-  const [shuffleAnimation, setShuffleAnimation] = useState(false);
+const DECK_SIZE = 5;
+// 两轮 riffle（700ms × 2）加上最后一张的起步延迟
+const SHUFFLE_MS = 1650;
+
+export function CardDeck({ onShuffle, disabled = false }: CardDeckProps): ReactElement {
+  const [shuffling, setShuffling] = useState(false);
+  const timer = useRef(0);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const handleShuffle = (): void => {
-    setShuffleAnimation(true);
-    window.setTimeout(() => {
-      setShuffleAnimation(false);
+    setShuffling(true);
+    timer.current = window.setTimeout(() => {
+      setShuffling(false);
       onShuffle();
-    }, 1400);
+    }, SHUFFLE_MS);
   };
 
   return (
-    <div className="flex flex-col items-center gap-9">
-      {/* 牌堆 · 5 层错落 */}
-      <div className="relative h-52 w-36">
-        {Array.from({ length: 5 }, (_, i) => (
+    <div className="flex flex-col items-center gap-6">
+      <div className={`relative h-40 w-24 ${shuffling ? 'is-shuffling' : ''}`} aria-hidden>
+        {Array.from({ length: DECK_SIZE }, (_, i) => (
           <div
             key={i}
-            className={`absolute h-48 w-32 rounded-lg border border-[var(--gold-faint)] bg-[var(--ink-veil)] ${
-              shuffleAnimation ? 'animate-shuffle' : ''
-            }`}
-            style={{
-              top: `${i * 3}px`,
-              left: `${i * 3}px`,
-              zIndex: 5 - i,
-              animationDelay: shuffleAnimation ? `${i * 0.08}s` : '0s',
-              boxShadow: '0 14px 30px -20px rgba(0,0,0,0.9)',
-            }}
+            className="deck-card card-back"
+            style={{ translate: `${i * 2}px ${-i * 2}px` }}
           >
-            <div className="absolute inset-1.5 rounded border border-[var(--gold-faint)]/50" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-lg text-gold-dim">✦</span>
-            </div>
+            {i === DECK_SIZE - 1 && <CardMedallion />}
           </div>
         ))}
       </div>
@@ -47,25 +45,14 @@ export function CardDeck({ onShuffle, isShuffling = false }: CardDeckProps): Rea
       <button
         type="button"
         onClick={handleShuffle}
-        disabled={isShuffling || shuffleAnimation}
-        className="btn-ink-primary h-12 px-8"
+        disabled={disabled || shuffling}
+        className="btn btn-primary h-11 px-7"
       >
-        {shuffleAnimation ? '洗牌中…' : '洗牌并抽牌'}
+        {shuffling ? '正在洗牌…' : '洗牌并抽牌'}
       </button>
-
-      <p className="text-xs text-bone-faint">洗牌时在默念你的问题</p>
-
-      <style jsx>{`
-        @keyframes shuffle {
-          0%, 100% { transform: translateX(0) rotate(0deg); }
-          25%      { transform: translateX(-20px) rotate(-3deg); }
-          50%      { transform: translateX(20px) rotate(3deg); }
-          75%      { transform: translateX(-9px) rotate(-2deg); }
-        }
-        .animate-shuffle {
-          animation: shuffle 0.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-      `}</style>
+      <p className="text-[13px] text-ink-muted" role="status">
+        {shuffling ? '在心里默念你的问题' : '准备好了就开始洗牌'}
+      </p>
     </div>
   );
 }

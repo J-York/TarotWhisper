@@ -2,21 +2,54 @@
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import Image from 'next/image';
-import { TarotCard } from '@/lib/tarot/types';
+
+import type { TarotCard } from '@/lib/tarot/types';
+
+export type CardSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 interface TarotCardProps {
   card: TarotCard;
   isReversed?: boolean;
   isRevealed?: boolean;
   onClick?: () => void;
-  size?: 'sm' | 'md' | 'lg';
-  /** 是否启用鼠标视差与翻牌 shimmer */
-  enableInteractions?: boolean;
-  /** 自定义尺寸类 · 提供时覆盖内置 size 的固定宽高 */
-  className?: string;
+  size?: CardSize;
+  /** 鼠标移动时轻微倾斜（只对 lg / xl 生效） */
+  tilt?: boolean;
+  /** 标记为下一张该翻的牌 */
+  isNext?: boolean;
 }
 
-const PARALLAX_MAX = 7;
+/** 宽高比统一 3:5；除 sm 外，各档在窄屏都会缩小。md 在 360px 宽的屏上也要能三张排成一行 */
+const SIZE_CLASSES: Record<CardSize, string> = {
+  xs: 'h-32 w-[4.8rem] sm:h-40 sm:w-24',
+  sm: 'h-40 w-24',
+  md: 'h-[8.75rem] w-[5.25rem] sm:h-60 sm:w-36',
+  lg: 'h-60 w-36 sm:h-[293px] sm:w-44',
+  xl: 'h-[347px] w-52 sm:h-[400px] sm:w-60',
+};
+
+const IMAGE_SIZES: Record<CardSize, string> = {
+  xs: '(min-width: 640px) 96px, 77px',
+  sm: '96px',
+  md: '(min-width: 640px) 144px, 84px',
+  lg: '(min-width: 640px) 176px, 144px',
+  xl: '(min-width: 640px) 240px, 208px',
+};
+
+const TILT_MAX = 5;
+
+/** 牌背中央的八角星徽记，牌堆也会用到 */
+export function CardMedallion(): ReactElement {
+  return (
+    <span className="card-medallion grid place-items-center" aria-hidden>
+      <svg viewBox="0 0 40 40" className="h-[64%] w-[64%]" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <rect x="9" y="9" width="22" height="22" />
+        <rect x="9" y="9" width="22" height="22" transform="rotate(45 20 20)" />
+        <circle cx="20" cy="20" r="4" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+  );
+}
 
 export function TarotCardComponent({
   card,
@@ -24,193 +57,112 @@ export function TarotCardComponent({
   isRevealed = false,
   onClick,
   size = 'md',
-  enableInteractions = true,
-  className,
+  tilt = false,
+  isNext = false,
 }: TarotCardProps): ReactElement {
   const [imageError, setImageError] = useState(false);
-  const parallaxRef = useRef<HTMLDivElement>(null);
-  const shimmerRef = useRef<HTMLDivElement>(null);
-  const trackingRaf = useRef<number>(0);
-  const wasRevealed = useRef<boolean>(isRevealed);
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const sheenRef = useRef<HTMLDivElement>(null);
+  const tiltRaf = useRef(0);
+  const wasRevealed = useRef(isRevealed);
 
-  const sizeClasses = {
-    sm: 'w-24 h-40',
-    md: 'w-44 h-[293px]',
-    lg: 'w-60 h-[400px]',
-  };
+  const canTilt = tilt && (size === 'lg' || size === 'xl');
+  const isClickable = Boolean(onClick) && !isRevealed;
 
-  // 逆位：先翻到正面，再把牌面本身倒转
-  const cardFaceTransform =
-    isReversed && isRevealed ? 'rotateY(180deg) rotate(180deg)' : 'rotateY(180deg)';
-
-  /* 翻牌瞬间的金箔反光 */
+  // 只在「刚被翻开」时扫一次反光；已翻开的牌重新挂载时不播放
   useEffect(() => {
     const justRevealed = !wasRevealed.current && isRevealed;
     wasRevealed.current = isRevealed;
-    if (!justRevealed) return;
+    const el = sheenRef.current;
+    if (!justRevealed || !el) return;
 
-    const el = shimmerRef.current;
-    if (!el) return;
-    const startTimer = window.setTimeout(() => el.classList.add('is-active'), 380);
-    const onEnd = (): void => el.classList.remove('is-active');
-    el.addEventListener('animationend', onEnd, { once: true });
-
+    el.classList.add('is-active');
+    const timer = window.setTimeout(() => el.classList.remove('is-active'), 1400);
     return () => {
-      window.clearTimeout(startTimer);
-      el.removeEventListener('animationend', onEnd);
+      window.clearTimeout(timer);
       el.classList.remove('is-active');
     };
   }, [isRevealed]);
 
-  const enableParallax = enableInteractions && size !== 'sm';
+  useEffect(() => () => cancelAnimationFrame(tiltRaf.current), []);
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>): void => {
-    if (!enableParallax) return;
-    const el = parallaxRef.current;
-    if (!el) return;
+    const el = tiltRef.current;
+    if (!canTilt || !el || e.pointerType !== 'mouse') return;
     const rect = el.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
-    const direction = isRevealed ? 1 : -1;
-    const ry = (px - 0.5) * 2 * PARALLAX_MAX * direction;
-    const rx = -(py - 0.5) * 2 * PARALLAX_MAX;
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    // 背面朝上时 Y 轴方向相反，否则倾斜会显得“往外躲”
+    const ry = px * 2 * TILT_MAX * (isRevealed ? 1 : -1);
+    const rx = -py * 2 * TILT_MAX;
 
-    if (trackingRaf.current) cancelAnimationFrame(trackingRaf.current);
-    trackingRaf.current = requestAnimationFrame(() => {
-      el.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+    cancelAnimationFrame(tiltRaf.current);
+    tiltRaf.current = requestAnimationFrame(() => {
       el.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
+      el.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
       el.classList.add('is-tracking');
     });
   };
 
   const handlePointerLeave = (): void => {
-    if (!enableParallax) return;
-    const el = parallaxRef.current;
-    if (!el) return;
-    if (trackingRaf.current) cancelAnimationFrame(trackingRaf.current);
-    el.style.setProperty('--ry', '0deg');
+    const el = tiltRef.current;
+    if (!canTilt || !el) return;
+    cancelAnimationFrame(tiltRaf.current);
     el.style.setProperty('--rx', '0deg');
+    el.style.setProperty('--ry', '0deg');
     el.classList.remove('is-tracking');
   };
 
-  useEffect(() => () => {
-    if (trackingRaf.current) cancelAnimationFrame(trackingRaf.current);
-  }, []);
+  const label = isRevealed
+    ? `${card.nameCn}（${card.name}）${isReversed ? '，逆位' : '，正位'}`
+    : isNext
+      ? '未翻开的牌，点按翻开'
+      : '未翻开的牌';
 
   return (
     <div
-      className={`group relative shrink-0 ${className ?? sizeClasses[size]} ${
-        onClick ? 'cursor-pointer' : ''
-      } perspective-1000`}
-      onClick={onClick}
+      className={`card-scene relative shrink-0 ${SIZE_CLASSES[size]} ${
+        isClickable ? 'card-clickable' : ''
+      } ${isNext && !isRevealed ? 'card-next' : ''}`}
+      onClick={isClickable ? onClick : undefined}
       onKeyDown={(e) => {
-        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
-          onClick();
+          onClick?.();
         }
       }}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-label={`${card.nameCn} (${card.name})${isReversed && isRevealed ? ' · 逆位' : ''}${
-        !isRevealed ? ' · 未翻开' : ''
-      }`}
+      role={isClickable ? 'button' : 'img'}
+      tabIndex={isClickable ? 0 : undefined}
+      aria-label={label}
     >
-      <div ref={parallaxRef} className={`relative h-full w-full ${enableParallax ? 'card-parallax' : ''}`}>
-        <div
-          className={`card-flip transform-style-3d relative h-full w-full ${
-            isRevealed ? 'rotate-y-180' : ''
-          }`}
-        >
-          {/* ─── 背面 ─── */}
-          <div
-            className={`backface-hidden absolute h-full w-full overflow-hidden rounded-lg border bg-[var(--ink-veil)] ${
-              isRevealed
-                ? 'border-[var(--ink-line)]'
-                : 'border-[var(--gold-faint)] shadow-[0_16px_36px_-22px_rgba(0,0,0,0.9)] group-hover:shadow-[0_20px_44px_-20px_rgba(0,0,0,0.95),0_0_28px_-12px_var(--gold-glow)]'
-            }`}
-            style={{ transition: 'box-shadow 350ms var(--ease-ritual)' }}
-          >
-            <div
-              aria-hidden
-              className="absolute inset-0"
-              style={{
-                background:
-                  'radial-gradient(ellipse 78% 55% at 50% 44%, rgba(210,178,116,0.14) 0%, rgba(210,178,116,0.04) 45%, transparent 76%)',
-              }}
-            />
-            {/* 内框 */}
-            <div aria-hidden className="absolute inset-2 rounded border border-[var(--gold-faint)]/60" />
-            <div aria-hidden className="absolute inset-3.5 rounded-sm border border-[var(--ink-line-strong)]" />
-
-            {/* 中央徽记 */}
-            <div className="relative flex h-full w-full flex-col items-center justify-center gap-2.5">
-              <div className="relative flex items-center justify-center">
-                <span
-                  aria-hidden
-                  className="absolute h-11 w-11 rounded-full border border-dashed border-[var(--gold-faint)] anim-lunar"
-                >
-                  <span className="absolute -top-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[var(--gold-dim)]" />
-                </span>
-                <span className="text-xl text-gold">✦</span>
-              </div>
-              <span aria-hidden className="h-px w-8 bg-[var(--gold-faint)]" />
-              <span className="font-heading text-[9px] uppercase tracking-[0.3em] text-gold-dim">
-                Tarot
-              </span>
-            </div>
-
-            {/* 四角刻痕 */}
-            {[
-              'left-3 top-3 border-l border-t',
-              'right-3 top-3 border-r border-t',
-              'bottom-3 left-3 border-b border-l',
-              'bottom-3 right-3 border-b border-r',
-            ].map((pos) => (
-              <span
-                key={pos}
-                aria-hidden
-                className={`absolute h-2 w-2 border-[var(--gold-dim)]/60 ${pos}`}
-              />
-            ))}
+      <div ref={tiltRef} className={canTilt ? 'card-tilt' : 'relative h-full w-full'}>
+        <div className={`card-flipper ${isRevealed ? 'is-flipped' : ''}`}>
+          {/* 背面 */}
+          <div className="card-side card-back">
+            <CardMedallion />
           </div>
 
-          {/* ─── 正面 ─── */}
-          <div
-            className={`backface-hidden absolute h-full w-full overflow-hidden rounded-lg bg-[var(--ink-void)] ${
-              isRevealed ? 'card-revealed-halo' : 'border border-[var(--ink-line)]'
-            }`}
-            style={{ transform: cardFaceTransform }}
-          >
-            {!imageError ? (
+          {/* 正面 */}
+          <div className={`card-side card-front ${isReversed ? 'is-reversed' : ''}`}>
+            {imageError ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center">
+                <span className="text-sm font-semibold text-ink">{card.nameCn}</span>
+                <span className="font-latin text-xs italic text-ink-muted">{card.name}</span>
+              </div>
+            ) : (
               <Image
                 src={card.image}
-                alt={card.name}
+                alt=""
                 fill
-                sizes={
-                  className
-                    ? '(min-width: 1024px) 384px, (min-width: 768px) 320px, 256px'
-                    : size === 'lg'
-                      ? '240px'
-                      : size === 'md'
-                        ? '176px'
-                        : '96px'
-                }
+                sizes={IMAGE_SIZES[size]}
                 className="object-cover"
                 onError={() => setImageError(true)}
-                priority={size === 'lg' || !!className}
+                priority={size === 'xl'}
               />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center">
-                <span className="text-xl text-gold-dim" aria-hidden>✦</span>
-                <span aria-hidden className="h-px w-10 bg-[var(--gold-faint)]" />
-                <span className="font-heading text-sm tracking-[0.1em] text-bone">{card.nameCn}</span>
-                <span className="text-[9px] uppercase tracking-[0.16em] text-bone-faint">{card.name}</span>
-              </div>
             )}
-            <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
-            <div ref={shimmerRef} className="card-shimmer rounded-lg" aria-hidden />
+            <div ref={sheenRef} className="card-sheen" aria-hidden />
           </div>
         </div>
       </div>

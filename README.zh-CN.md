@@ -12,9 +12,11 @@
 - 🃏 **完整牌组**：大阿卡纳 + 小阿卡纳，共 78 张
 - ✨ **多牌阵**：单张牌、三张牌、凯尔特十字等
 - 🔮 **AI 流式解读**：通过可配置 LLM 接口实时返回内容（SSE）
+- 💬 **神谕对话**：首页支持「神谕选牌」与「我自己抽」，选牌阵、洗牌、翻牌和追问都在同一段对话中完成
+- 📅 **今日与牌典**：每日一牌、农历日历、个人札记与完整牌组索引
 - ⚙️ **可配置 API**：支持自定义 endpoint / model / apiKey
 - 🕰️ **历史记录**：本地保存占卜结果，可查看详情、批量删除、清空
-- 🌌 **沉浸式视觉风格**：暗色神秘主题 + glassmorphism
+- 🌌 **纸本手札风格**：纸张底色、朱砂强调色与霞鹜文楷手写字体
 
 ---
 
@@ -55,13 +57,14 @@ npm run start
 
 ```bash
 npm run lint
+npm test
 ```
 
 ---
 
 ## API 配置说明
 
-应用首次使用时可在页面右上角「API 设置」中填写：
+应用首次使用时可在页面右上角的配置入口中填写：
 
 - `endpoint`：兼容 OpenAI Chat Completions 的接口地址
   - 例如：`https://api.openai.com/v1/chat/completions`
@@ -69,6 +72,8 @@ npm run lint
 - `model`：模型名称（默认 `gpt-4o-mini`）
 
 配置保存在浏览器 `localStorage`，仅在本地生效。
+
+导航包含神谕（`/`）、今日（`/daily`）、牌典（`/library`）与手札（`/history`）。旧的 `/agent` 和 `/reading` 地址会重定向到首页。
 
 ---
 
@@ -78,17 +83,19 @@ npm run lint
 .
 ├─ app/
 │  ├─ api/interpret/route.ts       # AI 解读接口（流式转发）
-│  ├─ history/                     # 历史记录页与详情页
-│  ├─ reading/page.tsx             # 占卜主流程页面
+│  ├─ history/                     # 手札列表与详情页
+│  ├─ daily/page.tsx               # 今日一牌、日历与札记
+│  ├─ library/page.tsx             # 牌典索引与牌面详情
 │  ├─ globals.css                  # 全局样式与主题效果
 │  ├─ layout.tsx
-│  └─ page.tsx                     # 首页
-├─ components/                     # UI 组件
-├─ hooks/                          # 业务 hooks（如 useReading/useApiConfig）
+│  └─ page.tsx                     # 神谕对话，含亲手抽牌流程
+├─ components/                     # OracleLetter、Composer、SpreadBoard、Dialog 等
+├─ hooks/                          # useAgentChat、useApiConfig、useConfirm 等
 ├─ lib/
 │  ├─ api/                         # LLM 调用与 prompt
 │  ├─ tarot/                       # 牌组、牌阵、类型定义
-│  └─ storage.ts                   # 本地历史存储
+│  └─ readingStorage.ts            # 本地历史存储
+├─ tests/                          # Vitest 测试
 ├─ public/cards/                   # 塔罗牌图片资源
 └─ scripts/download-cards.js       # 下载牌图脚本
 ```
@@ -105,7 +112,7 @@ npm run lint
 
 ## 注意事项
 
-- 当前项目未配置测试框架（Jest/Vitest/Playwright）
+- 使用 Vitest + Testing Library + jsdom 验证逻辑与组件
 - TypeScript 严格模式已开启，请保持类型安全
 - 若你使用第三方兼容接口，请确认其支持 Chat Completions 与流式输出
 

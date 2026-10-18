@@ -1,15 +1,18 @@
 'use client';
 
 /**
- * Agent 对话状态管理 · 取代 useReading 的线性状态机
+ * Agent 对话状态管理
  *
  * 以「消息列表」为核心：用户消息 + Agent 消息（内嵌牌阵/牌面/解读）。
- * 一个 Agent 消息即一个完整回合：选牌阵 → 抽牌 → 流式解读。
+ * 一个 Agent 消息即一个完整回合，有两种选牌方式：
+ * - 神谕选牌：选牌阵 → 抽牌 → 流式解读，全部自动完成；
+ * - 亲手抽牌：用户选阵、洗牌、逐张翻牌（status = ritual），翻完再请神谕解读。
  * 追问作为后续 Agent 消息追加，复用 decide/draw 协议。
  */
 
 import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { ApiConfig, DrawnCard, FollowUp, Reading, Spread } from '@/lib/tarot/types';
+import { drawCardsForSpread } from '@/lib/tarot/draw';
 import { loadChat, saveChat, clearChat } from '@/lib/agentChatStorage';
 import {
   saveReading,
@@ -28,7 +31,17 @@ import { genId } from '@/lib/id';
 
 // ─── 消息模型 ───────────────────────────────────────────────
 
-export type AgentMessageStatus = 'running' | 'done' | 'error';
+/** 一次生成的状态 */
+export type TurnStatus = 'running' | 'done' | 'error';
+
+/** 首轮回合状态：ritual 表示亲手抽牌进行中，之后同样进入 running → done / error */
+export type AgentMessageStatus = 'ritual' | TurnStatus;
+
+/** 选牌方式：oracle = 神谕选阵并抽牌；self = 用户亲手选阵、洗牌、翻牌 */
+export type DrawMode = 'oracle' | 'self';
+
+/** 亲手抽牌的步骤 */
+export type RitualStage = 'spread' | 'shuffle' | 'reveal';
 
 /** 用户消息 */
 export interface UserMessage {
@@ -44,6 +57,11 @@ export interface AgentMessage {
   content: string;
   status: AgentMessageStatus;
   error: string | null;
+  mode: DrawMode;
+  /** 亲手抽牌当前所在步骤；只在 status 为 ritual 时有值 */
+  ritualStage: RitualStage | null;
+  /** 亲手抽牌时按阵位顺序已翻开的张数 */
+  revealedCount: number;
   /** 选定的牌阵与理由 */
   spread: Spread | null;
   spreadReason: string;
@@ -63,7 +81,7 @@ export interface AgentMessage {
 export interface FollowUpMessage {
   id: string;
   question: string;
-  status: AgentMessageStatus;
+  status: TurnStatus;
   decision: 'direct' | 'draw' | null;
   drawCount: number;
   reason: string;
@@ -83,13 +101,16 @@ function makeUserMessage(content: string): UserMessage {
   return { id: genId(), role: 'user', content };
 }
 
-function makeAgentMessage(): AgentMessage {
+function makeAgentMessage(mode: DrawMode = 'oracle'): AgentMessage {
   return {
     id: genId(),
     role: 'agent',
     content: '',
-    status: 'running',
+    status: mode === 'self' ? 'ritual' : 'running',
     error: null,
+    mode,
+    ritualStage: mode === 'self' ? 'spread' : null,
+    revealedCount: 0,
     spread: null,
     spreadReason: '',
     drawnCards: [],
@@ -181,6 +202,11 @@ const getServerSnapshot = (): MessageSnapshot => SERVER_SNAPSHOT;
 /** 写入新消息列表并广播 */
 function updateMessages(updater: (prev: ChatMessage[]) => ChatMessage[]): void {
   publish({ messages: updater(snapshot.messages), hydrated: true });
+}
+
+function findAgentMessage(agentId: string): AgentMessage | undefined {
+  const found = snapshot.messages.find((m) => m.role === 'agent' && m.id === agentId);
+  return found?.role === 'agent' ? found : undefined;
 }
 
 // ─── Hook ───────────────────────────────────────────────────
@@ -760,6 +786,173 @@ export function useAgentChat() {
     ],
   );
 
+  // ── 亲手抽牌 ───────────────────────────────────────────
+
+  /** 记下问题并开始亲手抽牌；选阵、洗牌、翻牌都不需要 API */
+  const startRitual = useCallback(
+    (question: string): void => {
+      const trimmed = question.trim();
+      if (!trimmed || isRunning) return;
+      commit((prev) => [...prev, makeUserMessage(trimmed), makeAgentMessage('self')]);
+    },
+    [isRunning, commit],
+  );
+
+  const chooseRitualSpread = useCallback(
+    (agentId: string, spread: Spread): void => {
+      patchAgent(agentId, (prev) =>
+        prev.status === 'ritual' ? { spread, ritualStage: 'shuffle' } : {},
+      );
+    },
+    [patchAgent],
+  );
+
+  const backToSpreadChoice = useCallback(
+    (agentId: string): void => {
+      patchAgent(agentId, (prev) =>
+        prev.status === 'ritual' && prev.ritualStage === 'shuffle' ? { ritualStage: 'spread' } : {},
+      );
+    },
+    [patchAgent],
+  );
+
+  const shuffleAndDraw = useCallback(
+    (agentId: string): void => {
+      const target = findAgentMessage(agentId);
+      if (!target || target.status !== 'ritual' || !target.spread) return;
+      patchAgent(agentId, {
+        drawnCards: drawCardsForSpread(target.spread),
+        revealedCount: 0,
+        ritualStage: 'reveal',
+      });
+    },
+    [patchAgent],
+  );
+
+  /** 按阵位顺序翻开下一张；all 为 true 时全部翻开 */
+  const revealCards = useCallback(
+    (agentId: string, all = false): void => {
+      patchAgent(agentId, (prev) => {
+        if (prev.status !== 'ritual' || prev.ritualStage !== 'reveal') return {};
+        const total = prev.drawnCards.length;
+        return { revealedCount: all ? total : Math.min(total, prev.revealedCount + 1) };
+      });
+    },
+    [patchAgent],
+  );
+
+  /** 牌全部翻开后请神谕解读，完成后存入手札 */
+  const interpretRitual = useCallback(
+    async (agentId: string, apiConfig: ApiConfig): Promise<void> => {
+      if (isRunning) return;
+
+      const target = findAgentMessage(agentId);
+      if (
+        !target ||
+        target.status !== 'ritual' ||
+        !target.spread ||
+        target.drawnCards.length === 0 ||
+        target.revealedCount < target.drawnCards.length
+      ) {
+        return;
+      }
+
+      const question = findOriginalQuestion(agentId);
+      if (!question) return;
+
+      const { spread, drawnCards } = target;
+      patchAgent(agentId, {
+        status: 'running',
+        ritualStage: null,
+        content: '',
+        error: null,
+        notice: null,
+        retry: null,
+      });
+      setIsRunning(true);
+
+      const controller = createController();
+
+      try {
+        // 没有上一版时，这就是一次普通的解读
+        const result = await rerunAgentInterpretation({
+          question,
+          spread,
+          drawnCards,
+          apiConfig,
+          signal: controller.signal,
+          callbacks: {
+            onContent: (chunk) =>
+              patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
+            onThinking: (chunk) =>
+              patchAgent(agentId, (prev) => ({ content: prev.content + chunk })),
+            onStreamError: (msg) =>
+              patchAgent(agentId, (prev) => ({ error: prev.error ?? msg })),
+            onRetry: (attempt, max) =>
+              patchAgent(agentId, { retry: { attempt, max } }),
+          },
+        });
+
+        const readingId = genId();
+        saveReading({
+          id: readingId,
+          question,
+          spread,
+          drawnCards,
+          interpretation: result.interpretation,
+          createdAt: new Date(),
+        });
+        patchAgent(agentId, {
+          status: 'done',
+          readingId,
+          retry: null,
+          notice: result.truncated
+            ? '解读内容因模型输出长度限制被截断，已显示部分内容。'
+            : null,
+        });
+      } catch (err) {
+        if (err instanceof LLMError && err.info.code === 'ABORTED') {
+          patchAgent(agentId, { status: 'error', error: '已停止生成', retry: null });
+          return;
+        }
+        patchAgent(agentId, { status: 'error', error: getErrorMessage(err), retry: null });
+      } finally {
+        setIsRunning(false);
+        if (activeAbortRef.current === controller) {
+          activeAbortRef.current = null;
+        }
+      }
+    },
+    [isRunning, createController, findOriginalQuestion, patchAgent],
+  );
+
+  /** 还没抽牌时改主意：改由神谕选阵、抽牌并解读 */
+  const handOverToOracle = useCallback(
+    async (agentId: string, apiConfig: ApiConfig): Promise<void> => {
+      const target = findAgentMessage(agentId);
+      if (isRunning || !target || target.status !== 'ritual' || target.drawnCards.length > 0) {
+        return;
+      }
+      patchAgent(agentId, { mode: 'oracle', ritualStage: null, spread: null });
+      await regenerateAgentMessage(agentId, apiConfig);
+    },
+    [isRunning, patchAgent, regenerateAgentMessage],
+  );
+
+  /** 放弃这次亲手抽牌，连同它的问题一起移除 */
+  const discardRitual = useCallback(
+    (agentId: string): void => {
+      commit((prev) => {
+        const index = prev.findIndex((m) => m.role === 'agent' && m.id === agentId);
+        const target = prev[index];
+        if (!target || target.role !== 'agent' || target.status !== 'ritual') return prev;
+        const start = prev[index - 1]?.role === 'user' ? index - 1 : index;
+        return [...prev.slice(0, start), ...prev.slice(index + 1)];
+      });
+    },
+    [commit],
+  );
+
   // ── 重置 ───────────────────────────────────────────────
 
   const reset = useCallback(() => {
@@ -777,6 +970,14 @@ export function useAgentChat() {
     askFollowUp,
     regenerateAgentMessage,
     regenerateFollowUp,
+    startRitual,
+    chooseRitualSpread,
+    backToSpreadChoice,
+    shuffleAndDraw,
+    revealCards,
+    interpretRitual,
+    handOverToOracle,
+    discardRitual,
     cancel,
     reset,
   };

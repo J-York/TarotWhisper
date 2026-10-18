@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, type ReactElement } from 'react';
-import { ApiConfig } from '@/lib/tarot/types';
-import { fetchAvailableModels, ModelInfo } from '@/lib/api/llm-client';
+import { useEffect, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
+
+import { Dialog, DialogCloseButton } from '@/components/Dialog';
+import { fetchAvailableModels, type ModelInfo } from '@/lib/api/llm-client';
+import type { ApiConfig } from '@/lib/tarot/types';
 
 interface ApiSettingsProps {
   config: ApiConfig;
@@ -11,222 +13,194 @@ interface ApiSettingsProps {
   onClose: () => void;
 }
 
-export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProps): ReactElement | null {
-  const [localConfig, setLocalConfig] = useState<ApiConfig>(config);
-  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+export function ApiSettings({ config, onSave, isOpen, onClose }: ApiSettingsProps): ReactElement {
+  return (
+    <Dialog isOpen={isOpen} onClose={onClose} labelledBy="api-settings-title" size="md">
+      {/* 弹窗关闭时表单随之卸载：每次打开都从已保存的配置开始，取消不会留下改了一半的内容 */}
+      <SettingsForm initial={config} onSave={onSave} onClose={onClose} />
+    </Dialog>
+  );
+}
+
+interface SettingsFormProps {
+  initial: ApiConfig;
+  onSave: (config: ApiConfig) => void;
+  onClose: () => void;
+}
+
+function SettingsForm({ initial, onSave, onClose }: SettingsFormProps): ReactElement {
+  const [draft, setDraft] = useState<ApiConfig>(initial);
+  const [models, setModels] = useState<ModelInfo[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
-  const [modelsError, setModelsError] = useState<string>('');
-  const [fallbackInfo, setFallbackInfo] = useState<{ available: boolean; rateLimit: number } | null>(null);
+  const [modelsError, setModelsError] = useState('');
+  const [fallback, setFallback] = useState<{ available: boolean; rateLimit: number } | null>(null);
 
   useEffect(() => {
-    queueMicrotask(() => setLocalConfig(config));
-  }, [config]);
-
-  // Esc 关闭 + 锁定背景滚动
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isOpen, onClose]);
-
-  useEffect(() => {
-    if (!isOpen) return;
+    let cancelled = false;
     fetch('/api/config')
       .then((res) => res.json())
       .then((data) => {
-        setFallbackInfo({
-          available: data.fallbackAvailable,
-          rateLimit: data.rateLimit,
-        });
+        if (!cancelled) setFallback({ available: Boolean(data.fallbackAvailable), rateLimit: Number(data.rateLimit) });
       })
       .catch(() => {
-        setFallbackInfo(null);
+        if (!cancelled) setFallback(null);
       });
-  }, [isOpen]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleFetchModels = async (): Promise<void> => {
-    if (!localConfig.endpoint || !localConfig.apiKey) {
+  const update = (patch: Partial<ApiConfig>): void => setDraft((prev) => ({ ...prev, ...patch }));
+
+  const loadModels = async (): Promise<void> => {
+    if (!draft.endpoint || !draft.apiKey) {
       setModelsError('请先填写 API 端点和密钥');
       return;
     }
-
     setIsLoadingModels(true);
     setModelsError('');
-
     try {
-      const models = await fetchAvailableModels(localConfig.endpoint, localConfig.apiKey);
-      setAvailableModels(models);
-      if (models.length === 0) {
-        setModelsError('未找到可用模型');
-      } else if (!models.some((m) => m.id === localConfig.model)) {
-        setLocalConfig({ ...localConfig, model: models[0].id });
-      }
+      const list = await fetchAvailableModels(draft.endpoint, draft.apiKey);
+      setModels(list);
+      if (list.length === 0) setModelsError('没有找到可用的模型');
+      else if (!list.some((m) => m.id === draft.model)) update({ model: list[0].id });
     } catch (error) {
+      setModels([]);
       setModelsError(error instanceof Error ? error.message : '获取模型列表失败');
-      setAvailableModels([]);
     } finally {
       setIsLoadingModels(false);
     }
   };
 
-  const handleSave = (): void => {
-    onSave(localConfig);
+  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+    onSave(draft);
     onClose();
   };
 
-  if (!isOpen) return null;
+  const modelHint = modelsError || (models.length > 0 ? `已载入 ${models.length} 个模型` : '例如 gpt-4o-mini、claude-sonnet-4-5');
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-[var(--ink-void)]/85 p-4 backdrop-blur-md anim-fade-in"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="api-settings-title"
-    >
-      <div
-        className="surface my-8 w-full max-w-md bg-[var(--ink-deep)] anim-veil-rise"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ─── Header ─── */}
-        <div className="flex items-center justify-between border-b border-[var(--ink-line)] px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <span className="text-gold-dim" aria-hidden>◇</span>
-            <h2 id="api-settings-title" className="section-title">API 配置</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-            className="grid h-8 w-8 place-items-center rounded-full text-bone-faint transition-colors hover:bg-white/5 hover:text-bone"
-          >
-            ×
-          </button>
-        </div>
+    <form onSubmit={handleSubmit}>
+      <div className="flex items-center justify-between gap-3 border-b border-line py-2 pl-6 pr-3">
+        <h2 id="api-settings-title" className="section-title">
+          API 配置
+        </h2>
+        <DialogCloseButton onClick={onClose} />
+      </div>
 
-        {/* ─── Body ─── */}
-        <div className="max-h-[70dvh] space-y-6 overflow-y-auto px-6 py-6">
-          {fallbackInfo?.available && (
-            <div className="rounded-lg border border-[var(--gold-faint)] bg-[rgba(210,178,116,0.06)] px-4 py-3">
-              <p className="text-xs leading-relaxed text-bone-dim">
-                未填写密钥时，将使用内置 API（每小时 {fallbackInfo.rateLimit} 次）。
-                配置自有密钥可解除限制。
-              </p>
-            </div>
-          )}
+      <div className="space-y-6 px-6 py-6">
+        {fallback?.available && (
+          <p className="rounded-md border border-line border-l-[3px] border-l-accent bg-canvas px-4 py-3 text-[13px] leading-relaxed text-ink-soft">
+            不填密钥时使用站点内置的模型，每小时可解读 {fallback.rateLimit} 次；填上自己的密钥就不受这个限制。
+          </p>
+        )}
 
-          {/* 端点 */}
-          <div>
-            <label htmlFor="api-endpoint" className="mb-2 block text-xs tracking-[0.1em] text-bone-dim">
-              API 端点
+        <Field id="api-endpoint" label="API 端点" hint="OpenAI、Claude，或任何兼容 Chat Completions 格式的地址。">
+          <input
+            id="api-endpoint"
+            type="url"
+            value={draft.endpoint}
+            onChange={(e) => update({ endpoint: e.target.value })}
+            placeholder="https://api.openai.com/v1/chat/completions"
+            aria-describedby="api-endpoint-hint"
+            autoComplete="off"
+            spellCheck={false}
+            className="field font-mono text-sm"
+          />
+        </Field>
+
+        <Field
+          id="api-key"
+          label="API 密钥"
+          hint="只保存在这台设备的浏览器里。解读时随请求经本站服务器转发给上面的端点，服务器不会保存。"
+        >
+          <input
+            id="api-key"
+            type="password"
+            value={draft.apiKey}
+            onChange={(e) => update({ apiKey: e.target.value })}
+            placeholder="sk-..."
+            aria-describedby="api-key-hint"
+            autoComplete="off"
+            spellCheck={false}
+            className="field font-mono text-sm"
+          />
+        </Field>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label htmlFor="api-model" className="text-sm font-medium text-ink">
+              模型
             </label>
-            <input
-              id="api-endpoint"
-              type="url"
-              value={localConfig.endpoint}
-              onChange={(e) => setLocalConfig({ ...localConfig, endpoint: e.target.value })}
-              placeholder="https://api.openai.com/v1/chat/completions"
-              className="input-ink font-mono text-sm"
-            />
-            <p className="mt-1.5 text-[11px] text-bone-faint">
-              OpenAI / Claude / 任意兼容 Chat Completions 的格式
-            </p>
+            <button
+              type="button"
+              onClick={() => void loadModels()}
+              disabled={isLoadingModels || !draft.endpoint || !draft.apiKey}
+              className="link text-[13px] disabled:cursor-not-allowed disabled:text-ink-muted disabled:no-underline"
+            >
+              {isLoadingModels ? '正在获取…' : '获取模型列表'}
+            </button>
           </div>
-
-          {/* 密钥 */}
-          <div>
-            <label htmlFor="api-key" className="mb-2 block text-xs tracking-[0.1em] text-bone-dim">
-              API 密钥
-            </label>
+          {models.length > 0 ? (
+            <select
+              id="api-model"
+              value={draft.model}
+              onChange={(e) => update({ model: e.target.value })}
+              aria-describedby="api-model-hint"
+              className="field font-mono text-sm"
+            >
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.id}
+                </option>
+              ))}
+            </select>
+          ) : (
             <input
-              id="api-key"
-              type="password"
-              value={localConfig.apiKey}
-              onChange={(e) => setLocalConfig({ ...localConfig, apiKey: e.target.value })}
-              placeholder="sk-..."
-              className="input-ink font-mono text-sm"
+              id="api-model"
+              type="text"
+              value={draft.model}
+              onChange={(e) => update({ model: e.target.value })}
+              placeholder="gpt-4o-mini"
+              aria-describedby="api-model-hint"
               autoComplete="off"
+              spellCheck={false}
+              className="field font-mono text-sm"
             />
-            <p className="mt-1.5 text-[11px] text-bone-faint">
-              <span className="mr-1 text-gold-dim" aria-hidden>⊹</span>
-              仅保存在本机浏览器，不会上传到服务器
-            </p>
-          </div>
-
-          {/* 模型 */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label htmlFor="api-model" className="block text-xs tracking-[0.1em] text-bone-dim">
-                模型
-              </label>
-              <button
-                type="button"
-                onClick={handleFetchModels}
-                disabled={isLoadingModels || !localConfig.endpoint || !localConfig.apiKey}
-                className="btn-ink-ghost text-xs"
-              >
-                {isLoadingModels ? '获取中…' : '获取模型列表'}
-              </button>
-            </div>
-
-            {availableModels.length > 0 ? (
-              <select
-                id="api-model"
-                value={localConfig.model}
-                onChange={(e) => setLocalConfig({ ...localConfig, model: e.target.value })}
-                className="input-ink font-mono text-sm"
-              >
-                {availableModels.map((model) => (
-                  <option key={model.id} value={model.id} className="bg-[var(--ink-deep)]">
-                    {model.id}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="api-model"
-                type="text"
-                value={localConfig.model}
-                onChange={(e) => setLocalConfig({ ...localConfig, model: e.target.value })}
-                placeholder="gpt-4o-mini"
-                className="input-ink font-mono text-sm"
-              />
-            )}
-
-            {modelsError ? (
-              <p className="mt-1.5 text-[11px] text-gold-warm">
-                <span className="mr-1" aria-hidden>◇</span>
-                {modelsError}
-              </p>
-            ) : availableModels.length > 0 ? (
-              <p className="mt-1.5 text-[11px] text-gold-dim">
-                <span className="mr-1" aria-hidden>✦</span>
-                已载入 {availableModels.length} 个模型
-              </p>
-            ) : (
-              <p className="mt-1.5 text-[11px] text-bone-faint">例如 gpt-4o / claude-sonnet-4-5</p>
-            )}
-          </div>
-        </div>
-
-        {/* ─── Footer ─── */}
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--ink-line)] px-6 py-4">
-          <button type="button" onClick={onClose} className="btn-ink-ghost px-4 py-2 text-sm">
-            取消
-          </button>
-          <button type="button" onClick={handleSave} className="btn-ink-primary h-9 px-5 text-sm">
-            保存
-          </button>
+          )}
+          <p
+            id="api-model-hint"
+            role={modelsError ? 'alert' : undefined}
+            className={`mt-1.5 text-[13px] leading-relaxed ${modelsError ? 'text-accent-strong' : 'text-ink-muted'}`}
+          >
+            {modelHint}
+          </p>
         </div>
       </div>
+
+      <div className="flex items-center justify-end gap-2 border-t border-line px-6 py-4">
+        <button type="button" onClick={onClose} className="btn btn-ghost h-9 px-4 text-sm">
+          取消
+        </button>
+        <button type="submit" className="btn btn-primary h-9 px-5 text-sm">
+          保存
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Field({ id, label, hint, children }: { id: string; label: string; hint: string; children: ReactNode }): ReactElement {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-2 block text-sm font-medium text-ink">
+        {label}
+      </label>
+      {children}
+      <p id={`${id}-hint`} className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
+        {hint}
+      </p>
     </div>
   );
 }

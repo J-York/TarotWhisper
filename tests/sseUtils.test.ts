@@ -1,7 +1,6 @@
 /**
  * SSE chunk 解析逻辑的单元测试。
- * parseSseChunk 和 extractDecisionJson 是 useReading 中的关键纯函数，
- * 但它们是模块内部函数。我们抽取到可测试的位置。
+ * parseSseChunk 负责流式解读的分块解析，extractDecisionJson 负责追问时的补牌决策。
  */
 import { describe, it, expect } from 'vitest';
 import { parseSseChunk, extractDecisionJson } from '@/lib/tarot/sseUtils';

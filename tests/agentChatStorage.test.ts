@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { saveChat, loadChat, clearChat } from '@/lib/agentChatStorage';
+import { drawCardsForSpread } from '@/lib/tarot/draw';
+import { getSpreadById } from '@/lib/tarot/spreads';
 import type { ChatMessage, AgentMessage } from '@/hooks/useAgentChat';
 
 const STORAGE_KEY = 'mystic-tarot-chat-v1';
@@ -11,6 +13,9 @@ function makeAgent(overrides: Partial<AgentMessage> = {}): AgentMessage {
     content: '解读内容',
     status: 'done',
     error: null,
+    mode: 'oracle',
+    ritualStage: null,
+    revealedCount: 0,
     spread: null,
     spreadReason: '',
     drawnCards: [],
@@ -66,6 +71,53 @@ describe('对话持久化', () => {
     expect(restored.status).toBe('error');
     expect(restored.content).toBe('已生成的部分');
     expect(restored.error).toBeNull();
+  });
+
+  it('亲手抽牌进行中的消息原样恢复，可以接着翻牌', () => {
+    const spread = getSpreadById('three-card')!;
+    const drawnCards = drawCardsForSpread(spread);
+    saveChat([
+      makeAgent({
+        mode: 'self',
+        status: 'ritual',
+        ritualStage: 'reveal',
+        content: '',
+        spread,
+        drawnCards,
+        revealedCount: 2,
+      }),
+    ]);
+
+    const [restored] = loadChat();
+    if (restored.role !== 'agent') throw new Error('expected agent message');
+    expect(restored.status).toBe('ritual');
+    expect(restored.error).toBeNull();
+    expect(restored.ritualStage).toBe('reveal');
+    expect(restored.revealedCount).toBe(2);
+  });
+
+  it('亲手抽牌的步骤与已有数据不符时按数据纠正', () => {
+    saveChat([
+      makeAgent({ mode: 'self', status: 'ritual', ritualStage: 'reveal', content: '' }),
+    ]);
+
+    const [restored] = loadChat();
+    if (restored.role !== 'agent') throw new Error('expected agent message');
+    expect(restored.ritualStage).toBe('spread');
+  });
+
+  it('旧版本记录缺少选牌方式字段时补上默认值', () => {
+    const legacy: Record<string, unknown> = { ...makeAgent() };
+    delete legacy.mode;
+    delete legacy.ritualStage;
+    delete legacy.revealedCount;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([legacy]));
+
+    const [restored] = loadChat();
+    if (restored.role !== 'agent') throw new Error('expected agent message');
+    expect(restored.mode).toBe('oracle');
+    expect(restored.ritualStage).toBeNull();
+    expect(restored.revealedCount).toBe(0);
   });
 
   it('瞬时重试状态不会被持久化', () => {

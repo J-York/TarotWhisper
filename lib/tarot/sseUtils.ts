@@ -1,5 +1,5 @@
 /**
- * SSE 流解析工具 — 从 useReading 抽出以便单元测试
+ * SSE 流解析工具 — 独立成纯函数以便单元测试
  */
 
 export type FollowUpDecision = 'direct' | 'draw';

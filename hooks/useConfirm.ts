@@ -36,7 +36,7 @@ const DEFAULT_STATE: DialogState = {
 };
 
 /**
- * 暗色仪式感确认框的命令式 Hook。
+ * 确认框的命令式 Hook。
  * - 与 <ConfirmDialog /> 配合：把 dialog / handleConfirm / handleCancel 接上即可
  * - 调用方只需 await confirm({...}) 取得布尔结果
  */

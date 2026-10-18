@@ -17,7 +17,7 @@ It ships the complete 78-card Rider–Waite–Smith deck, six spreads, determini
 | 🃏 **Full deck** | 78 Rider–Waite–Smith cards (22 Major Arcana + 4 suits × 14), each with upright/reversed keywords and meanings |
 | ✨ **Six spreads** | Single Card, Three Card, Two Options, Relationship, Timeline, Celtic Cross |
 | 🔮 **Streaming interpretation** | Server-Sent Events straight through to the UI, including `thinking` / reasoning deltas from reasoning models |
-| 🤖 **Agent mode** (`/agent`) | Chat-style flow where the LLM picks the spread itself, draws, and interprets — the user only asks a question |
+| 🤖 **Oracle chat** (`/`) | Ask the model to choose a spread, or choose one yourself and shuffle, draw, and reveal cards within the same conversation |
 | 💬 **Follow-up questions** | The model decides whether it can answer directly or needs supplementary cards, then draws and re-interprets |
 | 🌅 **Daily card** (`/daily`) | Deterministic draw — everyone gets the same card on a given local date — with a personal reflection note and optional AI reading |
 | 📖 **Card library** (`/library`) | Browse and filter the whole deck with detail views |
@@ -29,7 +29,7 @@ It ships the complete 78-card Rider–Waite–Smith deck, six spreads, determini
 ## Tech stack
 
 - **Framework:** Next.js 16 (App Router, Node.js runtime for the API routes)
-- **UI:** React 19, Tailwind CSS 4 (`@import "tailwindcss"`, `@theme inline`), glassmorphism dark theme
+- **UI:** React 19, Tailwind CSS 4 (`@import "tailwindcss"`, `@theme inline`), paper journal theme with vermilion accents and LXGW WenKai handwriting
 - **Language:** TypeScript 5, `strict` mode — no `any`, no `@ts-ignore`
 - **Markdown:** `react-markdown` for rendering interpretations
 - **Tests:** Vitest 4 + Testing Library + jsdom
@@ -69,7 +69,7 @@ The app never talks to the LLM from the browser directly — requests go to `POS
 
 ### Option A — user-supplied key (default)
 
-Open **API settings** (the ⚙ control in the side navigation) and fill in:
+Open **API settings** (the configuration control in the header) and fill in:
 
 | Field | Meaning | Example |
 |---|---|---|
@@ -97,13 +97,19 @@ The rate limiter is an in-memory `Map`, so on a multi-instance or serverless dep
 
 ## How it works
 
-### Reading flow (`/reading`)
+The four navigation entries are Oracle (`/`), Daily (`/daily`), Library (`/library`), and Journal (`/history`). The old `/agent` and `/reading` URLs redirect to `/`.
+
+### Manual reading in Oracle chat (`/`)
+
+Choose **我自己抽** before sending your question:
 
 `question → spread → shuffle → draw → reveal → interpret`
 
 Cards are drawn client-side by a pure function (`lib/tarot/draw.ts`), each with a 50 % reversal chance; the prompt (`lib/api/prompts.ts`) then describes the question, spread positions, and drawn cards to the model.
 
-### Agent flow (`/agent`)
+### Automatic reading in Oracle chat (`/`)
+
+Choose **神谕选牌** before sending your question.
 
 One agent turn (`lib/agent/agentTurn.ts`) is:
 
@@ -131,16 +137,14 @@ Long-thinking models can stay silent for minutes, so the stream path is hardened
 │  ├─ api/
 │  │  ├─ interpret/route.ts   # LLM proxy: validation, fallback, rate limit, guarded SSE passthrough
 │  │  └─ config/route.ts      # reports fallback availability + rate limit to the client
-│  ├─ page.tsx                # landing
-│  ├─ reading/page.tsx        # manual reading flow
-│  ├─ agent/page.tsx          # agentic chat reading
+│  ├─ page.tsx                # oracle chat, including manual drawing
 │  ├─ daily/page.tsx          # daily card + reflection notes
 │  ├─ library/page.tsx        # 78-card browser
 │  ├─ history/                # timeline list + [id] detail page
 │  ├─ layout.tsx
 │  └─ globals.css             # theme variables, animations, 3D transforms
-├─ components/                # TarotCard, Interpretation, FollowUpPanel, ApiSettings, …
-├─ hooks/                     # useReading, useAgentChat, useApiConfig, useConfirm
+├─ components/                # OracleLetter, Composer, SpreadBoard, TarotCard, Dialog, …
+├─ hooks/                     # useAgentChat, useApiConfig, useConfirm
 ├─ lib/
 │  ├─ tarot/                  # cards, spreads, draw, daily, types, SSE parsing
 │  ├─ api/                    # prompts, stream client, stream buffer, error classification

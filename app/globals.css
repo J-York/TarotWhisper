@@ -1,954 +1,911 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════
-   Mystic Tarot — Design Tokens
-   深夜剧场 · 暖金与星蓝 · 克制的仪式感
+   神秘塔罗 · 纸本手札
+   暖白纸面 · 墨色正文 · 朱砂点睛 · 靛青是你自己写下的字
+
+   颜色一律按用途命名并经 @theme 交给 Tailwind；组件里不要写死色值。
+   默认色板已清空（--color-*: initial），误用 text-white 之类会直接失效。
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ─── 背景层 ─── */
-  --ink-void:      #040308;
-  --ink-deep:      #08060F;
-  --ink-veil:      #0E0B18;
-  --ink-surface:   #131022;
-  --ink-burgundy:  #1C0E20;
-  --ink-indigo:    #0D1226;
+  color-scheme: light;
 
-  /* ─── 分隔线 ─── */
-  --ink-line:        rgba(226, 220, 240, 0.09);
-  --ink-line-soft:   rgba(226, 220, 240, 0.05);
-  --ink-line-strong: rgba(226, 220, 240, 0.17);
+  /* ─── 纸 ─── */
+  --canvas:  #F3EDE1;   /* 页面底色 */
+  --surface: #FBF8F1;   /* 抬起的纸：信笺、弹窗、卡片 */
+  --sunken:  #EAE2D3;   /* 压下的纸：输入槽、占位、骨架 */
 
-  /* ─── 文字 · 对比度经 WCAG AA 校准（最亮面板底色下仍 ≥4.5:1）─── */
-  --bone:         #EFE9DA;
-  --bone-dim:     rgba(239, 233, 218, 0.76);
-  --bone-faint:   rgba(239, 233, 218, 0.56);
-  --bone-whisper: rgba(239, 233, 218, 0.50);
+  /* ─── 墨 · 在三种纸色上对比度均 ≥ 4.5:1 ─── */
+  --ink:       #231E19;
+  --ink-soft:  #4B433A;
+  --ink-muted: #6B6154;
 
-  /* ─── 月雾紫 ─── */
-  --mist:         rgba(178, 168, 214, 0.6);
-  --mist-faint:   rgba(178, 168, 214, 0.24);
+  /* ─── 线 ─── */
+  --line:        #DED4C3;
+  --line-strong: #C5B8A2;
 
-  /* ─── 星辰蓝 · 第二强调色 ─── */
-  --celestial:       #8B9FD4;
-  --celestial-dim:   rgba(139, 159, 212, 0.5);
-  --celestial-faint: rgba(139, 159, 212, 0.16);
-  --celestial-glow:  rgba(139, 159, 212, 0.28);
+  /* ─── 朱砂 · 全站唯一的强调色 ─── */
+  --accent:        #A63A24;
+  --accent-strong: #872C1A;
+  --accent-soft:   #F2E1D7;
 
-  /* ─── 金叶 · 主强调色 ─── */
-  --gold:         #D2B274;
-  --gold-warm:    #E3C88C;
-  --gold-pale:    #F0DEAF;
-  --gold-dim:     rgba(210, 178, 116, 0.68);
-  --gold-faint:   rgba(210, 178, 116, 0.24);
-  --gold-glow:    rgba(212, 184, 115, 0.38);
+  /* ─── 靛青 · 用户的问题与笔记 ─── */
+  --voice:      #2E4A6B;
+  --voice-soft: #E4E8EC;
 
-  --background: var(--ink-deep);
-  --foreground: var(--bone);
+  /* ─── 荧光笔 · 解读里的重点 ─── */
+  --mark: #F0DDA6;
+
+  /* ─── 牌组 ─── */
+  --suit-major:     #5A3D72;
+  --suit-wands:     #A04D1C;
+  --suit-cups:      #2D5A79;
+  --suit-swords:    #525C67;
+  --suit-pentacles: #56632A;
+
+  --shadow-paper:
+    0 1px 0 rgb(255 255 255 / 0.7) inset,
+    0 1px 2px rgb(60 42 24 / 0.06),
+    0 18px 36px -28px rgb(60 42 24 / 0.45);
+  --shadow-lift:
+    0 2px 4px rgb(60 42 24 / 0.08),
+    0 24px 48px -24px rgb(60 42 24 / 0.5);
 
   /* ─── 字体 ─── */
-  --font-display: var(--font-cinzel-decorative);
-  --font-heading: var(--font-marcellus);
-  --font-body:    var(--font-spectral);
+  --font-serif-stack:
+    var(--font-noto-serif-sc), "Songti SC", "STSong", "Noto Serif CJK SC",
+    "Source Han Serif SC", serif;
+  --font-hand-stack:
+    "LXGW WenKai Screen", var(--font-noto-serif-sc), "Kaiti SC", "STKaiti", serif;
+  --font-latin-stack:
+    var(--font-cormorant), var(--font-noto-serif-sc), "Times New Roman", serif;
 
-  /* ─── 缓动 ─── */
-  --ease-ritual: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-veil:   cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-deep:   cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-curtain: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
-  --dur-soft:   450ms;
-  --dur-veil:   950ms;
-  --dur-curtain: 1300ms;
-
-  --grain-opacity: 0.026;
-  --noise-url: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* 纸纹：极淡的暖褐噪点 */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 0.16 -0.04'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* 印泥磨损：用作印章的遮罩，留下零星的缺墨点 */
+  --seal-wear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -5 0 0 0 3.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-*: initial;
 
-  --font-sans:    var(--font-spectral);
-  --font-serif:   var(--font-spectral);
-  --font-display: var(--font-cinzel-decorative);
-  --font-heading: var(--font-marcellus);
-  --font-mono:    var(--font-geist-mono);
+  --color-canvas:  var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken:  var(--sunken);
 
-  --color-ink-void:     var(--ink-void);
-  --color-ink-deep:     var(--ink-deep);
-  --color-ink-veil:     var(--ink-veil);
-  --color-ink-surface:  var(--ink-surface);
-  --color-ink-burgundy: var(--ink-burgundy);
-  --color-ink-indigo:   var(--ink-indigo);
+  --color-ink:       var(--ink);
+  --color-ink-soft:  var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
 
-  /* 文字色一律经 @theme 交给 Tailwind 生成：手写在 @layer 外的 .text-* 会压过
-     @layer utilities 里的 hover:/group-hover: 等变体，使其全部失效 */
-  --color-bone:         var(--bone);
-  --color-bone-dim:     var(--bone-dim);
-  --color-bone-faint:   var(--bone-faint);
-  --color-bone-whisper: var(--bone-whisper);
-  --color-mist:         var(--mist);
-  --color-mist-faint:   var(--mist-faint);
-  --color-gold:         var(--gold);
-  --color-gold-warm:    var(--gold-warm);
-  --color-gold-pale:    var(--gold-pale);
-  --color-gold-dim:     var(--gold-dim);
-  --color-celestial:     var(--celestial);
-  --color-celestial-dim: var(--celestial-dim);
+  --color-line:        var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-accent:        var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft:   var(--accent-soft);
+
+  --color-voice:      var(--voice);
+  --color-voice-soft: var(--voice-soft);
+
+  --color-mark: var(--mark);
+
+  --color-suit-major:     var(--suit-major);
+  --color-suit-wands:     var(--suit-wands);
+  --color-suit-cups:      var(--suit-cups);
+  --color-suit-swords:    var(--suit-swords);
+  --color-suit-pentacles: var(--suit-pentacles);
+
+  --font-sans:  var(--font-serif-stack);
+  --font-serif: var(--font-serif-stack);
+  --font-hand:  var(--font-hand-stack);
+  --font-latin: var(--font-latin-stack);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    Base
    ═══════════════════════════════════════════════════════════════ */
 
-html, body {
-  background: var(--ink-deep);
-  color: var(--bone);
-  font-family:
-    var(--font-spectral),
-    "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC",
-    "Times New Roman", serif;
-  font-weight: 300;
-  font-feature-settings: "liga" 1, "kern" 1;
-  letter-spacing: 0.01em;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer base {
+  html {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-serif-stack);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-body { overflow-x: hidden; }
+  body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    line-height: 1.7;
+    background-image: var(--paper-grain);
+    background-size: 240px 240px;
+  }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family:
-    var(--font-marcellus),
-    "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC",
-    serif;
-  font-weight: 400;
-  letter-spacing: 0.03em;
-}
+  h1, h2, h3, h4 {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-wrap: balance;
+  }
 
-/* 背景氛围：深空渐变 · 顶部星图靛蓝 + 中央烛金 + 底部紫红 */
-.bg-vignette {
-  background:
-    radial-gradient(ellipse 90% 50% at 50% -5%,
-      rgba(13, 18, 38, 0.7) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 50% at 50% 35%,
-      rgba(210, 178, 116, 0.035) 0%, transparent 55%),
-    radial-gradient(ellipse 120% 70% at 50% 115%,
-      rgba(28, 14, 32, 0.5) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 90% at -5% 50%,
-      rgba(13, 18, 38, 0.4) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 90% at 105% 50%,
-      rgba(28, 14, 32, 0.35) 0%, transparent 55%);
-}
+  p { text-wrap: pretty; }
 
-/* 颗粒噪点覆层 */
-.grain-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: var(--grain-opacity);
-  background-image: var(--noise-url);
-  background-size: 180px 180px;
-  mix-blend-mode: overlay;
+  ::selection {
+    background: var(--mark);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar          { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track    { background: transparent; }
+  ::-webkit-scrollbar-thumb    {
+    background: var(--line-strong);
+    border: 2px solid var(--canvas);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   App shell · 页面骨架
-   ═══════════════════════════════════════════════════════════════ */
-
-.page-container {
-  width: 100%;
-  max-width: 72rem;
-  margin-inline: auto;
-  padding-inline: 1.25rem;
-}
-@media (min-width: 768px) {
-  .page-container { padding-inline: 2rem; }
-}
-
-.page-main {
-  min-height: calc(100dvh - 4rem);
-  padding-block: 2.5rem 5rem;
-}
-@media (min-width: 768px) {
-  .page-main { padding-block: 3.5rem 6rem; }
-}
-
-.eyebrow {
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.6875rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgba(210, 178, 116, 0.9);
-}
-
-.page-title {
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: clamp(1.9rem, 4.5vw, 2.75rem);
-  line-height: 1.2;
-  letter-spacing: 0.02em;
-  color: var(--bone);
-  font-weight: 400;
-}
-
-.section-title {
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 1.0625rem;
-  letter-spacing: 0.06em;
-  color: var(--bone);
-}
-
-.surface {
-  background:
-    linear-gradient(180deg, rgba(24, 20, 40, 0.82) 0%, rgba(15, 12, 26, 0.9) 100%);
-  border: 1px solid var(--ink-line);
-  border-radius: 1rem;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 20px 44px -28px rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(10px);
-}
-
-.surface-soft {
-  background: rgba(20, 16, 34, 0.5);
-  border: 1px solid var(--ink-line);
-  border-radius: 0.875rem;
-  backdrop-filter: blur(8px);
-}
-
-.nav-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  height: 2.25rem;
-  padding-inline: 0.9rem;
-  border-radius: 999px;
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.875rem;
-  letter-spacing: 0.08em;
-  color: var(--bone-faint);
-  transition: color 250ms var(--ease-ritual), background 250ms var(--ease-ritual);
-}
-.nav-link:hover { color: var(--bone); background: rgba(255, 255, 255, 0.05); }
-.nav-link-active {
-  color: var(--gold-warm);
-  background: rgba(210, 178, 116, 0.1);
-}
-
-/* 中文标签 · 仅少量遗留使用 */
-.cn-nav {
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.8125rem;
-  letter-spacing: 0.12em;
-}
-
-/* 字体类 */
-.font-display { font-family: var(--font-cinzel-decorative), "Songti SC", "STSong", serif; }
-.font-heading { font-family: var(--font-marcellus), "Songti SC", "STSong", serif; }
-.font-body    { font-family: var(--font-spectral), "Songti SC", "STSong", serif; }
-
-/* 极细分隔线 */
-.rule-h-fade {
-  height: 1px;
-  background: linear-gradient(to right,
-    transparent,
-    var(--bone-whisper) 40%,
-    var(--bone-whisper) 60%,
-    transparent);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Buttons · 仪式触发器
+   Components
    ═══════════════════════════════════════════════════════════════ */
 
 @layer components {
+  /* ─── 版心 ─── */
 
-.btn-ink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--ink-line-strong);
-  color: var(--bone);
-  border-radius: 999px;
-  transition:
-    border-color 250ms var(--ease-ritual),
-    color 250ms var(--ease-ritual),
-    background 250ms var(--ease-ritual),
-    box-shadow 250ms var(--ease-ritual),
-    transform 250ms var(--ease-ritual);
-  letter-spacing: 0.08em;
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.9375rem;
-  font-weight: 400;
-  position: relative;
-  cursor: pointer;
+  .page-container {
+    width: 100%;
+    max-width: 72rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  .page-main {
+    padding-block: 2rem 5rem;
+  }
+
+  @media (min-width: 768px) {
+    .page-container { padding-inline: 2.5rem; }
+    .page-main { padding-block: 3rem 6rem; }
+  }
+
+  /* ─── 标题与小标签 ─── */
+
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+  .kicker::before {
+    content: '';
+    width: 1.25rem;
+    height: 1px;
+    background: currentColor;
+  }
+
+  .page-title {
+    font-size: clamp(1.875rem, 4.6vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+  }
+
+  /* ─── 按钮 ─── */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color 180ms var(--ease-out),
+      border-color 180ms var(--ease-out),
+      color 180ms var(--ease-out),
+      transform 120ms var(--ease-out);
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent-strong);
+    color: var(--surface);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 8px 16px -12px rgb(135 44 26 / 0.9);
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-strong); }
+
+  .btn-secondary {
+    background: var(--surface);
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--ink-muted);
+    color: var(--ink);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    padding-inline: 0.625rem;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ─── 纸面 ─── */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-paper);
+  }
+
+  .panel-sunken {
+    background: color-mix(in oklab, var(--sunken) 65%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+  }
+
+  /* ─── 输入 ─── */
+
+  .field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 0.375rem;
+    padding: 0.625rem 0.75rem;
+    color: var(--ink);
+    transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+  .field::placeholder,
+  .field-bare::placeholder {
+    color: var(--ink-muted);
+  }
+
+  .field-bare {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: var(--ink);
+  }
+  .field-bare:focus,
+  .field-bare:focus-visible { outline: none; }
+
+  /* 输入框与按钮组合在一起时的外壳 */
+  .field-shell {
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 0.5rem;
+    transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+  }
+  .field-shell:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+
+  /* 横格信纸：行高与格线同步，文字落在线上 */
+  .ruled {
+    --rule-gap: 2.25rem;
+    line-height: var(--rule-gap);
+    background-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--rule-gap) - 1px),
+      var(--line) calc(var(--rule-gap) - 1px)
+    );
+    background-size: 100% var(--rule-gap);
+    background-attachment: local;
+  }
+
+  /* ─── 小件 ─── */
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 0.8125rem;
+    color: var(--ink-soft);
+    transition: border-color 180ms var(--ease-out), color 180ms var(--ease-out);
+  }
+  button.chip { cursor: pointer; }
+  button.chip:hover:not(:disabled),
+  .chip[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--accent) 35%, transparent);
+    text-underline-offset: 0.25em;
+    transition: text-decoration-color 180ms var(--ease-out);
+    cursor: pointer;
+  }
+  .link:hover { text-decoration-color: var(--accent); }
+
+  .rule-double {
+    height: 4px;
+    border-top: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* 用户自己写下的内容前的小方框标签 */
+  .voice-label {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding-inline: 0.25rem;
+    border: 1px solid color-mix(in oklab, var(--voice) 45%, transparent);
+    border-radius: 3px;
+    font-size: 0.8125rem;
+    color: var(--voice);
+  }
+
+  /* ─── 印章 ─── */
+
+  .seal {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    background: var(--accent);
+    color: var(--surface);
+    font-family: var(--font-serif-stack);
+    font-weight: 900;
+    line-height: 1;
+    border-radius: 3px;
+    box-shadow:
+      inset 0 0 0 2px var(--accent),
+      inset 0 0 0 3px color-mix(in oklab, var(--surface) 75%, transparent);
+    -webkit-mask-image: var(--seal-wear);
+    mask-image: var(--seal-wear);
+    -webkit-mask-size: 120px 120px;
+    mask-size: 120px 120px;
+    transform: rotate(-4deg);
+  }
+
+  /* ─── 牌面图版 · 静态展示 ─── */
+
+  .plate {
+    position: relative;
+    overflow: hidden;
+    border-radius: 5px;
+    background: var(--sunken);
+    box-shadow:
+      0 0 0 1px rgb(35 30 25 / 0.14),
+      0 10px 22px -16px rgb(60 42 24 / 0.65);
+  }
+
+  /* ─── 牌阵示意 ─── */
+
+  .spread-mini {
+    display: grid;
+    place-items: center;
+    height: 4.5rem;
+    border-radius: 0.375rem;
+    background: color-mix(in oklab, var(--sunken) 70%, transparent);
+  }
+  .spread-mini-card {
+    width: 0.75rem;
+    height: 1.125rem;
+    border: 1px solid var(--ink-muted);
+    border-radius: 2px;
+    background: var(--surface);
+  }
+  .spread-mini-card--cross {
+    transform: rotate(90deg);
+    margin-inline: -0.375rem;
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+
+  /* ─── 弹窗 ─── */
+
+  .dialog-backdrop {
+    background: rgb(35 30 25 / 0.38);
+    backdrop-filter: blur(2px);
+  }
+
+  /* ─── 骨架 ─── */
+
+  .skeleton {
+    background: var(--sunken);
+    border-radius: 0.25rem;
+    animation: skeleton-pulse 1.8s var(--ease-in-out) infinite;
+  }
+
+  /* ─── 日历撕页的穿孔边 ─── */
+
+  .perforation {
+    height: 0.875rem;
+    background:
+      radial-gradient(circle, var(--canvas) 0 3px, transparent 3.5px) center / 16px 14px repeat-x;
+    border-bottom: 1px dashed var(--line-strong);
+  }
 }
-
-.btn-ink:hover:not(:disabled) {
-  border-color: var(--gold-dim);
-  color: var(--gold-warm);
-  background: rgba(210, 178, 116, 0.08);
-}
-
-.btn-ink:active:not(:disabled) { transform: translateY(1px); }
-
-.btn-ink:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-ink-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: linear-gradient(180deg, #E3C88C 0%, #D2B274 55%, #BE9A57 100%);
-  border: 1px solid rgba(240, 222, 175, 0.6);
-  color: #241B0C;
-  border-radius: 999px;
-  transition:
-    filter 250ms var(--ease-ritual),
-    box-shadow 250ms var(--ease-ritual),
-    transform 250ms var(--ease-ritual);
-  letter-spacing: 0.08em;
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.35) inset,
-    0 10px 24px -14px rgba(210, 178, 116, 0.8);
-}
-
-/* 金箔扫光 · hover 时从左至右 */
-.btn-ink-primary::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(105deg,
-    transparent 0%,
-    rgba(255, 250, 235, 0.35) 50%,
-    transparent 100%);
-  transition: left 700ms var(--ease-veil);
-  pointer-events: none;
-}
-
-.btn-ink-primary:hover:not(:disabled) {
-  filter: brightness(1.06);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.4) inset,
-    0 14px 30px -12px rgba(210, 178, 116, 0.85);
-}
-
-.btn-ink-primary:hover:not(:disabled)::before { left: 100%; }
-
-.btn-ink-primary:active:not(:disabled) { transform: translateY(1px); }
-
-.btn-ink-primary:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  filter: grayscale(0.4);
-}
-
-.btn-ink-ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: transparent;
-  border: none;
-  color: var(--bone-faint);
-  transition: color 250ms var(--ease-ritual), background 250ms var(--ease-ritual);
-  letter-spacing: 0.06em;
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.875rem;
-  border-radius: 999px;
-  cursor: pointer;
-  padding: 0.35rem 0.75rem;
-}
-
-.btn-ink-ghost:hover:not(:disabled) {
-  color: var(--gold-warm);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.btn-ink-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
-
-} /* end @layer components */
 
 /* ═══════════════════════════════════════════════════════════════
-   Inputs
+   Letter · 神谕的回信（Markdown 正文）
    ═══════════════════════════════════════════════════════════════ */
 
-.input-ink {
-  background: rgba(10, 8, 18, 0.6);
-  border: 1px solid var(--ink-line-strong);
-  border-radius: 0.625rem;
-  color: var(--bone);
-  padding: 0.75rem 0.875rem;
-  transition: border-color 200ms var(--ease-ritual),
-              background 200ms var(--ease-ritual),
-              box-shadow 200ms var(--ease-ritual);
-  width: 100%;
-  font-family: var(--font-spectral), "Songti SC", serif;
-}
+@layer components {
+  .letter {
+    font-family: var(--font-hand-stack);
+    font-size: 1.0625rem;
+    line-height: 1.95;
+    color: var(--ink);
+    overflow-wrap: break-word;
+  }
+  @media (min-width: 768px) {
+    .letter { font-size: 1.125rem; }
+  }
 
-.input-ink:focus {
-  outline: none;
-  border-color: var(--gold-dim);
-  background: rgba(10, 8, 18, 0.85);
-  box-shadow: 0 0 0 3px rgba(210, 178, 116, 0.12);
-}
+  .letter > * + * { margin-top: 0.9em; }
+  .letter > :first-child { margin-top: 0; }
 
-.input-ink::placeholder {
-  color: var(--bone-whisper);
-  font-style: italic;
-}
+  .letter h1,
+  .letter h2,
+  .letter h3,
+  .letter h4 {
+    font-family: var(--font-serif-stack);
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+  }
+  .letter > h1,
+  .letter > h2,
+  .letter > h3,
+  .letter > h4 { margin-top: 1.8em; }
+  .letter > :is(h1, h2, h3, h4):first-child { margin-top: 0; }
+  .letter h1 { font-size: 1.3em; }
+  .letter h2 { font-size: 1.12em; }
+  .letter h2::before {
+    content: '';
+    display: inline-block;
+    width: 0.4em;
+    height: 0.4em;
+    margin-right: 0.6em;
+    background: var(--accent);
+    transform: rotate(45deg);
+    vertical-align: 0.2em;
+  }
+  .letter h3 { font-size: 1.02em; }
+  .letter h4 { font-size: 0.95em; color: var(--ink-soft); }
 
-.input-ink-bare {
-  background: transparent;
-  border: none;
-  color: var(--bone);
-  font-family: var(--font-spectral), "Songti SC", serif;
-  border-radius: 0;
-}
+  /* 楷体只有一个字重，加粗会被合成得发糊，改用荧光笔划线 */
+  .letter strong {
+    font-weight: inherit;
+    background-image: linear-gradient(
+      transparent 58%,
+      var(--mark) 58%,
+      var(--mark) 92%,
+      transparent 92%
+    );
+    padding-inline: 0.08em;
+  }
+  .letter :is(h1, h2, h3, h4) strong { background-image: none; padding: 0; }
 
-.input-ink-bare:focus {
-  outline: none;
-}
+  /* 中文不用斜体，用着重号 */
+  .letter em {
+    font-style: normal;
+    -webkit-text-emphasis: filled dot var(--accent);
+    text-emphasis: filled dot var(--accent);
+    -webkit-text-emphasis-position: under right;
+    text-emphasis-position: under right;
+  }
 
-.input-ink-bare::placeholder {
-  color: var(--bone-whisper);
-  font-style: italic;
-}
+  .letter ul { list-style: none; padding-left: 0; }
+  .letter ul > li {
+    position: relative;
+    padding-left: 1.25em;
+  }
+  .letter ul > li::before {
+    content: '';
+    position: absolute;
+    left: 0.3em;
+    top: 0.8em;
+    width: 0.36em;
+    height: 0.36em;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .letter ol { list-style: decimal; padding-left: 1.5em; }
+  .letter ol > li::marker {
+    color: var(--accent);
+    font-family: var(--font-latin-stack);
+    font-weight: 600;
+  }
+  .letter li + li { margin-top: 0.35em; }
+  .letter li > ul,
+  .letter li > ol { margin-top: 0.35em; }
 
-/* 文本框焦点环 · 用于 chat/textarea 容器 */
-.field-shell {
-  border: 1px solid var(--ink-line-strong);
-  border-radius: 0.875rem;
-  background: rgba(10, 8, 18, 0.55);
-  transition: border-color 200ms var(--ease-ritual), box-shadow 200ms var(--ease-ritual);
-}
-.field-shell:focus-within {
-  border-color: var(--gold-dim);
-  box-shadow: 0 0 0 3px rgba(210, 178, 116, 0.1);
+  .letter blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.1em 0 0.1em 1em;
+    color: var(--ink-soft);
+  }
+
+  .letter hr {
+    width: 3.6em;
+    height: 1.5em;
+    margin: 1.6em auto;
+    border: 0;
+    background: radial-gradient(circle, var(--line-strong) 0 1.5px, transparent 2px) center / 1.2em 100% repeat-x;
+  }
+
+  .letter a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .letter code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85em;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    background: var(--sunken);
+  }
+
+  .letter-quiet {
+    font-size: 0.9375rem;
+    line-height: 1.85;
+    color: var(--ink-soft);
+  }
+
+  /* ─── 牌名与阵位 ─── */
+
+  .mention-card {
+    position: relative;
+    color: var(--accent-strong);
+    background-image: linear-gradient(
+      transparent 64%,
+      color-mix(in oklab, var(--accent) 16%, transparent) 64%
+    );
+    cursor: help;
+    outline: none;
+  }
+  .mention-preview {
+    display: none;
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 0.375rem);
+    z-index: 30;
+    width: 5.75rem;
+    padding: 0.25rem 0.25rem 0.375rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.25rem;
+    background: var(--surface);
+    box-shadow: var(--shadow-lift);
+    pointer-events: none;
+    text-align: center;
+    font-family: var(--font-serif-stack);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+  .mention-card:hover .mention-preview,
+  .mention-card:focus .mention-preview {
+    display: block;
+    animation: fade 160ms var(--ease-out);
+  }
+
+  .mention-position {
+    color: var(--voice);
+    text-decoration: underline dotted;
+    text-decoration-color: color-mix(in oklab, var(--voice) 55%, transparent);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.28em;
+  }
+
+  /* 流式输出时的笔尖 */
+  .ink-caret {
+    display: inline-block;
+    width: 0.42em;
+    height: 0.42em;
+    margin-left: 0.3em;
+    border-radius: 50%;
+    background: var(--accent);
+    vertical-align: 0.1em;
+    animation: ink-pulse 1.1s var(--ease-in-out) infinite;
+  }
+
+  /* 历史回看时逐段浮现 */
+  .letter-reveal > * {
+    animation: rise 520ms var(--ease-out) both;
+  }
+  .letter-reveal > *:nth-child(2) { animation-delay: 70ms; }
+  .letter-reveal > *:nth-child(3) { animation-delay: 140ms; }
+  .letter-reveal > *:nth-child(4) { animation-delay: 210ms; }
+  .letter-reveal > *:nth-child(5) { animation-delay: 280ms; }
+  .letter-reveal > *:nth-child(n+6) { animation-delay: 350ms; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Animations
+   Tarot card · 翻牌
    ═══════════════════════════════════════════════════════════════ */
 
-@keyframes fade-in {
+@layer components {
+  .card-scene { perspective: 1400px; }
+
+  .card-tilt {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 500ms var(--ease-out);
+  }
+  .card-tilt.is-tracking { transition: transform 100ms linear; }
+
+  .card-flipper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 800ms var(--ease-in-out);
+  }
+  .card-flipper.is-flipped { transform: rotateY(180deg); }
+
+  .card-side {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 5px;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  .card-front {
+    transform: rotateY(180deg);
+    background: var(--sunken);
+    box-shadow:
+      0 0 0 1px rgb(35 30 25 / 0.14),
+      0 12px 24px -18px rgb(60 42 24 / 0.75);
+  }
+  .card-front.is-reversed { transform: rotateY(180deg) rotate(180deg); }
+
+  /* 背面：米色卡纸 + 朱砂斜格 + 双线框 */
+  .card-back {
+    background-color: var(--surface);
+    background-image:
+      repeating-linear-gradient(45deg, rgb(166 58 36 / 0.15) 0 1px, transparent 1px 8px),
+      repeating-linear-gradient(-45deg, rgb(166 58 36 / 0.15) 0 1px, transparent 1px 8px);
+    box-shadow:
+      inset 0 0 0 1px var(--line-strong),
+      0 10px 22px -16px rgb(60 42 24 / 0.65);
+    transition: box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out);
+  }
+  .card-back::before,
+  .card-back::after {
+    content: '';
+    position: absolute;
+    border-radius: 3px;
+    pointer-events: none;
+  }
+  .card-back::before { inset: 5px; border: 1px solid rgb(166 58 36 / 0.55); }
+  .card-back::after  { inset: 8px; border: 1px solid rgb(166 58 36 / 0.22); }
+
+  .card-medallion {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 46%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 0 0 1px rgb(166 58 36 / 0.55), 0 0 0 4px var(--surface), 0 0 0 5px rgb(166 58 36 / 0.22);
+    color: var(--accent);
+  }
+
+  /* 可点击的背面 */
+  .card-clickable .card-back { cursor: pointer; }
+  .card-clickable:hover .card-back {
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      0 14px 26px -16px rgb(60 42 24 / 0.75);
+  }
+
+  /* 下一张该翻的牌 */
+  .card-next .card-back {
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      0 0 0 3px var(--canvas),
+      0 0 0 5px var(--accent),
+      0 14px 26px -16px rgb(60 42 24 / 0.75);
+  }
+
+  /* 翻开瞬间扫过一道纸面反光 */
+  .card-sheen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .card-sheen.is-active::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    left: -70%;
+    width: 50%;
+    height: 180%;
+    background: linear-gradient(105deg, transparent, rgb(255 255 255 / 0.5), transparent);
+    animation: sheen 900ms var(--ease-out) 360ms both;
+  }
+
+  /* ─── 洗牌 ─── */
+
+  .deck-card {
+    position: absolute;
+    inset: 0;
+    border-radius: 5px;
+  }
+  .is-shuffling .deck-card:nth-child(odd)  { animation: riffle-left 700ms var(--ease-in-out) 2; }
+  .is-shuffling .deck-card:nth-child(even) { animation: riffle-right 700ms var(--ease-in-out) 2; }
+  .is-shuffling .deck-card:nth-child(2) { animation-delay: 60ms; }
+  .is-shuffling .deck-card:nth-child(3) { animation-delay: 120ms; }
+  .is-shuffling .deck-card:nth-child(4) { animation-delay: 180ms; }
+  .is-shuffling .deck-card:nth-child(5) { animation-delay: 240ms; }
+
+  /* ─── 凯尔特十字 ─── */
+
+  .celtic-cross-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.75rem 0.75rem;
+    /* 顶端对齐：中间格里挑战牌的说明多占一段高度，居中会让同排的牌上下错开 */
+    align-items: start;
+    justify-items: center;
+  }
+  .celtic-pos-0 { grid-area: 2 / 2; }
+  .celtic-pos-1 { grid-area: 2 / 2; }
+  .celtic-pos-2 { grid-area: 2 / 1; }
+  .celtic-pos-3 { grid-area: 2 / 3; }
+  .celtic-pos-4 { grid-area: 1 / 2; }
+  .celtic-pos-5 { grid-area: 3 / 2; }
+  .celtic-pos-6 { grid-area: 4 / 1; }
+  .celtic-pos-7 { grid-area: 4 / 3; }
+  .celtic-pos-8 { grid-area: 5 / 1; }
+  .celtic-pos-9 { grid-area: 5 / 3; }
+
+  /* 十字三排、权杖四张共用 12 条等高细轨：十字每张占 4 条，权杖每张占 3 条，两边一样高。
+     列宽要容得下横放的挑战牌，不压到左右两张 */
+  @media (min-width: 768px) {
+    .celtic-cross-grid {
+      grid-template-columns: repeat(3, 8rem) 2rem 8rem;
+      grid-template-rows: repeat(12, minmax(0, 1fr));
+      gap: 0.75rem 1rem;
+      justify-content: center;
+    }
+    .celtic-pos-0 { grid-area: 5 / 2 / span 4; }
+    .celtic-pos-1 { grid-area: 5 / 2 / span 4; }
+    .celtic-pos-2 { grid-area: 5 / 1 / span 4; }
+    .celtic-pos-3 { grid-area: 5 / 3 / span 4; }
+    .celtic-pos-4 { grid-area: 1 / 2 / span 4; }
+    .celtic-pos-5 { grid-area: 9 / 2 / span 4; }
+    .celtic-pos-6 { grid-area: 10 / 5 / span 3; }
+    .celtic-pos-7 { grid-area: 7 / 5 / span 3; }
+    .celtic-pos-8 { grid-area: 4 / 5 / span 3; }
+    .celtic-pos-9 { grid-area: 1 / 5 / span 3; }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Motion · 只在翻牌、洗牌、盖印、进入时出现
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes fade {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-@keyframes veil-rise {
-  from { opacity: 0; transform: translateY(14px); filter: blur(3px); }
-  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
 
-@keyframes whisper {
-  0%, 100% { opacity: 0.35; }
+@keyframes stamp {
+  0%   { opacity: 0; transform: scale(1.6) rotate(-14deg); }
+  55%  { opacity: 1; transform: scale(0.94) rotate(-3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-4deg); }
+}
+
+@keyframes ink-pulse {
+  0%, 100% { opacity: 0.25; }
   50%      { opacity: 1; }
 }
-
-/* 月相旋转 · 极慢 */
-@keyframes lunar-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.anim-fade-in   { animation: fade-in     var(--dur-veil) var(--ease-veil) forwards; }
-.anim-veil-rise { animation: veil-rise   var(--dur-veil) var(--ease-veil) forwards; }
-.anim-whisper   { animation: whisper 4s var(--ease-deep) infinite; }
-.anim-lunar     { animation: lunar-spin 120s linear infinite; }
-
-/* ═══════════════════════════════════════════════════════════════
-   3D Tarot Card · 翻牌仪式
-   ═══════════════════════════════════════════════════════════════ */
-
-.perspective-1000   { perspective: 1400px; }
-.transform-style-3d { transform-style: preserve-3d; }
-.backface-hidden    { backface-visibility: hidden; }
-.rotate-y-180       { transform: rotateY(180deg); }
-
-.card-flip {
-  transition: transform 850ms var(--ease-curtain);
-}
-
-/* 牌面光晕 · 揭示后的金色辉光 */
-.card-revealed-halo {
-  box-shadow:
-    0 0 0 0.5px var(--gold-dim),
-    0 0 32px -8px var(--gold-glow),
-    0 0 80px -32px var(--gold-glow),
-    0 20px 40px -20px rgba(4, 3, 8, 0.9);
-  transition: box-shadow var(--dur-veil) var(--ease-veil);
-}
-
-/* 视差追踪 */
-.card-parallax {
-  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transition: transform 600ms var(--ease-veil);
-  will-change: transform;
-}
-.card-parallax.is-tracking {
-  transition: transform 120ms linear;
-}
-
-/* 翻牌时的金箔反光 · 一次性扫过 */
-.card-shimmer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  opacity: 0;
-}
-.card-shimmer.is-active {
-  animation: shimmer-sweep 1300ms var(--ease-veil) forwards;
-}
-.card-shimmer::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -75%;
-  width: 60%;
-  height: 200%;
-  background: linear-gradient(
-    115deg,
-    transparent 0%,
-    transparent 35%,
-    rgba(240, 222, 175, 0.14) 46%,
-    rgba(210, 178, 116, 0.22) 50%,
-    rgba(239, 233, 218, 0.3) 52%,
-    rgba(210, 178, 116, 0.22) 54%,
-    rgba(240, 222, 175, 0.14) 58%,
-    transparent 70%,
-    transparent 100%
-  );
-  transform: translateX(0);
-}
-.card-shimmer.is-active::before {
-  animation: shimmer-translate 1300ms var(--ease-veil) forwards;
-}
-
-@keyframes shimmer-sweep {
-  0%   { opacity: 0; }
-  15%  { opacity: 1; }
-  85%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-@keyframes shimmer-translate {
-  from { transform: translateX(0)    skewX(-8deg); }
-  to   { transform: translateX(320%) skewX(-8deg); }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Celtic Cross Grid · 凯尔特十字空间布局
-   ═══════════════════════════════════════════════════════════════ */
-
-.celtic-cross-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.75rem 0.375rem;
-  align-items: center;
-  justify-items: center;
-  padding: 1.5rem 0;
-}
-
-.celtic-pos-0 { grid-area: 2 / 2; }
-.celtic-pos-1 { grid-area: 2 / 2; }
-.celtic-pos-2 { grid-area: 2 / 1; }
-.celtic-pos-3 { grid-area: 2 / 3; }
-.celtic-pos-4 { grid-area: 1 / 2; }
-.celtic-pos-5 { grid-area: 3 / 2; }
-.celtic-pos-6 { grid-area: 4 / 1; }
-.celtic-pos-7 { grid-area: 4 / 3; }
-.celtic-pos-8 { grid-area: 5 / 1; }
-.celtic-pos-9 { grid-area: 5 / 3; }
-
-@media (min-width: 768px) {
-  .celtic-cross-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 1.5rem 2rem;
-    padding: 2rem 0;
-  }
-  .celtic-pos-0 { grid-area: 3 / 3; }
-  .celtic-pos-1 { grid-area: 3 / 3; }
-  .celtic-pos-2 { grid-area: 3 / 1; }
-  .celtic-pos-3 { grid-area: 3 / 5; }
-  .celtic-pos-4 { grid-area: 1 / 3; }
-  .celtic-pos-5 { grid-area: 5 / 3; }
-  .celtic-pos-6 { grid-area: 5 / 7; }
-  .celtic-pos-7 { grid-area: 4 / 7; }
-  .celtic-pos-8 { grid-area: 2 / 7; }
-  .celtic-pos-9 { grid-area: 1 / 7; }
-}
-
-.celtic-cross-cell {
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Scrollbar
-   ═══════════════════════════════════════════════════════════════ */
-
-::-webkit-scrollbar          { width: 4px; height: 4px; }
-::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: var(--ink-line-strong); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--bone-whisper); }
-
-::selection {
-  background: var(--gold-faint);
-  color: var(--bone);
-}
-
-:focus-visible {
-  outline: 1px solid var(--gold-dim);
-  outline-offset: 2px;
-}
-
-:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Interpretation · 解读正文
-   ═══════════════════════════════════════════════════════════════ */
-
-/* 流式光标 · 缓慢闪烁如蜡烛 */
-.interpretation-content .streaming-cursor {
-  display: inline-block;
-  width: 0.3rem;
-  height: 1.1em;
-  background-color: var(--gold);
-  margin-left: 0.3rem;
-  vertical-align: text-bottom;
-  animation: cursor-pulse 1.4s var(--ease-deep) infinite;
-  box-shadow: 0 0 10px var(--gold-glow);
-}
-
-@keyframes cursor-pulse {
-  0%, 45%   { opacity: 1; }
-  55%, 100% { opacity: 0; }
-}
-
-/* 历史重现时段落逐一揭幕 */
-.interpretation-reveal > * {
-  opacity: 0;
-  animation: veil-rise var(--dur-veil) var(--ease-veil) forwards;
-}
-.interpretation-reveal > *:nth-child(1)  { animation-delay:  60ms; }
-.interpretation-reveal > *:nth-child(2)  { animation-delay: 180ms; }
-.interpretation-reveal > *:nth-child(3)  { animation-delay: 300ms; }
-.interpretation-reveal > *:nth-child(4)  { animation-delay: 420ms; }
-.interpretation-reveal > *:nth-child(5)  { animation-delay: 540ms; }
-.interpretation-reveal > *:nth-child(6)  { animation-delay: 660ms; }
-.interpretation-reveal > *:nth-child(7)  { animation-delay: 780ms; }
-.interpretation-reveal > *:nth-child(8)  { animation-delay: 900ms; }
-.interpretation-reveal > *:nth-child(n+9){ animation-delay: 1020ms; }
-
-/* 流式过程中保持稳定 */
-.interpretation-streaming {
-  animation: fade-in var(--dur-soft) var(--ease-veil);
-}
-
-/* 关键词描边小标签 · 牌名 / 阵位名自动高亮 */
-.glyph-card,
-.glyph-position {
-  display: inline-block;
-  padding: 0.05em 0.45em;
-  margin: 0 0.08em;
-  color: var(--gold-warm);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 0.5px var(--gold-faint);
-  background: rgba(210, 178, 116, 0.08);
-}
-.glyph-position {
-  color: var(--celestial);
-  box-shadow: inset 0 0 0 0.5px var(--celestial-faint);
-  background: rgba(139, 159, 212, 0.08);
-}
-
-/* 仪式封印 · 解读完成后底部金色圆印 */
-.sigil-seal {
-  position: relative;
-  width: 56px;
-  height: 56px;
-  margin: 2rem auto 0;
-  opacity: 0;
-  transform: scale(0.7) rotate(-12deg);
-  animation: sigil-stamp 1200ms var(--ease-veil) 200ms forwards;
-}
-.sigil-seal::before,
-.sigil-seal::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 0.5px solid var(--gold-dim);
-  border-radius: 50%;
-}
-.sigil-seal::after {
-  inset: 6px;
-  border-color: var(--gold-faint);
-}
-.sigil-seal > .sigil-glyph {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gold);
-  font-family: var(--font-marcellus), serif;
-  font-size: 1rem;
-  text-shadow: 0 0 14px var(--gold-glow);
-}
-.sigil-seal > .sigil-ring-tick {
-  position: absolute;
-  width: 4px;
-  height: 1px;
-  background: var(--gold-dim);
-  left: 50%;
-  top: 50%;
-  transform-origin: 0 50%;
-}
-
-@keyframes sigil-stamp {
-  0%   { opacity: 0; transform: scale(0.7) rotate(-12deg); filter: blur(4px); }
-  60%  { opacity: 1; transform: scale(1.04) rotate(1deg); filter: blur(0); }
-  100% { opacity: 1; transform: scale(1) rotate(0deg);    filter: blur(0); }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Skeletons · 骨架屏
-   ═══════════════════════════════════════════════════════════════ */
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.55; }
+  0%, 100% { opacity: 0.6; }
   50%      { opacity: 1; }
 }
 
-@keyframes skeleton-shimmer {
-  0%   { transform: translateX(-110%); }
-  100% { transform: translateX(110%); }
+@keyframes sheen {
+  from { transform: translateX(0); }
+  to   { transform: translateX(420%); }
 }
 
-.skeleton-base {
-  position: relative;
-  background: var(--ink-veil);
-  box-shadow: inset 0 0 0 0.5px var(--ink-line);
-  overflow: hidden;
-  animation: skeleton-pulse 2.4s var(--ease-deep) infinite;
-  will-change: opacity;
+@keyframes riffle-left {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  35%      { transform: translate(-46%, -4%) rotate(-8deg); }
+  65%      { transform: translate(-8%, 2%) rotate(-2deg); }
 }
 
-.skeleton-base::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    transparent 38%,
-    rgba(212, 184, 115, 0.06) 50%,
-    transparent 62%,
-    transparent 100%
-  );
-  animation: skeleton-shimmer 2.6s var(--ease-deep) infinite;
-  pointer-events: none;
+@keyframes riffle-right {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  35%      { transform: translate(46%, -2%) rotate(7deg); }
+  65%      { transform: translate(8%, 2%) rotate(2deg); }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Reading flow · 步骤与牌阵示意
-   ═══════════════════════════════════════════════════════════════ */
-
-.step-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 1.75rem;
-  padding-inline: 0.7rem;
-  border-radius: 999px;
-  font-family: var(--font-marcellus), "Songti SC", "STSong", serif;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  color: var(--bone-whisper);
-  border: 1px solid transparent;
-  transition: all 250ms var(--ease-ritual);
+@layer utilities {
+  .anim-rise  { animation: rise 520ms var(--ease-out) both; }
+  .anim-fade  { animation: fade 400ms var(--ease-out) both; }
+  .anim-stamp { animation: stamp 700ms var(--ease-out) 150ms both; }
+  .anim-pulse { animation: ink-pulse 1.4s var(--ease-in-out) infinite; }
 }
-.step-pill--done { color: var(--gold-dim); }
-.step-pill--active {
-  color: var(--gold-warm);
-  border-color: var(--gold-faint);
-  background: rgba(210, 178, 116, 0.09);
-}
-
-/* 牌阵缩略示意图 */
-.spread-mini {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: 5.5rem;
-  border-radius: 0.75rem;
-  background:
-    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(210, 178, 116, 0.09), transparent 75%);
-  border: 1px dashed var(--ink-line-strong);
-  transition: border-color 250ms var(--ease-ritual);
-}
-.group:hover .spread-mini,
-.group[aria-pressed='true'] .spread-mini {
-  border-color: var(--gold-faint);
-}
-.spread-mini-card {
-  width: 0.8rem;
-  height: 1.25rem;
-  border: 1px solid var(--gold-dim);
-  border-radius: 2px;
-  background: rgba(210, 178, 116, 0.12);
-}
-.spread-mini-card--major {
-  width: 1rem;
-  height: 1.5rem;
-}
-
-/* 画廊网格 · library 用 */
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 1.5rem 0.75rem;
-}
-@media (min-width: 480px) {
-  .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
-    gap: 1.75rem 1rem;
-  }
-}
-@media (min-width: 768px) {
-  .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
-    gap: 2.25rem 1.5rem;
-  }
-}
-@media (min-width: 1280px) {
-  .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  }
-}
-
-/* 对话气泡 · 追问 / 用户发言 */
-.chat-bubble-user {
-  background: rgba(139, 159, 212, 0.09);
-  border: 1px solid rgba(139, 159, 212, 0.22);
-  border-radius: 0.875rem;
-  backdrop-filter: blur(8px);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Ambient field · 环境氛围层
-   ═══════════════════════════════════════════════════════════════ */
-
-/* 烛火光晕 · 跟随鼠标 */
-.candle-aura {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(
-      480px circle at var(--mx, 50%) var(--my, 35%),
-      rgba(212, 184, 115, 0.08) 0%,
-      rgba(212, 184, 115, 0.04) 25%,
-      rgba(139, 159, 212, 0.02) 45%,
-      transparent 65%
-    );
-  transition: background 900ms var(--ease-veil);
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: candle-fade-in 2.4s var(--ease-veil) 200ms forwards;
-}
-
-@keyframes candle-fade-in {
-  to { opacity: 1; }
-}
-
-/* 雾幕层 · 双色漂移 */
-.mist-veil {
-  position: fixed;
-  inset: -10% -20%;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 50% 30% at 20% 60%,
-      rgba(178, 168, 214, 0.05) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 25% at 80% 40%,
-      rgba(28, 14, 32, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 35% 20% at 50% 90%,
-      rgba(210, 178, 116, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 45% 35% at 70% 15%,
-      rgba(13, 18, 38, 0.12) 0%, transparent 70%);
-  animation: mist-drift 52s var(--ease-deep) infinite alternate;
-  will-change: transform;
-}
-
-@keyframes mist-drift {
-  0%   { transform: translate3d(0, 0, 0)     scale(1);    opacity: 0.85; }
-  50%  { transform: translate3d(-3%, -1%, 0) scale(1.04); opacity: 1; }
-  100% { transform: translate3d(2%, 1.5%, 0) scale(1.02); opacity: 0.9; }
-}
-
-/* 粒子 canvas */
-.particle-field {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0;
-  animation: candle-fade-in 3s var(--ease-veil) 400ms forwards;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Reduced motion · 尊重系统设置
-   ═══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-lunar,
-  .anim-whisper,
-  .mist-veil,
-  .particle-field,
-  .card-shimmer.is-active,
-  .card-shimmer.is-active::before,
-  .skeleton-base,
-  .skeleton-base::after {
+  .anim-rise,
+  .anim-fade,
+  .anim-stamp,
+  .letter-reveal > *,
+  .card-sheen.is-active::before,
+  .is-shuffling .deck-card,
+  .mention-card:hover .mention-preview,
+  .mention-card:focus .mention-preview {
     animation: none !important;
   }
-  .skeleton-base { opacity: 0.72; }
-  .skeleton-base::after { opacity: 0; }
-  .card-parallax {
-    transform: none !important;
+  .anim-pulse,
+  .ink-caret,
+  .skeleton {
+    animation-duration: 3s !important;
   }
-  .interpretation-reveal > * {
-    opacity: 1;
-    animation: fade-in var(--dur-soft) var(--ease-ritual) forwards;
-  }
-  .sigil-seal {
-    animation: fade-in var(--dur-soft) var(--ease-ritual) 200ms forwards;
-    transform: none;
-  }
+  .card-flipper { transition-duration: 1ms; }
+  .card-tilt { transform: none !important; }
 }

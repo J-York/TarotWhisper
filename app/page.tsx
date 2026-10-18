@@ -1,259 +1,342 @@
 'use client';
 
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
-import { useApiConfig } from '@/hooks/useApiConfig';
+import { CardPlate } from '@/components/CardPlate';
+import { Composer, type ComposerIntent } from '@/components/Composer';
+import { OracleLetter, type OracleLetterActions } from '@/components/OracleLetter';
 import { useSettingsDialog } from '@/components/AppShell';
+import { useAgentChat, type AgentMessage, type DrawMode } from '@/hooks/useAgentChat';
+import { useApiConfig } from '@/hooks/useApiConfig';
+import { formatMonthDay, weekdayName } from '@/lib/dates';
+import { formatLunarDate } from '@/lib/lunar';
+import { getReadings } from '@/lib/readingStorage';
 import { getDailyDraw } from '@/lib/tarot/daily';
-import { spreads } from '@/lib/tarot/spreads';
+import type { Reading } from '@/lib/tarot/types';
 
-const ENTRIES = [
-  {
-    href: '/agent',
-    title: '神谕对话',
-    en: 'Oracle Chat',
-    text: '直接把问题说出来。神谕会自动选阵、抽牌并给出解读，还能继续追问。',
-    glyph: '☾',
-    primary: true,
-    cta: '开始对话',
-  },
-  {
-    href: '/reading',
-    title: '亲手占卜',
-    en: 'Guided Reading',
-    text: '想自己挑选牌阵、亲手翻牌？走完整的五步仪式。',
-    glyph: '✦',
-    primary: false,
-    cta: '进入流程',
-  },
-  {
-    href: '/library',
-    title: '牌典',
-    en: 'Card Library',
-    text: '七十八张牌的含义、关键词与正逆位对照。',
-    glyph: '◇',
-    primary: false,
-    cta: '翻看牌典',
-  },
+const SUGGESTIONS = [
+  { label: '工作', question: '最近的工作状态，我该怎么调整？' },
+  { label: '关系', question: '我和 Ta 的关系接下来会怎样发展？' },
+  { label: '抉择', question: '眼前有两个选择，我该怎么决定？' },
+  { label: '今天', question: '今天有什么需要特别留意的？' },
 ];
 
-export default function HomePage(): ReactElement {
-  const { isLoaded, canUseApi } = useApiConfig();
+export default function OraclePage(): ReactElement {
+  const chat = useAgentChat();
+  const { messages, isHydrated, isRunning } = chat;
+  const { config, isLoaded, canUseApi } = useApiConfig();
   const { openSettings } = useSettingsDialog();
 
+  const [draft, setDraft] = useState('');
+  const [mode, setMode] = useState<DrawMode>('oracle');
+  const [focusSignal, setFocusSignal] = useState(0);
   const [today, setToday] = useState<Date | null>(null);
+
   useEffect(() => {
+    // 日期只在客户端取，避免服务端与浏览器跨零点时渲染不一致
     queueMicrotask(() => setToday(new Date()));
+    // 旧的 /reading 链接会带 ?mode=self 跳到这里
+    if (new URLSearchParams(window.location.search).get('mode') === 'self') {
+      queueMicrotask(() => setMode('self'));
+      window.history.replaceState(null, '', '/');
+    }
   }, []);
-  const dailyDraw = useMemo(() => (today ? getDailyDraw(today) : null), [today]);
+
+  const lastAgent = useMemo(
+    () => messages.findLast((m): m is AgentMessage => m.role === 'agent'),
+    [messages],
+  );
+
+  // 离开页面再回来时，上一个实例发起的流仍在后台写入；此时不能再发起新的回合
+  const isBusy =
+    isRunning ||
+    lastAgent?.status === 'running' ||
+    Boolean(lastAgent?.followUps.some((fu) => fu.status === 'running'));
+
+  const intent: ComposerIntent =
+    lastAgent?.status === 'ritual'
+      ? 'blocked'
+      : lastAgent?.status === 'done' && lastAgent.spread && lastAgent.content
+        ? 'follow-up'
+        : 'new';
+
+  // 亲手抽牌前几步不需要 API，解读时再提示配置
+  const needsApi = intent === 'follow-up' || mode === 'oracle';
+  const canSubmit =
+    draft.trim().length > 0 && !isBusy && intent !== 'blocked' && (!needsApi || canUseApi);
+
+  const handleSubmit = (): void => {
+    const text = draft.trim();
+    if (!canSubmit) return;
+    if (intent === 'follow-up') chat.askFollowUp(text, config);
+    else if (mode === 'self') chat.startRitual(text);
+    else chat.sendQuestion(text, config);
+    setDraft('');
+  };
+
+  const actions: OracleLetterActions = {
+    regenerate: (agentId) => chat.regenerateAgentMessage(agentId, config),
+    regenerateFollowUp: (agentId, followUpId) => chat.regenerateFollowUp(agentId, followUpId, config),
+    chooseSpread: chat.chooseRitualSpread,
+    backToSpreadChoice: chat.backToSpreadChoice,
+    shuffle: chat.shuffleAndDraw,
+    reveal: chat.revealCards,
+    interpret: (agentId) => chat.interpretRitual(agentId, config),
+    handOver: (agentId) => chat.handOverToOracle(agentId, config),
+    discard: chat.discardRitual,
+    openSettings,
+  };
+
+  // 新问题或新追问出现时，把它滚到视口上方，接下来的回信顺着往下读
+  const lastUserId = messages.findLast((m) => m.role === 'user')?.id;
+  const lastFollowUpId = lastAgent?.followUps.at(-1)?.id;
+  const scrolledTo = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const target = lastFollowUpId ? `fu-${lastFollowUpId}` : lastUserId ? `q-${lastUserId}` : undefined;
+    if (!target) return;
+    // 首次载入历史对话时不滚动，只记下位置
+    if (scrolledTo.current === undefined) {
+      scrolledTo.current = target;
+      return;
+    }
+    if (scrolledTo.current === target) return;
+    scrolledTo.current = target;
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [lastUserId, lastFollowUpId]);
+
+  const composerProps = {
+    value: draft,
+    onChange: setDraft,
+    onSubmit: handleSubmit,
+    onStop: chat.cancel,
+    intent,
+    mode,
+    onModeChange: setMode,
+    canSubmit,
+    isRunning,
+    isBusy,
+    focusSignal,
+  };
 
   const needsSetup = isLoaded && !canUseApi;
 
+  if (!isHydrated) {
+    return (
+      <main id="main-content" className="page-container page-main" aria-busy>
+        <div className="max-w-2xl space-y-4">
+          <div className="skeleton h-4 w-48" />
+          <div className="skeleton h-10 w-80 max-w-full" />
+          <div className="skeleton mt-8 h-44 w-full" />
+        </div>
+      </main>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <main id="main-content" className="page-container page-main">
+        <div className="grid gap-14 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-16">
+          <section className="anim-rise max-w-2xl">
+            <p className="kicker min-h-5">{today ? dateLine(today) : ''}</p>
+            <h1 className="page-title mt-4">此刻，你想问什么？</h1>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-soft">
+              把问题写下来，抽一副牌，收一封回信。每次解读都会自动存进手札。
+            </p>
+
+            <div className="mt-8">
+              <Composer variant="hero" {...composerProps} />
+            </div>
+
+            {needsSetup && (
+              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line border-l-[3px] border-l-accent bg-surface px-4 py-3 text-sm text-ink-soft">
+                <span>
+                  还没有配置模型 API。{mode === 'self' ? '可以先亲手抽牌，解读前再配置。' : '神谕需要它才能回信。'}
+                </span>
+                <button type="button" onClick={openSettings} className="link">
+                  去配置
+                </button>
+              </div>
+            )}
+
+            <div className="mt-8">
+              <p className="text-[13px] text-ink-muted">不知道怎么问？从这里开个头：</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    className="chip"
+                    onClick={() => {
+                      setDraft(s.question);
+                      setFocusSignal((n) => n + 1);
+                    }}
+                  >
+                    <span className="text-accent">{s.label}</span>
+                    {s.question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <aside className="anim-rise space-y-10 [animation-delay:120ms] lg:pt-2">
+            <TodayCard today={today} />
+            <RecentEntries />
+          </aside>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main id="main-content" className="page-container page-main">
-      {/* ─── Hero ─── */}
-      <section className="grid items-center gap-12 pt-6 md:grid-cols-[1.15fr_0.85fr] md:gap-16 md:pt-12">
-        <div className="anim-veil-rise">
-          <p className="eyebrow">Tarot Whisper · 神秘塔罗</p>
-          <h1 className="mt-5 font-heading text-[clamp(2.4rem,6vw,4rem)] leading-[1.12] tracking-[0.02em] text-bone">
-            聆听命运
-            <span className="text-gold"> 的回声</span>
-          </h1>
-          <p className="mt-6 max-w-lg font-body text-base leading-relaxed text-bone-dim md:text-[17px]">
-            七十八张韦特塔罗，六种经典牌阵。把问题交给神谕，它会替你选阵、抽牌，
-            再写下这段安静的解读。
-          </p>
+    <main id="main-content" className="page-container page-main pb-56 md:pb-48">
+      <div className="mx-auto max-w-3xl">
+        <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
+          <p className="kicker">{today ? dateLine(today) : '神谕'}</p>
+          <button type="button" onClick={chat.reset} disabled={isBusy} className="btn btn-ghost h-9 text-sm">
+            新的一页
+          </button>
+        </div>
 
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link href="/agent" className="btn-ink-primary h-12 px-7">
-              与神谕对话
-              <span aria-hidden>→</span>
-            </Link>
-            <Link href="/reading" className="btn-ink h-12 px-6">
-              <span className="text-gold" aria-hidden>✦</span>
-              亲手选牌占卜
-            </Link>
-          </div>
-
-          <p className="mt-4 text-xs leading-relaxed text-bone-faint">
-            推荐从对话开始——说出问题即可，无需了解牌阵。
-          </p>
-
-          {needsSetup && (
-            <p className="mt-5 flex flex-wrap items-center gap-2 text-sm text-bone-faint">
-              <span className="text-gold-dim" aria-hidden>◇</span>
-              尚未配置 API 密钥，解读功能需要先完成配置。
-              <button
-                type="button"
-                onClick={openSettings}
-                className="text-gold-warm underline decoration-[var(--gold-faint)] underline-offset-4 hover:decoration-[var(--gold)]"
+        <div className="mt-8 flex flex-col gap-5">
+          {messages.map((msg, index) =>
+            msg.role === 'user' ? (
+              <div
+                key={msg.id}
+                id={`q-${msg.id}`}
+                className={`anim-rise flex scroll-mt-28 items-start gap-3 ${index > 0 ? 'mt-10' : ''}`}
               >
-                现在配置
+                <span className="voice-label mt-1">问</span>
+                <p className="whitespace-pre-wrap font-hand text-[19px] leading-relaxed text-voice md:text-xl">
+                  {msg.content}
+                </p>
+              </div>
+            ) : (
+              <OracleLetter
+                key={msg.id}
+                message={msg}
+                isBusy={isBusy}
+                canUseApi={canUseApi}
+                actions={actions}
+              />
+            ),
+          )}
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-line bg-canvas/95 backdrop-blur-md md:bottom-0">
+        <div className="mx-auto max-w-3xl px-4 pb-3 pt-3 md:px-0 md:pb-4">
+          <Composer variant="dock" {...composerProps} />
+          <div className="mt-1.5 flex min-h-5 items-center justify-between gap-3 px-1 text-xs text-ink-muted">
+            <span>
+              {intent === 'follow-up'
+                ? '追问会接着这次的牌来回答；想问别的事，就翻开新的一页。'
+                : intent === 'blocked'
+                  ? '牌还没抽完。'
+                  : ''}
+            </span>
+            {needsSetup && (
+              <button type="button" onClick={openSettings} className="link shrink-0">
+                配置 API
               </button>
-            </p>
-          )}
-
-          <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4">
-            {[
-              { k: '78', v: '张完整牌组' },
-              { k: '6', v: '种经典牌阵' },
-              { k: '∞', v: '次追问解读' },
-            ].map((item) => (
-              <div key={item.v} className="flex items-baseline gap-2.5">
-                <dt className="font-heading text-xl text-gold">{item.k}</dt>
-                <dd className="text-xs tracking-wide text-bone-faint">{item.v}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        {/* ─── 今日一牌 ─── */}
-        <div className="anim-veil-rise" style={{ animationDelay: '120ms' }}>
-          {dailyDraw ? (
-            <Link
-              href="/daily"
-              className="group relative mx-auto block w-full max-w-[320px] overflow-hidden rounded-2xl border border-[var(--ink-line)] bg-[var(--ink-veil)] p-4 transition-all duration-500 hover:-translate-y-1 hover:border-[var(--gold-faint)] hover:shadow-[0_30px_60px_-28px_rgba(0,0,0,0.9),0_0_50px_-24px_var(--gold-glow)]"
-            >
-              <div className="flex items-center justify-between pb-3">
-                <span className="eyebrow">今日一牌 · Daily Card</span>
-                <span className="grid h-6 w-6 place-items-center rounded-full border border-[var(--gold-faint)] text-[10px] text-gold-dim">
-                  ✦
-                </span>
-              </div>
-              <div className="relative aspect-[3/5] w-full overflow-hidden rounded-lg bg-[var(--ink-void)]">
-                <Image
-                  src={dailyDraw.card.image}
-                  alt={dailyDraw.card.nameCn}
-                  fill
-                  sizes="(max-width: 768px) 80vw, 288px"
-                  className={`object-cover transition-transform duration-700 group-hover:scale-[1.03] ${
-                    dailyDraw.isReversed ? 'rotate-180' : ''
-                  }`}
-                  priority
-                />
-                {dailyDraw.isReversed && (
-                  <span className="absolute right-2.5 top-2.5 rounded-full bg-[var(--ink-void)]/80 px-2 py-1 text-[10px] tracking-widest text-gold-warm">
-                    逆位
-                  </span>
-                )}
-              </div>
-              <div className="pt-4">
-                <p className="font-heading text-lg tracking-[0.06em] text-bone">
-                  {dailyDraw.card.nameCn}
-                  <span className="ml-2 font-display text-[10px] uppercase tracking-[0.2em] text-bone-faint">
-                    {dailyDraw.card.name}
-                  </span>
-                </p>
-                <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-bone-faint">
-                  {(dailyDraw.isReversed
-                    ? dailyDraw.card.keywords.reversed
-                    : dailyDraw.card.keywords.upright
-                  ).join(' · ')}
-                </p>
-              </div>
-              <span className="absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--gold-dim)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-            </Link>
-          ) : (
-            <div className="mx-auto aspect-[3/5] w-full max-w-[320px] animate-pulse rounded-2xl border border-[var(--ink-line)] bg-[var(--ink-veil)]" />
-          )}
-        </div>
-      </section>
-
-      {/* ─── 主要入口 ─── */}
-      <section className="mt-20 md:mt-28" aria-labelledby="entries-title">
-        <div className="flex items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow">Ways to Begin</p>
-            <h2 id="entries-title" className="page-title mt-3 text-[clamp(1.35rem,2.6vw,1.75rem)]">
-              选择一种方式开始
-            </h2>
+            )}
           </div>
-          <span className="hidden text-xs text-bone-faint md:block">三种入口 · 同一副牌</span>
         </div>
+      </div>
+    </main>
+  );
+}
 
-        <div className="mt-7 grid gap-4 md:grid-cols-3">
-          {ENTRIES.map((entry) => (
-            <Link
-              key={entry.href}
-              href={entry.href}
-              className={`group surface flex flex-col p-6 transition-all duration-300 hover:-translate-y-1 ${
-                entry.primary
-                  ? 'border-[var(--gold-faint)] bg-[linear-gradient(180deg,rgba(210,178,116,0.10)_0%,rgba(20,16,34,0.75)_100%)] hover:border-[var(--gold-dim)] md:col-span-1 md:p-7'
-                  : 'hover:border-[var(--gold-faint)]'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className={`grid h-10 w-10 place-items-center rounded-full border text-gold-dim transition-colors duration-300 ${
-                    entry.primary
-                      ? 'border-[var(--gold-dim)] text-gold'
-                      : 'border-[var(--ink-line-strong)] group-hover:border-[var(--gold-dim)] group-hover:text-gold'
-                  }`}
-                >
-                  {entry.glyph}
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-bone-faint">{entry.en}</span>
-              </div>
-              <div className="mt-5 flex items-baseline gap-2">
-                <h3 className="font-heading text-lg tracking-[0.04em] text-bone">{entry.title}</h3>
-                {entry.primary && (
-                  <span className="rounded-full border border-[var(--gold-faint)] px-2 py-0.5 text-[10px] tracking-[0.1em] text-gold-dim">
-                    推荐
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-bone-faint">{entry.text}</p>
-              <span className="mt-5 inline-flex items-center gap-2 text-sm text-gold-warm">
-                {entry.cta}
-                <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>
-                  →
-                </span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+function dateLine(date: Date): string {
+  const lunar = formatLunarDate(date);
+  return `${formatMonthDay(date)} · ${weekdayName(date)}${lunar ? ` · ${lunar}` : ''}`;
+}
 
-      {/* ─── 牌阵一览 ─── */}
-      <section className="mt-16 md:mt-20" aria-labelledby="spreads-title">
-        <div className="flex items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow">Sacred Spreads · 进阶</p>
-            <h2 id="spreads-title" className="page-title mt-3 text-[clamp(1.35rem,2.6vw,1.75rem)]">
-              六种牌阵
-            </h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-bone-faint">
-              想自己挑牌阵时用得上。对话模式会替你从这六种里挑一个。
-            </p>
+/* ─── 侧栏 ─── */
+
+function TodayCard({ today }: { today: Date | null }): ReactElement {
+  const draw = useMemo(() => (today ? getDailyDraw(today) : null), [today]);
+
+  return (
+    <section aria-labelledby="today-card-title">
+      <h2 id="today-card-title" className="kicker">
+        今日一牌
+      </h2>
+      {draw ? (
+        <Link href="/daily" className="group mt-4 flex gap-4">
+          <CardPlate
+            card={draw.card}
+            isReversed={draw.isReversed}
+            sizes="80px"
+            decorative
+            className="w-20 shrink-0 transition-transform duration-300 group-hover:-translate-y-0.5"
+          />
+          <span className="min-w-0 pt-1">
+            <span className="block text-lg font-semibold text-ink group-hover:text-accent">
+              {draw.card.nameCn}
+            </span>
+            <span className="font-latin text-sm italic text-ink-muted">{draw.card.name}</span>
+            <span className={`mt-1 block text-[13px] ${draw.isReversed ? 'text-accent' : 'text-ink-muted'}`}>
+              {draw.isReversed ? '逆位' : '正位'}
+            </span>
+            <span className="mt-2 line-clamp-2 break-keep text-[13px] leading-relaxed text-ink-soft">
+              {(draw.isReversed ? draw.card.keywords.reversed : draw.card.keywords.upright).join(' · ')}
+            </span>
+          </span>
+        </Link>
+      ) : (
+        <div className="mt-4 flex gap-4" aria-hidden>
+          <div className="skeleton aspect-[3/5] w-20" />
+          <div className="flex-1 space-y-2 pt-1">
+            <div className="skeleton h-5 w-20" />
+            <div className="skeleton h-4 w-24" />
           </div>
-          <Link href="/reading" className="btn-ink-ghost hidden md:inline-flex">
-            亲手选牌 →
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RecentEntries(): ReactElement {
+  const [readings, setReadings] = useState<Reading[] | null>(null);
+
+  useEffect(() => {
+    queueMicrotask(() => setReadings(getReadings().slice(0, 3)));
+  }, []);
+
+  return (
+    <section aria-labelledby="recent-title">
+      <div className="flex items-baseline justify-between">
+        <h2 id="recent-title" className="kicker">
+          最近的手札
+        </h2>
+        {readings && readings.length > 0 && (
+          <Link href="/history" className="text-[13px] text-ink-muted hover:text-accent">
+            全部
           </Link>
-        </div>
-
-        <ul className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {spreads.map((spread) => (
-            <li key={spread.id} className="surface-soft flex items-start gap-4 p-5">
-              <span className="mt-0.5 grid h-11 w-9 shrink-0 place-items-center rounded border border-[var(--gold-faint)] bg-[rgba(210,178,116,0.07)] font-heading text-xs text-gold">
-                {spread.positions.length}
-              </span>
-              <div className="min-w-0">
-                <h3 className="font-heading text-[15px] tracking-[0.04em] text-bone">{spread.nameCn}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-bone-faint">{spread.description}</p>
-              </div>
+        )}
+      </div>
+      {readings === null ? null : readings.length === 0 ? (
+        <p className="mt-4 text-[13px] leading-relaxed text-ink-muted">
+          还没有记录。每次解读完成后会自动存进来。
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line border-y border-line">
+          {readings.map((r) => (
+            <li key={r.id}>
+              <Link href={`/history/${r.id}`} className="group block py-3">
+                <span className="text-xs text-ink-muted">
+                  {formatMonthDay(r.createdAt)} · {r.spread.nameCn}
+                </span>
+                <span className="mt-0.5 line-clamp-2 font-hand text-base leading-snug text-voice group-hover:text-accent">
+                  {r.question}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
-      </section>
-
-      <footer className="mt-20 flex flex-col items-center gap-3 border-t border-[var(--ink-line)] pt-8 text-center">
-        <span className="text-gold-dim" aria-hidden>✦</span>
-        <p className="text-xs tracking-[0.14em] text-bone-faint">
-          所有记录与密钥仅保存在你的浏览器中 · 命运在等待召唤
-        </p>
-      </footer>
-    </main>
+      )}
+    </section>
   );
 }

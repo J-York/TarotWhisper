@@ -6,9 +6,10 @@
  *
  * 保存时剔除瞬时字段（重试状态）；恢复时把仍标记为 running 的消息
  * 视为「被中断」，否则刷新后会永远停在生成中。
+ * 亲手抽牌（ritual）不涉及网络请求，原样恢复，用户可以接着翻牌。
  */
 
-import type { ChatMessage } from '@/hooks/useAgentChat';
+import type { AgentMessage, ChatMessage, RitualStage } from '@/hooks/useAgentChat';
 
 const STORAGE_KEY = 'mystic-tarot-chat-v1';
 
@@ -30,10 +31,31 @@ function toStored(messages: ChatMessage[]): ChatMessage[] {
   });
 }
 
+/** 亲手抽牌的步骤以已有数据为准，避免停在缺牌阵或缺牌的步骤上 */
+function restoreRitualStage(msg: AgentMessage): RitualStage {
+  if (!msg.spread) return 'spread';
+  if (msg.drawnCards.length > 0) return 'reveal';
+  return msg.ritualStage === 'spread' ? 'spread' : 'shuffle';
+}
+
+/** 补齐旧版本记录缺少的字段 */
+function withDefaults(msg: AgentMessage): AgentMessage {
+  const isRitual = msg.status === 'ritual';
+  return {
+    ...msg,
+    mode: msg.mode === 'self' ? 'self' : 'oracle',
+    ritualStage: isRitual ? restoreRitualStage(msg) : null,
+    revealedCount: Number.isInteger(msg.revealedCount)
+      ? Math.min(Math.max(msg.revealedCount, 0), msg.drawnCards.length)
+      : 0,
+  };
+}
+
 /** 恢复时把进行中的状态改为中断态 */
 function fromStored(messages: ChatMessage[]): ChatMessage[] {
-  return messages.map((msg) => {
-    if (msg.role === 'user') return msg;
+  return messages.map((raw) => {
+    if (raw.role === 'user') return raw;
+    const msg = withDefaults(raw);
 
     const followUps = msg.followUps.map((fu) =>
       fu.status === 'running'

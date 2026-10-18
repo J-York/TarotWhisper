@@ -1,70 +1,60 @@
 'use client';
 
-import { Component, type ReactNode } from 'react';
-import Link from 'next/link';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+
+import { Seal } from '@/components/Seal';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
 
 interface ErrorBoundaryState {
-  hasError: boolean;
   error: Error | null;
 }
 
-/**
- * 全局 Error Boundary — 捕获渲染时异常，显示仪式感的错误页而非白屏。
- */
+/** 全局错误边界 · 渲染出错时显示说明页而不是白屏 */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  state: ErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    return { error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+  componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('ErrorBoundary caught:', error, info.componentStack);
   }
 
   render(): ReactNode {
-    if (this.state.hasError) {
-      return (
-        <div className="flex min-h-[70dvh] items-center justify-center p-6">
-          <div className="surface max-w-md px-8 py-10 text-center anim-veil-rise">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-[var(--ink-line-strong)] text-xl text-gold-dim" aria-hidden>
-              ◇
-            </div>
-            <h1 className="mt-5 font-heading text-xl text-bone">页面出现了一点问题</h1>
-            <p className="mt-2 text-sm leading-relaxed text-bone-faint">
-              某个组件渲染失败。你的占卜记录仍安全保存在本地。
-            </p>
-            {this.state.error && (
-              <details className="mt-5 rounded-lg border border-[var(--ink-line)] px-4 py-3 text-left">
-                <summary className="cursor-pointer text-xs text-bone-faint">技术细节</summary>
-                <p className="mt-2 break-all font-mono text-[11px] leading-relaxed text-bone-whisper">
-                  {this.state.error.message}
-                </p>
-              </details>
-            )}
-            <div className="mt-6 flex justify-center gap-2">
-              <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="btn-ink h-10 px-5 text-sm"
-              >
-                重试
-              </button>
-              <Link href="/" className="btn-ink-primary h-10 px-5 text-sm">
-                返回首页
-              </Link>
-            </div>
+    const { error } = this.state;
+    if (!error) return this.props.children;
+
+    return (
+      <main id="main-content" className="page-container page-main flex min-h-dvh items-center justify-center">
+        <div className="panel anim-rise w-full max-w-md px-6 py-10 text-center md:px-8">
+          <Seal text="塔罗" className="mx-auto" />
+          <h1 className="mt-6 text-xl font-semibold text-ink">页面出了点问题</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
+            有一部分没能显示出来。你的手札和札记仍然保存在这台设备上。
+          </p>
+          <details className="mt-5 rounded-md border border-line bg-canvas px-4 py-3 text-left">
+            <summary className="cursor-pointer text-[13px] text-ink-muted">技术细节</summary>
+            <p className="mt-2 break-all font-mono text-xs leading-relaxed text-ink-soft">{error.message}</p>
+          </details>
+          <div className="mt-6 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => this.setState({ error: null })}
+              className="btn btn-secondary h-10 px-5 text-sm"
+            >
+              重试
+            </button>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- 要整页重新载入：错误边界在根布局里，站内跳转不会清掉出错状态 */}
+            <a href="/" className="btn btn-primary h-10 px-5 text-sm">
+              回到首页
+            </a>
           </div>
         </div>
-      );
-    }
-
-    return this.props.children;
+      </main>
+    );
   }
 }
