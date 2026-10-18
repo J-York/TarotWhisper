@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import { extractBaseUrl } from '@/lib/api/llm-client';
+import { checkEndpoint } from '@/lib/api/endpoint-guard';
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
@@ -32,8 +33,11 @@ export async function POST(request: NextRequest): Promise<Response> {
   } catch {
     return jsonError('API 端点不是有效的网址', 400);
   }
-  if (modelsUrl.protocol !== 'https:' && modelsUrl.protocol !== 'http:') {
-    return jsonError('API 端点必须以 http:// 或 https:// 开头', 400);
+
+  // 服务端代用户请求，校验目标地址防止成为 SSRF 跳板
+  const guard = checkEndpoint(modelsUrl.toString());
+  if (!guard.ok) {
+    return jsonError(guard.error ?? 'API 端点不可用', 400);
   }
 
   let response: globalThis.Response;

@@ -25,6 +25,7 @@ const SUGGESTIONS = [
 export default function AgentPage(): ReactElement {
   const {
     messages,
+    isHydrated,
     isRunning,
     sendQuestion,
     askFollowUp,
@@ -111,7 +112,18 @@ export default function AgentPage(): ReactElement {
       )}
 
       <div className="mx-auto mt-8 w-full max-w-3xl">
-        {!hasConversation && (
+        {!hasConversation && !isHydrated && (
+          <div className="surface animate-pulse p-6 md:p-8" aria-hidden>
+            <div className="h-10 w-2/3 rounded bg-[var(--ink-veil)]" />
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-14 rounded-lg bg-[var(--ink-veil)]" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hasConversation && isHydrated && (
           <section className="anim-veil-rise">
             <div className="surface p-6 md:p-8">
               <div className="flex items-center gap-3">

@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 import { DrawnCard, Spread, ApiConfig } from '@/lib/tarot/types';
+import { checkEndpoint } from '@/lib/api/endpoint-guard';
+import { createRateLimiter } from '@/lib/api/rate-limiter';
 import {
   buildInterpretationPrompt,
   buildFollowUpDecidePrompt,
@@ -75,25 +77,12 @@ const FALLBACK_CONFIG = {
 
 // ─── 速率限制 ────────────────────────────────────────────────
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_PER_HOUR = parseInt(process.env.RATE_LIMIT_PER_HOUR || '10', 10);
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip);
-
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 3600000 });
-    return true;
-  }
-
-  if (record.count >= RATE_LIMIT_PER_HOUR) {
-    return false;
-  }
-
-  record.count++;
-  return true;
-}
+const rateLimiter = createRateLimiter({
+  limit: RATE_LIMIT_PER_HOUR,
+  windowMs: 3_600_000,
+});
 
 // ─── 请求体校验 ──────────────────────────────────────────────
 
@@ -295,10 +284,20 @@ export async function POST(request: NextRequest): Promise<Response> {
                request.headers.get('x-real-ip') ||
                'unknown';
 
-    if (!checkRateLimit(ip)) {
-      return jsonError(
-        `请求过于频繁，每小时最多 ${RATE_LIMIT_PER_HOUR} 次请求。建议配置自己的 API Key 以解除限制。`,
-        429,
+    const limit = rateLimiter.check(ip);
+    if (!limit.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: `请求过于频繁，每小时最多 ${RATE_LIMIT_PER_HOUR} 次请求。建议配置自己的 API Key 以解除限制。`,
+          source: 'route',
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(limit.retryAfterSec),
+          },
+        },
       );
     }
 
@@ -308,16 +307,24 @@ export async function POST(request: NextRequest): Promise<Response> {
     return jsonError('请先配置 API Key', 401);
   }
 
-  // 5. 构建 Prompt
+  // 5. 端点校验：服务端会代用户发起请求，不校验则本路由会成为
+  //    访问内网与云元数据的跳板。只校验实际要用的端点——
+  //    走后备配置时用户填的 endpoint 根本不会被请求，拦住它只会误导。
+  const endpointCheck = checkEndpoint(effectiveConfig.endpoint.trim());
+  if (!endpointCheck.ok) {
+    return jsonError(endpointCheck.error ?? 'API 端点不可用', 400);
+  }
+
+  // 6. 构建 Prompt
   const prompt = buildPrompt(body);
 
-  // 6. 构建上游请求 URL
+  // 7. 构建上游请求 URL
   const endpoint = effectiveConfig.endpoint.trim();
   const hasChatCompletions = endpoint.includes('/chat/completions');
   const baseEndpoint = endpoint.endsWith('/') ? endpoint.slice(0, -1) : endpoint;
   const requestUrl = hasChatCompletions ? baseEndpoint : `${baseEndpoint}/chat/completions`;
 
-  // 7. 发起上游请求（带超时）
+  // 8. 发起上游请求（带超时）
   const upstreamController = new AbortController();
   const timeoutId = setTimeout(() => upstreamController.abort(), UPSTREAM_TIMEOUT_MS);
 
@@ -363,7 +370,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   clearTimeout(timeoutId);
 
-  // 8. 处理上游 HTTP 错误
+  // 9. 处理上游 HTTP 错误
   if (!response.ok) {
     if (!errorText) errorText = await response.text().catch(() => '');
     const sanitized = sanitizeError(errorText, effectiveConfig.apiKey);
@@ -378,12 +385,12 @@ export async function POST(request: NextRequest): Promise<Response> {
     );
   }
 
-  // 9. 检查响应体
+  // 10. 检查响应体
   if (!response.body) {
     return jsonError('上游未返回响应流', 502);
   }
 
-  // 10. 透传 SSE 流，并加入流级超时保护
+  // 11. 透传 SSE 流，并加入流级超时保护
   const transformedStream = createGuardedStream(response.body, upstreamController);
 
   return new Response(transformedStream, {

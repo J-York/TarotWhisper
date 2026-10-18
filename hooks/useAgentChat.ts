@@ -8,8 +8,9 @@
  * 追问作为后续 Agent 消息追加，复用 decide/draw 协议。
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { ApiConfig, DrawnCard, FollowUp, Reading, Spread } from '@/lib/tarot/types';
+import { loadChat, saveChat, clearChat } from '@/lib/agentChatStorage';
 import {
   saveReading,
   updateReadingFollowUps,
@@ -139,24 +140,75 @@ function toStoredFollowUps(agent: AgentMessage): FollowUp[] {
     }));
 }
 
+// ─── 消息 store ─────────────────────────────────────────────
+/** 与 useApiConfig 同样的模块级 store：对外是同一份消息，
+ *  异步流程随时能读到最新值，无需再维护一份 ref 镜像。 */
+
+interface MessageSnapshot {
+  messages: ChatMessage[];
+  /** 是否已尝试从 localStorage 恢复 */
+  hydrated: boolean;
+}
+
+let snapshot: MessageSnapshot = { messages: [], hydrated: false };
+const listeners = new Set<() => void>();
+let storageRead = false;
+
+function publish(next: MessageSnapshot): void {
+  snapshot = next;
+  listeners.forEach((listener) => listener());
+}
+
+/** 首次订阅时读取本地记录；同一页面生命周期只读一次 */
+function hydrate(): void {
+  if (storageRead || typeof window === 'undefined') return;
+  storageRead = true;
+  publish({ messages: loadChat(), hydrated: true });
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  hydrate();
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+const getSnapshot = (): MessageSnapshot => snapshot;
+const SERVER_SNAPSHOT: MessageSnapshot = { messages: [], hydrated: false };
+const getServerSnapshot = (): MessageSnapshot => SERVER_SNAPSHOT;
+
+/** 写入新消息列表并广播 */
+function updateMessages(updater: (prev: ChatMessage[]) => ChatMessage[]): void {
+  publish({ messages: updater(snapshot.messages), hydrated: true });
+}
+
 // ─── Hook ───────────────────────────────────────────────────
 
 export function useAgentChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { messages, hydrated: isHydrated } = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
   const [isRunning, setIsRunning] = useState(false);
 
-  // messages 的 ref 镜像，供异步流程在不依赖 state 闭包的节点读取最新值
-  const messagesRef = useRef<ChatMessage[]>([]);
-
-  /** 统一的 messages 提交函数：同步更新 ref 镜像 */
+  /** 统一的 messages 提交函数 */
   const commit = useCallback(
     (updater: (prev: ChatMessage[]) => ChatMessage[]) => {
-      const next = updater(messagesRef.current);
-      messagesRef.current = next;
-      setMessages(next);
+      updateMessages(updater);
     },
     [],
   );
+
+  // 消息变化后落盘。流式输出期间 messages 每个 token 都变，
+  // 直接写 localStorage 会成为热点，因此做 400ms 防抖；
+  // 页面中途关闭时最多丢失最后 400ms 的内容。
+  useEffect(() => {
+    if (!isHydrated) return;
+    const timer = window.setTimeout(() => saveChat(messages), 400);
+    return () => window.clearTimeout(timer);
+  }, [messages, isHydrated]);
 
   // AbortController 管理
   const activeAbortRef = useRef<AbortController | null>(null);
@@ -241,7 +293,7 @@ export function useAgentChat() {
   );
 
   const findOriginalQuestion = useCallback((agentId: string): string => {
-    const current = messagesRef.current;
+    const current = snapshot.messages;
     const agentIndex = current.findIndex(
       (message) => message.role === 'agent' && message.id === agentId,
     );
@@ -256,7 +308,7 @@ export function useAgentChat() {
 
   const persistFollowUpsForAgent = useCallback((agentId: string): void => {
     queueMicrotask(() => {
-      const agent = messagesRef.current.find(
+      const agent = snapshot.messages.find(
         (message) => message.role === 'agent' && message.id === agentId,
       );
       if (!agent || agent.role !== 'agent' || !agent.readingId) return;
@@ -342,7 +394,7 @@ export function useAgentChat() {
       if (!trimmed || isRunning) return;
 
       // 找到最后一个 agent 消息作为追问的上下文
-      const lastAgent = [...messagesRef.current].reverse().find((m) => m.role === 'agent');
+      const lastAgent = [...snapshot.messages].reverse().find((m) => m.role === 'agent');
       if (
         !lastAgent ||
         lastAgent.role !== 'agent' ||
@@ -442,7 +494,7 @@ export function useAgentChat() {
     async (agentId: string, apiConfig: ApiConfig): Promise<void> => {
       if (isRunning) return;
 
-      const target = messagesRef.current.find(
+      const target = snapshot.messages.find(
         (message) => message.role === 'agent' && message.id === agentId,
       );
       if (!target || target.role !== 'agent') return;
@@ -577,7 +629,7 @@ export function useAgentChat() {
     async (agentId: string, followUpId: string, apiConfig: ApiConfig): Promise<void> => {
       if (isRunning) return;
 
-      const agent = messagesRef.current.find(
+      const agent = snapshot.messages.find(
         (message) => message.role === 'agent' && message.id === agentId,
       );
       if (
@@ -714,10 +766,12 @@ export function useAgentChat() {
     cancel();
     commit(() => []);
     setIsRunning(false);
+    clearChat();
   }, [cancel, commit]);
 
   return {
     messages,
+    isHydrated,
     isRunning,
     sendQuestion,
     askFollowUp,
