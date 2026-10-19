@@ -70,6 +70,56 @@
   --seal-wear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -5 0 0 0 3.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   暗色 · 夜纸
+   不设手动开关：每次进入与停留期间都跟随系统外观。
+   只覆盖变量，组件仍只认用途色，故全站（首页/今日/牌典/手札/弹窗）一致切换。
+   朱砂与靛青在暗底上提亮以保 ≥ 4.5:1；牌花色同步提亮。
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --canvas:  #16120E;
+    --surface: #201A15;
+    --sunken:  #100C09;
+
+    --ink:       #EDE4D3;
+    --ink-soft:  #CDC1AC;
+    --ink-muted: #A79B85;
+
+    --line:        #383028;
+    --line-strong: #5A4E40;
+
+    --accent:        #E07A57;
+    --accent-strong: #EE9678;
+    --accent-soft:   #38221A;
+
+    --voice:      #93B4D8;
+    --voice-soft: #233240;
+
+    --mark: #6D5C22;
+
+    --suit-major:     #C0A6DE;
+    --suit-wands:     #E5A266;
+    --suit-cups:      #86B6DC;
+    --suit-swords:    #ADB8C2;
+    --suit-pentacles: #B2C476;
+
+    --shadow-paper:
+      0 1px 0 rgb(255 244 224 / 0.05) inset,
+      0 1px 2px rgb(0 0 0 / 0.35),
+      0 18px 36px -28px rgb(0 0 0 / 0.9);
+    --shadow-lift:
+      0 2px 4px rgb(0 0 0 / 0.4),
+      0 24px 48px -24px rgb(0 0 0 / 0.85);
+
+    /* 纸纹改为极淡的暖白噪点 */
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.93 0 0 0 0 0.87 0 0 0 0 0.72 0 0 0 0.08 -0.02'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  }
+}
+
 @theme inline {
   --color-*: initial;
 
@@ -242,7 +292,7 @@
     color: var(--surface);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.18),
-      0 8px 16px -12px rgb(135 44 26 / 0.9);
+      0 8px 16px -12px color-mix(in oklab, var(--accent-strong) 90%, transparent);
   }
   .btn-primary:hover:not(:disabled) { background: var(--accent-strong); }
 
@@ -418,7 +468,7 @@
     border-radius: 5px;
     background: var(--sunken);
     box-shadow:
-      0 0 0 1px rgb(35 30 25 / 0.14),
+      0 0 0 1px color-mix(in oklab, var(--ink) 14%, transparent),
       0 10px 22px -16px rgb(60 42 24 / 0.65);
   }
 
@@ -706,7 +756,7 @@
     transform: rotateY(180deg);
     background: var(--sunken);
     box-shadow:
-      0 0 0 1px rgb(35 30 25 / 0.14),
+      0 0 0 1px color-mix(in oklab, var(--ink) 14%, transparent),
       0 12px 24px -18px rgb(60 42 24 / 0.75);
   }
   .card-front.is-reversed { transform: rotateY(180deg) rotate(180deg); }
@@ -715,8 +765,8 @@
   .card-back {
     background-color: var(--surface);
     background-image:
-      repeating-linear-gradient(45deg, rgb(166 58 36 / 0.15) 0 1px, transparent 1px 8px),
-      repeating-linear-gradient(-45deg, rgb(166 58 36 / 0.15) 0 1px, transparent 1px 8px);
+      repeating-linear-gradient(45deg, color-mix(in oklab, var(--accent) 15%, transparent) 0 1px, transparent 1px 8px),
+      repeating-linear-gradient(-45deg, color-mix(in oklab, var(--accent) 15%, transparent) 0 1px, transparent 1px 8px);
     box-shadow:
       inset 0 0 0 1px var(--line-strong),
       0 10px 22px -16px rgb(60 42 24 / 0.65);
@@ -729,8 +779,8 @@
     border-radius: 3px;
     pointer-events: none;
   }
-  .card-back::before { inset: 5px; border: 1px solid rgb(166 58 36 / 0.55); }
-  .card-back::after  { inset: 8px; border: 1px solid rgb(166 58 36 / 0.22); }
+  .card-back::before { inset: 5px; border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent); }
+  .card-back::after  { inset: 8px; border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent); }
 
   .card-medallion {
     position: absolute;
@@ -740,7 +790,7 @@
     aspect-ratio: 1;
     border-radius: 50%;
     background: var(--surface);
-    box-shadow: 0 0 0 1px rgb(166 58 36 / 0.55), 0 0 0 4px var(--surface), 0 0 0 5px rgb(166 58 36 / 0.22);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 55%, transparent), 0 0 0 4px var(--surface), 0 0 0 5px color-mix(in oklab, var(--accent) 22%, transparent);
     color: var(--accent);
   }
 
@@ -888,6 +938,16 @@
   .anim-fade  { animation: fade 400ms var(--ease-out) both; }
   .anim-stamp { animation: stamp 700ms var(--ease-out) 150ms both; }
   .anim-pulse { animation: ink-pulse 1.4s var(--ease-in-out) infinite; }
+}
+
+/* 暗色下少数不走变量的底色：弹窗遮罩压得更深，牌面阴影改用纯黑 */
+@media (prefers-color-scheme: dark) {
+  @layer components {
+    .dialog-backdrop { background: rgb(0 0 0 / 0.62); }
+    .plate { box-shadow: 0 0 0 1px color-mix(in oklab, var(--ink) 14%, transparent), 0 10px 22px -16px rgb(0 0 0 / 0.9); }
+    .card-front { box-shadow: 0 0 0 1px color-mix(in oklab, var(--ink) 14%, transparent), 0 12px 24px -18px rgb(0 0 0 / 0.95); }
+    .card-back { box-shadow: inset 0 0 0 1px var(--line-strong), 0 10px 22px -16px rgb(0 0 0 / 0.9); }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

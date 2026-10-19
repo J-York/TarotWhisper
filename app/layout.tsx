@@ -27,7 +27,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F3EDE1",
+  // 浏览器顶栏颜色同样跟随系统外观，与 globals.css 的浅/暗底色保持一致
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F3EDE1" },
+    { media: "(prefers-color-scheme: dark)", color: "#16120E" },
+  ],
 };
 
 export default function RootLayout({
